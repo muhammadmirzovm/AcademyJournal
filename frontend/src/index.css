@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+:root {
+  --accent: #0D9488;
+  --accent-light: #14B8A8;
+  --accent-bg: rgba(13, 148, 136, 0.1);
+  --nav-bg: #0F1923;
+  --bg: #F8F9FB;
+  --surface: #FFFFFF;
+  --text: #0F1923;
+  --text-muted: #64748B;
+  --border: #E2E8F0;
+  --success: #059669;
+  --warning: #D97706;
+  --danger: #DC2626;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.08);
+  --radius: 8px;
+
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-display: 'Crimson Pro', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="dark"] {
+  --accent: #14B8A8;
+  --accent-bg: rgba(20, 184, 166, 0.12);
+  --nav-bg: #13151F;
+  --bg: #0F1117;
+  --surface: #1A1D27;
+  --text: #E8EAF0;
+  --text-muted: #94A3B8;
+  --border: #2D3148;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.3);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.25s, color 0.25s;
+}
+
+/* ── Scrollbar ───────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Focus rings ────────────────────────────── */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+  transition: border-color 0.17s, box-shadow 0.17s;
+}
+
+/* ── Buttons global ─────────────────────────── */
+button { font-family: var(--font-body); }
+
+button:not(:disabled):active { transform: scale(0.97); }
+
+/* ── Link transitions ───────────────────────── */
+a { transition: color 0.15s, opacity 0.15s; }
+
+/* ── Selection colour ───────────────────────── */
+::selection { background: var(--accent-bg); color: var(--accent); }
+
+/* ── Animations ─────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.fade-up   { animation: fadeUp 0.35s ease both; }
+.fade-up-2 { animation: fadeUp 0.35s 0.08s ease both; }
+.fade-up-3 { animation: fadeUp 0.35s 0.16s ease both; }
+
+/* ── Skeleton shimmer ───────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 6px;
+}
+
+/* ── Mobile ─────────────────────────────────── */
+@media (max-width: 640px) {
+  .hide-mobile  { display: none !important; }
+  .stack-mobile { flex-direction: column !important; }
+  .full-mobile  { width: 100% !important; }
+
+  /* Tab rows: smaller padding so they don't overflow */
+  .tab-btn { padding: 8px 12px !important; font-size: 12px !important; }
+
+  /* Stats row wraps below save button */
+  .stats-row { flex-wrap: wrap !important; row-gap: 8px !important; }
+
+  /* Name grid stacks */
+  .name-grid { grid-template-columns: 1fr !important; }
+
+  /* Profile hero narrower padding */
+  .profile-hero-body { padding: 0 16px 20px !important; }
+
+  /* Lesson row: allow text truncation */
+  .lesson-title { font-size: 13px !important; }
+}

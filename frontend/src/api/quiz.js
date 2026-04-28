@@ -1,0 +1,24 @@
+import api from './axios'
+
+export const getTopics          = ()                  => api.get('/quiz/topics/')
+export const createTopic        = (data)              => api.post('/quiz/topics/', data)
+export const updateTopic        = (id, data)          => api.patch(`/quiz/topics/${id}/`, data)
+export const deleteTopic        = (id)                => api.delete(`/quiz/topics/${id}/`)
+
+export const getQuestions       = (params)            => api.get('/quiz/questions/', { params })
+export const createQuestion     = (data)              => api.post('/quiz/questions/', data)
+export const updateQuestion     = (id, data)          => api.patch(`/quiz/questions/${id}/`, data)
+export const deleteQuestion     = (id)                => api.delete(`/quiz/questions/${id}/`)
+
+export const getGames           = (gid)               => api.get(`/groups/${gid}/games/`)
+export const createGame         = (gid, data)         => api.post(`/groups/${gid}/games/`, data)
+export const getGame            = (gid, gameId)       => api.get(`/groups/${gid}/games/${gameId}/`)
+export const deleteGame         = (gid, gameId)       => api.delete(`/groups/${gid}/games/${gameId}/`)
+export const startGame          = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/start/`)
+export const pickSquare         = (gid, gameId, data) => api.post(`/groups/${gid}/games/${gameId}/pick/`, data)
+export const answerQuestion     = (gid, gameId, data) => api.post(`/groups/${gid}/games/${gameId}/answer/`, data)
+export const startFinal         = (gid, gameId, data) => api.post(`/groups/${gid}/games/${gameId}/final/`, data)
+export const placeBet           = (gid, gameId, data) => api.post(`/groups/${gid}/games/${gameId}/bet/`, data)
+export const answerFinal        = (gid, gameId, data) => api.post(`/groups/${gid}/games/${gameId}/final-answer/`, data)
+export const finishGame         = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/finish/`)
+export const resetGame          = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/reset/`)

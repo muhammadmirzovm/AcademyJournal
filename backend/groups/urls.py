@@ -1,0 +1,21 @@
+from django.urls import path
+from .views import (
+    GroupListCreateView, GroupDetailView, JoinGroupView, GroupMembersView,
+    LessonListCreateView, LessonDetailView,
+    AttendanceView, ScoreView, JournalView,
+    MembershipDetailView, CoinView,
+)
+
+urlpatterns = [
+    path('groups/',                                                             GroupListCreateView.as_view(),  name='group_list'),
+    path('groups/<int:pk>/',                                                    GroupDetailView.as_view(),      name='group_detail'),
+    path('groups/join/',                                                        JoinGroupView.as_view(),        name='group_join'),
+    path('groups/<int:pk>/members/',                                            GroupMembersView.as_view(),     name='group_members'),
+    path('groups/<int:pk>/members/<int:member_pk>/',                            MembershipDetailView.as_view(), name='membership_detail'),
+    path('groups/<int:pk>/coins/',                                              CoinView.as_view(),             name='group_coins'),
+    path('groups/<int:group_pk>/lessons/',                                      LessonListCreateView.as_view(), name='lesson_list'),
+    path('groups/<int:group_pk>/lessons/<int:pk>/',                             LessonDetailView.as_view(),     name='lesson_detail'),
+    path('groups/<int:group_pk>/lessons/<int:lesson_pk>/attendance/',           AttendanceView.as_view(),       name='attendance'),
+    path('groups/<int:group_pk>/lessons/<int:lesson_pk>/scores/',               ScoreView.as_view(),            name='scores'),
+    path('groups/<int:group_pk>/lessons/<int:lesson_pk>/journal/',              JournalView.as_view(),          name='journal'),
+]
