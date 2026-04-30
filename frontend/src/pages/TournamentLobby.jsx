@@ -2,121 +2,148 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Trophy, Users, Clock, Copy, Check, Swords, Crown,
-  ArrowRight, Eye, Play, Zap, Shield, ChevronRight, Sparkles,
+  Trophy, Users, Clock, Copy, Check, Swords,
+  Eye, Play, Zap, Shield, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { createTournament, joinTournament, getBracket, getTournament, walkoverMatch } from '../api/tournament'
+import { useTranslation } from 'react-i18next'
 
-// ─── tiny helpers ─────────────────────────────────────────────────────────────
-
-const avatar = (p) => (p?.first_name?.[0] || p?.username?.[0] || '?').toUpperCase()
+const avatar      = (p) => (p?.first_name?.[0] || p?.username?.[0] || '?').toUpperCase()
 const displayName = (p) => p?.first_name || p?.username || 'Unknown'
 
-// ─── shared input/label styles ────────────────────────────────────────────────
-
-const inputCls = 'w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-violet-400 transition-all text-base'
-const labelCls = 'block text-xs font-bold text-white/50 uppercase tracking-widest mb-2'
-
-// ─── Bracket ──────────────────────────────────────────────────────────────────
+// ─── Match Card ────────────────────────────────────────────────────────────────
 
 function MatchCard({ match, myUserId, isTeacher, onMatchClick, onWalkover }) {
-  const p1     = match.player1
-  const p2     = match.player2
+  const { t } = useTranslation()
+  const p1 = match.player1
+  const p2 = match.player2
   const isMyMatch = (p1?.user_id === myUserId || p2?.user_id === myUserId) &&
-                    match.status !== 'finished' && match.status !== 'bye'
-  const isDone = match.status === 'finished' || match.status === 'bye'
+    match.status !== 'finished' && match.status !== 'bye'
+  const isDone  = match.status === 'finished' || match.status === 'bye'
   const canSkip = isTeacher && !isDone
-  const [loading, setLoading] = useState(false)
+  const [skipLoading, setSkipLoading] = useState(false)
 
   const handleSkip = async (e, winnerId) => {
     e.stopPropagation()
-    setLoading(true)
-    try { await onWalkover(match.id, winnerId) }
-    finally { setLoading(false) }
+    setSkipLoading(true)
+    try { await onWalkover(match.id, winnerId) } finally { setSkipLoading(false) }
   }
 
   return (
     <motion.div
-      whileHover={isMyMatch ? { scale: 1.03, y: -2 } : {}}
+      whileHover={isMyMatch ? { y: -3, scale: 1.02 } : {}}
       onClick={() => isMyMatch && onMatchClick(match.id)}
-      className={`rounded-2xl overflow-hidden transition-all duration-200 w-52 border ${
-        isMyMatch
-          ? 'border-violet-400/60 shadow-xl shadow-violet-500/25 cursor-pointer bg-gradient-to-b from-violet-900/60 to-indigo-900/60'
-          : isDone
-          ? 'border-white/5 bg-white/3 opacity-50'
-          : 'border-white/10 bg-white/5'
-      }`}
+      style={{
+        width: 196,
+        borderRadius: 14,
+        overflow: 'hidden',
+        border: `1.5px solid ${isMyMatch ? 'var(--accent)' : 'var(--border)'}`,
+        background: isMyMatch ? 'var(--accent-bg)' : isDone ? 'var(--bg)' : 'var(--surface)',
+        cursor: isMyMatch ? 'pointer' : 'default',
+        boxShadow: isMyMatch ? '0 6px 20px rgba(13,148,136,0.18)' : 'none',
+        transition: 'all 0.2s',
+        flexShrink: 0,
+      }}
     >
       {isMyMatch && (
-        <div className="bg-violet-500 px-3 py-2 text-center">
-          <span className="text-xs font-black text-white uppercase tracking-widest animate-pulse">
-            ▶ Your Match
+        <div style={{ background: 'var(--accent)', padding: '5px 10px', textAlign: 'center' }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+            {t('tournament.your_match')}
           </span>
         </div>
       )}
 
-      {[p1, p2].map((p, i) => (
-        <div key={i}
-          className={`flex items-center gap-3 px-4 py-3 ${i === 0 ? 'border-b border-white/8' : ''} ${
-            isDone && match.winner?.user_id === p?.user_id ? 'bg-amber-500/10' : ''
-          }`}
-        >
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 ${
-            isDone && match.winner?.user_id === p?.user_id
-              ? 'bg-amber-400 text-gray-900'
-              : p ? 'bg-white/10 text-white' : 'bg-white/5 text-white/20'
-          }`}>
-            {isDone && match.winner?.user_id === p?.user_id ? '🏆' : (p ? avatar(p) : '?')}
+      {[p1, p2].map((p, i) => {
+        const isWinner = isDone && match.winner?.user_id === p?.user_id
+        return (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 12px',
+            borderBottom: i === 0 ? '1px solid var(--border)' : 'none',
+            background: isWinner ? 'var(--accent-bg)' : 'transparent',
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 800,
+              background: isWinner ? 'var(--accent)' : p ? 'var(--border)' : 'transparent',
+              color: isWinner ? '#fff' : 'var(--text)',
+              border: p ? 'none' : '1px dashed var(--border)',
+            }}>
+              {isWinner ? '🏆' : p ? avatar(p) : '?'}
+            </div>
+            <span style={{
+              fontSize: 12, fontWeight: isWinner ? 700 : 500,
+              color: isWinner ? 'var(--accent)' : p ? 'var(--text)' : 'var(--text-muted)',
+              flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              fontStyle: p ? 'normal' : 'italic',
+            }}>
+              {p ? displayName(p) : t('tournament.tbd')}
+            </span>
+            {canSkip && p && (
+              <button
+                onClick={(e) => handleSkip(e, p.user_id)}
+                disabled={skipLoading}
+                title={`${displayName(p)} wins`}
+                style={{
+                  width: 22, height: 22, borderRadius: '50%', border: 'none', flexShrink: 0,
+                  background: 'rgba(5,150,105,0.15)', color: 'var(--success)',
+                  fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >✓</button>
+            )}
           </div>
-          <span className={`text-sm font-semibold truncate flex-1 ${
-            isDone && match.winner?.user_id === p?.user_id
-              ? 'text-amber-300'
-              : p ? 'text-white/90' : 'text-white/25 italic'
-          }`}>
-            {p ? displayName(p) : 'TBD'}
-          </span>
-          {canSkip && p && (
-            <button
-              onClick={(e) => handleSkip(e, p.user_id)}
-              disabled={loading}
-              title={`${displayName(p)} wins`}
-              className="w-7 h-7 rounded-full bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 flex items-center justify-center text-sm transition-colors flex-shrink-0"
-            >✓</button>
-          )}
-        </div>
-      ))}
+        )
+      })}
 
       {canSkip && (
-        <div className="px-4 py-2 text-center border-t border-white/5">
-          <span className="text-xs text-white/30">✓ to set winner</span>
+        <div style={{ padding: '5px 12px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{t('tournament.set_winner_hint')}</span>
         </div>
       )}
     </motion.div>
   )
 }
 
+// ─── Bracket View ──────────────────────────────────────────────────────────────
+
 function BracketView({ bracket, myUserId, isTeacher, onMatchClick, onWalkover }) {
   if (!bracket?.rounds?.length) return null
+
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="flex gap-8 min-w-max pt-1 px-1">
+    <div style={{ overflowX: 'auto', paddingBottom: 8, WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ display: 'flex', gap: 28, minWidth: 'max-content', padding: '4px 2px 12px' }}>
         {bracket.rounds.map((round) => (
-          <div key={round.id} className="flex flex-col items-center gap-4">
-            <div className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest ${
-              round.status === 'active'
-                ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+          <div key={round.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              padding: '4px 14px', borderRadius: 20, fontSize: 10, fontWeight: 800,
+              textTransform: 'uppercase', letterSpacing: '0.1em',
+              background: round.status === 'active'
+                ? 'var(--accent-bg)'
                 : round.status === 'finished'
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                : 'bg-white/5 text-white/30 border border-white/8'
-            }`}>
+                ? 'rgba(5,150,105,0.08)'
+                : 'var(--bg)',
+              color: round.status === 'active'
+                ? 'var(--accent)'
+                : round.status === 'finished'
+                ? 'var(--success)'
+                : 'var(--text-muted)',
+              border: `1px solid ${round.status === 'active'
+                ? 'var(--accent)'
+                : round.status === 'finished'
+                ? 'rgba(5,150,105,0.25)'
+                : 'var(--border)'}`,
+            }}>
               {round.round_name}
             </div>
-            <div className="flex flex-col gap-4 justify-around flex-1">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1, justifyContent: 'space-around' }}>
               {round.matches.map((match) => (
-                <MatchCard key={match.id} match={match} myUserId={myUserId}
-                  isTeacher={isTeacher} onMatchClick={onMatchClick} onWalkover={onWalkover} />
+                <MatchCard
+                  key={match.id} match={match} myUserId={myUserId}
+                  isTeacher={isTeacher} onMatchClick={onMatchClick} onWalkover={onWalkover}
+                />
               ))}
             </div>
           </div>
@@ -126,11 +153,12 @@ function BracketView({ bracket, myUserId, isTeacher, onMatchClick, onWalkover })
   )
 }
 
-// ─── Standings / Podium ───────────────────────────────────────────────────────
+// ─── Standings ─────────────────────────────────────────────────────────────────
 
 const MEDAL = ['🥇', '🥈', '🥉']
 
 function Standings({ participants }) {
+  const { t } = useTranslation()
   const sorted = [...participants]
     .filter(p => p.final_position != null)
     .sort((a, b) => a.final_position - b.final_position)
@@ -138,59 +166,75 @@ function Standings({ participants }) {
 
   if (sorted.length === 0 && active.length === 0) return null
 
-  const nm = p => p.first_name || p.username || '?'
+  const nm  = p => p.first_name || p.username || '?'
   const ini = p => nm(p)[0].toUpperCase()
 
   const podium        = sorted.slice(0, 3)
   const rest          = sorted.slice(3)
-  // reorder: 2nd | 1st | 3rd
   const podiumDisplay = podium.length >= 2
     ? [podium[1], podium[0], podium[2]].filter(Boolean)
     : podium
 
-  const heights = { 1: 'h-28', 2: 'h-20', 3: 'h-14' }
-  const colors  = {
-    1: 'from-amber-400 to-yellow-500',
-    2: 'from-slate-300 to-slate-400',
-    3: 'from-orange-400 to-amber-600',
+  const podiumHeights = { 1: 76, 2: 52, 3: 38 }
+  const podiumColors  = {
+    1: 'linear-gradient(135deg, #F59E0B, #D97706)',
+    2: 'linear-gradient(135deg, #94A3B8, #64748B)',
+    3: 'linear-gradient(135deg, #F97316, #EA580C)',
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mt-10">
-      <div className="flex items-center gap-2 mb-6">
-        <Trophy size={18} className="text-amber-400" />
-        <h3 className="text-base font-black text-white">
-          {sorted.some(p => p.final_position === 1) ? 'Final Standings' : 'Live Standings'}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15 }}
+      style={{ marginTop: 36 }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+        <Trophy size={16} color="var(--accent)" />
+        <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+          {sorted.some(p => p.final_position === 1) ? t('tournament.final_standings') : t('tournament.live_standings')}
         </h3>
       </div>
 
       {podiumDisplay.length > 0 && (
-        <div className="flex items-end justify-center gap-4 mb-8">
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 10, marginBottom: 24 }}>
           {podiumDisplay.map((p) => {
-            const pos = p.final_position
-            const h   = heights[pos] || 'h-12'
-            const cl  = colors[pos]  || 'from-gray-500 to-gray-600'
+            const pos  = p.final_position
+            const h    = podiumHeights[pos] || 38
+            const grad = podiumColors[pos]  || 'linear-gradient(135deg,#6B7280,#4B5563)'
             return (
-              <motion.div key={p.user_id}
+              <motion.div
+                key={p.user_id}
                 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 * pos, type: 'spring', stiffness: 220, damping: 20 }}
-                className="flex flex-col items-center gap-2 w-28"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 90 }}
               >
-                <div className="relative">
+                <div style={{ position: 'relative' }}>
                   {pos === 1 && (
-                    <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 2, repeat: Infinity }}
-                      className="absolute -top-6 left-1/2 -translate-x-1/2 text-2xl select-none">👑</motion.div>
+                    <motion.div
+                      animate={{ y: [0, -4, 0] }} transition={{ duration: 2, repeat: Infinity }}
+                      style={{ position: 'absolute', top: -22, left: '50%', transform: 'translateX(-50%)', fontSize: 18, userSelect: 'none' }}
+                    >👑</motion.div>
                   )}
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${cl} flex items-center justify-center text-xl font-black text-white shadow-xl`}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 14, background: grad,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18, fontWeight: 900, color: '#fff',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                  }}>
                     {ini(p)}
                   </div>
                 </div>
-                <p className="text-xs font-bold text-white text-center truncate w-full px-1">{nm(p)}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', textAlign: 'center', lineHeight: 1.3 }}>{nm(p)}</p>
                 {p.best_wpm > 0 && (
-                  <p className="text-[11px] font-bold text-violet-300">{Math.round(p.best_wpm)} wpm</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}>{Math.round(p.best_wpm)} wpm</p>
                 )}
-                <div className={`w-full ${h} bg-gradient-to-br ${cl} rounded-t-2xl flex items-center justify-center shadow-lg`}>
-                  <span className="text-2xl">{MEDAL[pos - 1] || pos}</span>
+                <div style={{
+                  width: '100%', height: h, background: grad,
+                  borderRadius: '10px 10px 0 0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
+                }}>
+                  <span style={{ fontSize: 20 }}>{MEDAL[pos - 1] || pos}</span>
                 </div>
               </motion.div>
             )
@@ -199,35 +243,71 @@ function Standings({ participants }) {
       )}
 
       {(rest.length > 0 || active.length > 0) && (
-        <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/3">
-          {rest.map((p) => (
-            <div key={p.user_id} className="flex items-center gap-3 px-5 py-3 border-b border-white/5 last:border-0">
-              <span className="w-7 text-center text-sm font-black text-white/40">{p.final_position}</span>
-              <div className="w-8 h-8 rounded-xl bg-white/8 flex items-center justify-center text-xs font-bold text-white/70">
+        <div style={{ borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--surface)' }}>
+          {rest.map((p, idx) => (
+            <div key={p.user_id} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '11px 16px',
+              borderBottom: idx < rest.length - 1 || active.length > 0 ? '1px solid var(--border)' : 'none',
+            }}>
+              <span style={{ width: 26, textAlign: 'center', fontSize: 12, fontWeight: 800, color: 'var(--text-muted)' }}>
+                {p.final_position}
+              </span>
+              <div style={{
+                width: 32, height: 32, borderRadius: 9, background: 'var(--bg)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 800, color: 'var(--text)',
+              }}>
                 {ini(p)}
               </div>
-              <span className="flex-1 text-sm font-semibold text-white/80 truncate">{nm(p)}</span>
-              {p.best_wpm > 0 && <span className="text-xs font-bold text-violet-400">{Math.round(p.best_wpm)} <span className="font-normal text-white/30">wpm</span></span>}
-              {p.best_accuracy > 0 && <span className="text-xs font-bold text-emerald-400">{Math.round(p.best_accuracy)}%</span>}
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{nm(p)}</span>
+              {p.best_wpm > 0 && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{Math.round(p.best_wpm)} wpm</span>
+              )}
+              {p.best_accuracy > 0 && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--success)', marginLeft: 8 }}>
+                  {Math.round(p.best_accuracy)}%
+                </span>
+              )}
             </div>
           ))}
+
           {active.length > 0 && (
             <>
               {rest.length > 0 && (
-                <div className="px-5 py-2 bg-white/3 border-b border-white/5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/25">Still playing</span>
+                <div style={{ padding: '7px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
+                    {t('tournament.still_playing')}
+                  </span>
                 </div>
               )}
-              {active.map(p => (
-                <div key={p.user_id} className="flex items-center gap-3 px-5 py-3 border-b border-white/5 last:border-0">
-                  <span className="w-7 flex justify-center">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
+              {active.map((p, idx) => (
+                <div key={p.user_id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '11px 16px',
+                  borderBottom: idx < active.length - 1 ? '1px solid var(--border)' : 'none',
+                }}>
+                  <span style={{ width: 26, display: 'flex', justifyContent: 'center' }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%', background: 'var(--success)',
+                      display: 'inline-block', animation: 'pulse-dot 1.5s ease-in-out infinite',
+                    }} />
                   </span>
-                  <div className="w-8 h-8 rounded-xl bg-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-300">
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 9, background: 'var(--accent-bg)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 800, color: 'var(--accent)',
+                  }}>
                     {ini(p)}
                   </div>
-                  <span className="flex-1 text-sm font-semibold text-white/80 truncate">{nm(p)}</span>
-                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Active</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{nm(p)}</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: 'var(--success)',
+                    background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)',
+                    padding: '3px 8px', borderRadius: 20,
+                  }}>
+                    {t('tournament.active_label')}
+                  </span>
                 </div>
               ))}
             </>
@@ -238,52 +318,96 @@ function Standings({ participants }) {
   )
 }
 
-// ─── Role Selection ───────────────────────────────────────────────────────────
+// ─── Role Select ───────────────────────────────────────────────────────────────
 
 function RoleSelect({ tournament, onPlay, onWatch, loading }) {
+  const { t } = useTranslation()
   return (
-    <div className="flex items-center justify-center min-h-[70vh] px-4">
-      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', padding: '32px 16px' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 200, damping: 22 }}
-        className="w-full max-w-sm"
+        style={{ width: '100%', maxWidth: 400 }}
       >
-        <div className="text-center mb-8">
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <motion.div
-            animate={{ y: [0, -8, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-            className="inline-block mb-5"
+            animate={{ y: [0, -7, 0] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ display: 'inline-block', marginBottom: 18 }}
           >
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto shadow-2xl shadow-amber-500/30">
-              <Trophy size={42} className="text-white" />
+            <div style={{
+              width: 84, height: 84, borderRadius: 22, margin: '0 auto',
+              background: 'linear-gradient(135deg, var(--accent), #0891B2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 16px 44px rgba(13,148,136,0.28)',
+            }}>
+              <Trophy size={38} color="#fff" />
             </div>
           </motion.div>
-          <h2 className="text-3xl font-black text-white mb-2">{tournament.name}</h2>
-          <p className="text-white/50 text-sm">{tournament.participant_count} / {tournament.max_players} players · {tournament.time_limit}s per round</p>
+          <h2 style={{
+            fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700,
+            color: 'var(--text)', marginBottom: 8,
+          }}>
+            {tournament.name}
+          </h2>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            {tournament.participant_count} / {tournament.max_players} players · {tournament.time_limit}s per round
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
-            onClick={onPlay} disabled={loading || tournament.is_full}
-            className="flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20 hover:border-violet-400/60 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+        {/* Buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }}
+            onClick={onPlay}
+            disabled={loading || tournament.is_full}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+              padding: '28px 16px', borderRadius: 18,
+              border: '2px solid var(--accent)', background: 'var(--accent-bg)',
+              cursor: tournament.is_full || loading ? 'not-allowed' : 'pointer',
+              opacity: tournament.is_full ? 0.5 : 1, transition: 'all 0.2s',
+            }}
           >
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-              <Play size={24} className="text-white" fill="white" />
+            <div style={{
+              width: 52, height: 52, borderRadius: 15, background: 'var(--accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 8px 20px rgba(13,148,136,0.3)',
+            }}>
+              <Play size={22} color="#fff" fill="#fff" />
             </div>
-            <div className="text-center">
-              <p className="font-black text-white text-sm">Join as Player</p>
-              <p className="text-[11px] text-white/40 mt-0.5">{tournament.is_full ? 'Room full' : 'Compete & win'}</p>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent)', marginBottom: 4 }}>
+                {t('tournament.join_as_player')}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {tournament.is_full ? t('tournament.room_full') : t('tournament.compete_win')}
+              </p>
             </div>
           </motion.button>
 
-          <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.97 }}
             onClick={onWatch}
-            className="flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-white/10 bg-white/5 hover:bg-white/8 hover:border-white/20 transition-all"
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+              padding: '28px 16px', borderRadius: 18,
+              border: '1px solid var(--border)', background: 'var(--surface)',
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}
           >
-            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center">
-              <Eye size={24} className="text-white/60" />
+            <div style={{
+              width: 52, height: 52, borderRadius: 15, background: 'var(--bg)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '1px solid var(--border)', fontSize: 24,
+            }}>
+              👻
             </div>
-            <div className="text-center">
-              <p className="font-black text-white text-sm">Watch</p>
-              <p className="text-[11px] text-white/40 mt-0.5">Spectate only</p>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>{t('tournament.ghost')}</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('tournament.ghost_desc')}</p>
             </div>
           </motion.button>
         </div>
@@ -292,9 +416,10 @@ function RoleSelect({ tournament, onPlay, onWatch, loading }) {
   )
 }
 
-// ─── Lobby Room ───────────────────────────────────────────────────────────────
+// ─── Lobby Room ────────────────────────────────────────────────────────────────
 
 function LobbyRoom({ state, onStart, wsError, onClearError }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
 
   const copyCode = () => {
@@ -303,116 +428,212 @@ function LobbyRoom({ state, onStart, wsError, onClearError }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const filled = state.participant_count || 0
-  const max    = state.max_players || 8
+  const filled  = state.participant_count || 0
+  const max     = state.max_players || 8
+  const fillPct = Math.min(100, (filled / max) * 100)
 
   return (
-    <div className="flex items-start justify-center min-h-[70vh] px-4 py-10">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-4">
-
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', minHeight: '70vh', padding: '32px 16px' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 14 }}
+      >
         {/* Header */}
-        <div className="text-center mb-8">
-          <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="inline-block mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto shadow-xl shadow-amber-400/30">
-              <Trophy size={28} className="text-white" />
-            </div>
-          </motion.div>
-          <h2 className="text-2xl font-black text-white">{state.name}</h2>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold ${
-              state.is_participant
-                ? 'bg-violet-500/20 text-violet-300 border border-violet-500/25'
-                : 'bg-white/8 text-white/50 border border-white/10'
-            }`}>
-              {state.is_participant ? <><Shield size={10} /> Player</> : <><Eye size={10} /> Spectator</>}
-            </span>
+        <div style={{ textAlign: 'center', marginBottom: 4 }}>
+          <div style={{
+            width: 58, height: 58, borderRadius: 17, margin: '0 auto 14px',
+            background: 'var(--accent-bg)', border: '2px solid var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Trophy size={24} color="var(--accent)" />
           </div>
+          <h2 style={{
+            fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700,
+            color: 'var(--text)', marginBottom: 10,
+          }}>
+            {state.name}
+          </h2>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+            background: state.is_participant ? 'var(--accent-bg)' : 'var(--bg)',
+            color: state.is_participant ? 'var(--accent)' : 'var(--text-muted)',
+            border: `1px solid ${state.is_participant ? 'var(--accent)' : 'var(--border)'}`,
+          }}>
+            {state.is_participant ? <><Shield size={10} /> {t('tournament.player_badge')}</> : <><Eye size={10} /> {t('tournament.spectator_badge')}</>}
+          </span>
         </div>
 
         {/* Join code */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <p className="text-xs font-black text-white/35 uppercase tracking-widest text-center mb-4">Share this code</p>
-          <div className="flex items-center justify-center gap-3">
-            <span className="text-3xl font-mono font-black tracking-[0.25em] text-violet-300">{state.join_code}</span>
-            <button onClick={copyCode}
-              className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center hover:bg-white/15 transition-colors">
-              {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-white/50" />}
+        <div style={{
+          background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)',
+          padding: '18px 24px', boxShadow: 'var(--shadow-sm)',
+        }}>
+          <p style={{
+            fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+            letterSpacing: '0.12em', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 12,
+          }}>
+            {t('tournament.share_code')}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 800,
+              letterSpacing: '0.2em', color: 'var(--accent)',
+            }}>
+              {state.join_code}
+            </span>
+            <button
+              onClick={copyCode}
+              style={{
+                width: 38, height: 38, borderRadius: 11,
+                border: '1px solid var(--border)', background: 'var(--bg)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', transition: 'all 0.15s',
+                color: copied ? 'var(--success)' : 'var(--text-muted)',
+              }}
+            >
+              {copied ? <Check size={15} /> : <Copy size={15} />}
             </button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
-            <div className="flex items-center justify-center gap-1.5 mb-2">
-              <Users size={14} className="text-violet-400" />
-              <span className="text-xs font-bold text-white/40 uppercase tracking-wide">Players</span>
+        {/* Stats grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{
+            background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)',
+            padding: '16px 18px', textAlign: 'center', boxShadow: 'var(--shadow-sm)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 9 }}>
+              <Users size={13} color="var(--accent)" />
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>{t('tournament.players_label')}</span>
             </div>
-            <p className="text-2xl font-black text-white">{filled}<span className="text-base font-medium text-white/30">/{max}</span></p>
-            <div className="mt-2 h-1 bg-white/8 rounded-full overflow-hidden">
-              <motion.div className="h-full bg-violet-500 rounded-full"
-                animate={{ width: `${(filled / max) * 100}%` }} transition={{ type: 'spring' }} />
+            <p style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1 }}>
+              {filled}<span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>/{max}</span>
+            </p>
+            <div style={{ height: 4, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden', marginTop: 10 }}>
+              <motion.div
+                animate={{ width: `${fillPct}%` }}
+                transition={{ type: 'spring', stiffness: 120 }}
+                style={{ height: '100%', background: 'var(--accent)', borderRadius: 99 }}
+              />
             </div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
-            <div className="flex items-center justify-center gap-1.5 mb-2">
-              <Clock size={14} className="text-violet-400" />
-              <span className="text-xs font-bold text-white/40 uppercase tracking-wide">Time limit</span>
+
+          <div style={{
+            background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)',
+            padding: '16px 18px', textAlign: 'center', boxShadow: 'var(--shadow-sm)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 9 }}>
+              <Clock size={13} color="var(--accent)" />
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>{t('tournament.time_limit_label')}</span>
             </div>
-            <p className="text-2xl font-black text-white">{state.time_limit}<span className="text-base font-medium text-white/30">s</span></p>
+            <p style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1 }}>
+              {state.time_limit}<span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>s</span>
+            </p>
           </div>
         </div>
 
-        {/* Participants */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <p className="text-xs font-black text-white/35 uppercase tracking-widest mb-4">Players ({filled})</p>
-          <div className="space-y-1 max-h-52 overflow-y-auto">
+        {/* Player list */}
+        <div style={{
+          background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)',
+          padding: '18px 20px', boxShadow: 'var(--shadow-sm)',
+        }}>
+          <p style={{
+            fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+            letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 14,
+          }}>
+            {t('tournament.players_label')} ({filled})
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 210, overflowY: 'auto' }}>
             <AnimatePresence>
               {(state.participants || []).map((p, idx) => (
-                <motion.div key={p.id || p.username}
-                  initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }}
-                  transition={{ delay: idx * 0.04 }}
-                  className="flex items-center gap-3 py-2"
+                <motion.div
+                  key={p.id || p.username}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ delay: idx * 0.03 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 0' }}
                 >
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white text-xs font-black flex-shrink-0">
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                    background: 'var(--accent-bg)', color: 'var(--accent)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 800,
+                  }}>
                     {avatar(p)}
                   </div>
-                  <span className="text-sm font-semibold text-white/80">{displayName(p)}</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-auto flex-shrink-0" />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', flex: 1 }}>
+                    {displayName(p)}
+                  </span>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: 'var(--success)', flexShrink: 0,
+                  }} />
                 </motion.div>
               ))}
             </AnimatePresence>
-            {filled === 0 && <p className="text-sm text-white/30 text-center py-3">No players yet…</p>}
+            {filled === 0 && (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
+                {t('tournament.no_players')}
+              </p>
+            )}
           </div>
         </div>
 
         {/* WS error */}
         <AnimatePresence>
           {wsError && (
-            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-              className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start gap-2">
-              <span className="mt-0.5">⚠</span>
-              <span className="flex-1">{wsError}</span>
-              <button onClick={onClearError} className="text-red-400/60 hover:text-red-400">✕</button>
+            <motion.div
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+              style={{
+                padding: '11px 14px', borderRadius: 12,
+                background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)',
+                color: 'var(--danger)', fontSize: 13,
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+              }}
+            >
+              <span style={{ marginTop: 1 }}>⚠</span>
+              <span style={{ flex: 1 }}>{wsError}</span>
+              <button
+                onClick={onClearError}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, fontSize: 16 }}
+              >✕</button>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* CTA */}
         {state.is_teacher ? (
-          <motion.button whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.99 }}
-            onClick={onStart} disabled={filled < 2}
-            className="w-full py-4 rounded-2xl font-black text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xl shadow-violet-500/25 flex items-center justify-center gap-2 text-base"
+          <motion.button
+            whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.99 }}
+            onClick={onStart}
+            disabled={filled < 2}
+            style={{
+              width: '100%', padding: '15px 24px', borderRadius: 14, border: 'none',
+              background: filled >= 2 ? 'var(--accent)' : 'var(--bg)',
+              color: filled >= 2 ? '#fff' : 'var(--text-muted)',
+              fontWeight: 800, fontSize: 15, cursor: filled < 2 ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              boxShadow: filled >= 2 ? '0 8px 24px rgba(13,148,136,0.28)' : 'none',
+              transition: 'all 0.2s',
+              outline: filled < 2 ? '1px solid var(--border)' : 'none',
+            }}
           >
-            <Swords size={20} />
-            {filled < 2 ? `Need ${2 - filled} more player${filled === 1 ? '' : 's'}` : 'Start Tournament'}
+            <Swords size={18} />
+            {filled < 2
+              ? t('tournament.need_more', { count: 2 - filled })
+              : t('tournament.start_btn')
+            }
           </motion.button>
         ) : (
-          <div className="text-center py-3">
-            <span className="inline-flex items-center gap-2 text-sm text-white/40">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Waiting for host to start…
+          <div style={{ textAlign: 'center', padding: 12 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+              <span style={{
+                width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)',
+                display: 'inline-block', animation: 'pulse-dot 1.5s ease-in-out infinite',
+              }} />
+              {t('tournament.waiting_start')}
             </span>
           </div>
         )}
@@ -421,16 +642,16 @@ function LobbyRoom({ state, onStart, wsError, onClearError }) {
   )
 }
 
-// ─── Create / Join Form ───────────────────────────────────────────────────────
+// ─── Tournament Home ───────────────────────────────────────────────────────────
 
 function TournamentHome({ onCreated, onJoined }) {
   const { user }    = useAuth()
-  const isTeacher   = user?.role === 'teacher'
-  const [tab, setTab] = useState(isTeacher ? 'create' : 'join')
+  const { t }       = useTranslation()
+  const [tab, setTab]       = useState('create')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
 
-  const [form, setForm] = useState({ name: '', time_limit: 60, max_players: 8, text: '', text_difficulty: 'random' })
+  const [form, setForm]       = useState({ name: '', time_limit: 60, max_players: 8, text: '', text_difficulty: 'random' })
   const [joinCode, setJoinCode] = useState('')
 
   const handleCreate = async (e) => {
@@ -439,9 +660,9 @@ function TournamentHome({ onCreated, onJoined }) {
     setLoading(true)
     try {
       const { data } = await createTournament(form)
-      onCreated(data.join_code)
+      onCreated(data.join_code, data)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create tournament')
+      setError(err.response?.data?.detail || t('tournament.err_create'))
     } finally {
       setLoading(false)
     }
@@ -455,100 +676,172 @@ function TournamentHome({ onCreated, onJoined }) {
       const { data } = await getTournament(joinCode.trim().toUpperCase())
       onJoined(data.join_code, data)
     } catch {
-      setError('Tournament not found. Check the code and try again.')
+      setError(t('tournament.err_not_found_code'))
     } finally {
       setLoading(false)
     }
   }
 
+  const DIFF_OPTIONS = [
+    { v: 'random', label: t('tournament.diff_any')    },
+    { v: 'easy',   label: t('tournament.diff_easy')   },
+    { v: 'medium', label: t('tournament.diff_medium') },
+    { v: 'hard',   label: t('tournament.diff_hard')   },
+  ]
+
   return (
-    <div className="flex items-center justify-center min-h-[75vh] px-4">
-      <div className="w-full max-w-lg">
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '32px 16px' }}>
+      <div style={{ width: '100%', maxWidth: 520 }}>
 
         {/* Hero */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-          className="text-center mb-10">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          style={{ textAlign: 'center', marginBottom: 32 }}
+        >
           <motion.div
-            animate={{ rotate: [0, -5, 5, -3, 3, 0] }}
+            animate={{ rotate: [0, -4, 4, -2, 2, 0] }}
             transition={{ duration: 4, repeat: Infinity, repeatDelay: 3 }}
-            className="inline-flex w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-400 via-orange-400 to-rose-500 items-center justify-center mb-6 shadow-2xl shadow-amber-500/30"
+            style={{
+              display: 'inline-flex', width: 84, height: 84, borderRadius: 22,
+              background: 'linear-gradient(135deg, var(--accent), #0891B2)',
+              alignItems: 'center', justifyContent: 'center',
+              marginBottom: 18,
+              boxShadow: '0 16px 44px rgba(13,148,136,0.28)',
+            }}
           >
-            <Trophy size={44} className="text-white" />
+            <Trophy size={38} color="#fff" />
           </motion.div>
-          <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Typing Tournament</h1>
-          <p className="text-white/45 text-sm">Real-time 1v1 typing speed battles</p>
+
+          <h1 style={{
+            fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 700,
+            color: 'var(--text)', marginBottom: 10, letterSpacing: '-0.01em',
+          }}>
+            {t('tournament.title')}
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 360, margin: '0 auto' }}>
+            {t('tournament.subtitle')}
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+            {[
+              { icon: '⚡', label: t('tournament.pill_realtime') },
+              { icon: '🏆', label: t('tournament.pill_brackets') },
+              { icon: '📊', label: t('tournament.pill_stats') },
+            ].map(f => (
+              <span key={f.label} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                color: 'var(--text-muted)',
+              }}>
+                {f.icon} {f.label}
+              </span>
+            ))}
+          </div>
         </motion.div>
 
         {/* Card */}
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}
-          className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm p-8 shadow-2xl"
+        <motion.div
+          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          style={{
+            background: 'var(--surface)', borderRadius: 22,
+            border: '1px solid var(--border)', padding: '28px 28px',
+            boxShadow: 'var(--shadow-lg)',
+          }}
         >
           {/* Tabs */}
-          {isTeacher && (
-            <div className="flex rounded-2xl bg-black/20 border border-white/8 p-1 mb-6">
-              {['create', 'join'].map(t => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={`flex-1 py-3 rounded-xl text-sm font-black transition-all capitalize ${
-                    tab === t
-                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg'
-                      : 'text-white/40 hover:text-white/70'
-                  }`}>
-                  {t === 'create' ? '✦ Create' : '→ Join'}
-                </button>
-              ))}
-            </div>
-          )}
+          <div style={{
+            display: 'flex', background: 'var(--bg)', borderRadius: 13,
+            border: '1px solid var(--border)', padding: 4, marginBottom: 24,
+          }}>
+            {['create', 'join'].map(tabId => (
+              <button key={tabId} onClick={() => setTab(tabId)}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 9,
+                  border: 'none', fontSize: 13, fontWeight: 800,
+                  cursor: 'pointer', transition: 'all 0.2s',
+                  background: tab === tabId ? 'var(--accent)' : 'transparent',
+                  color: tab === tabId ? '#fff' : 'var(--text-muted)',
+                  boxShadow: tab === tabId ? '0 4px 12px rgba(13,148,136,0.22)' : 'none',
+                }}
+              >
+                {tabId === 'create' ? t('tournament.tab_create') : t('tournament.tab_join')}
+              </button>
+            ))}
+          </div>
 
           {error && (
-            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-              className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <motion.div
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+              style={{
+                marginBottom: 18, padding: '10px 14px', borderRadius: 10,
+                background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)',
+                color: 'var(--danger)', fontSize: 13,
+              }}
+            >
               {error}
             </motion.div>
           )}
 
           <AnimatePresence mode="wait">
-            {tab === 'create' && isTeacher && (
+            {tab === 'create' && (
               <motion.form key="create"
                 initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }}
-                transition={{ duration: 0.2 }}
-                onSubmit={handleCreate} className="space-y-4"
+                transition={{ duration: 0.18 }}
+                onSubmit={handleCreate}
+                style={{ display: 'flex', flexDirection: 'column', gap: 18 }}
               >
                 <div>
-                  <label className={labelCls}>Tournament Name</label>
-                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    required maxLength={120} className={inputCls} placeholder="Spring Championship 2025" />
+                  <label style={labelS}>{t('tournament.name_label')}</label>
+                  <input
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    required maxLength={120}
+                    placeholder={t('tournament.name_placeholder')}
+                    style={inputS}
+                  />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label className={labelCls}>Time limit</label>
-                    <select value={form.time_limit} onChange={e => setForm(f => ({ ...f, time_limit: +e.target.value }))}
-                      className={inputCls}>
+                    <label style={labelS}>{t('tournament.time_limit')}</label>
+                    <select
+                      value={form.time_limit}
+                      onChange={e => setForm(f => ({ ...f, time_limit: +e.target.value }))}
+                      style={inputS}
+                    >
                       {[30, 45, 60, 90, 120].map(v => <option key={v} value={v}>{v}s</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className={labelCls}>Max players</label>
-                    <select value={form.max_players} onChange={e => setForm(f => ({ ...f, max_players: +e.target.value }))}
-                      className={inputCls}>
+                    <label style={labelS}>{t('tournament.max_players')}</label>
+                    <select
+                      value={form.max_players}
+                      onChange={e => setForm(f => ({ ...f, max_players: +e.target.value }))}
+                      style={inputS}
+                    >
                       {[4, 8, 16].map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className={labelCls}>Difficulty</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { v: 'random', label: 'Any',    cl: 'border-white/15 text-white/50 data-[active=true]:border-white/40 data-[active=true]:text-white data-[active=true]:bg-white/8' },
-                      { v: 'easy',   label: 'Easy',   cl: 'border-emerald-500/30 text-emerald-500/50 data-[active=true]:border-emerald-400 data-[active=true]:text-emerald-300 data-[active=true]:bg-emerald-500/10' },
-                      { v: 'medium', label: 'Medium', cl: 'border-amber-500/30 text-amber-500/50 data-[active=true]:border-amber-400 data-[active=true]:text-amber-300 data-[active=true]:bg-amber-500/10' },
-                      { v: 'hard',   label: 'Hard',   cl: 'border-red-500/30 text-red-500/50 data-[active=true]:border-red-400 data-[active=true]:text-red-300 data-[active=true]:bg-red-500/10' },
-                    ].map(({ v, label, cl }) => (
-                      <button type="button" key={v}
-                        data-active={form.text_difficulty === v}
+                  <label style={labelS}>{t('tournament.difficulty')}</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 6 }}>
+                    {DIFF_OPTIONS.map(({ v, label }) => (
+                      <button
+                        key={v} type="button"
                         onClick={() => setForm(f => ({ ...f, text_difficulty: v, text: '' }))}
-                        className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${cl}`}>
+                        style={{
+                          padding: '9px 0', borderRadius: 9, fontSize: 12, fontWeight: 700,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                          border: `2px solid ${form.text_difficulty === v ? 'var(--accent)' : 'var(--border)'}`,
+                          background: form.text_difficulty === v ? 'var(--accent-bg)' : 'transparent',
+                          color: form.text_difficulty === v ? 'var(--accent)' : 'var(--text-muted)',
+                        }}
+                      >
                         {label}
                       </button>
                     ))}
@@ -557,20 +850,38 @@ function TournamentHome({ onCreated, onJoined }) {
 
                 {form.text_difficulty === 'random' && (
                   <div>
-                    <label className={labelCls}>Custom text <span className="normal-case font-normal opacity-60">(optional)</span></label>
-                    <textarea value={form.text} onChange={e => setForm(f => ({ ...f, text: e.target.value }))}
-                      rows={3} className={`${inputCls} resize-none`} placeholder="The quick brown fox…" />
+                    <label style={labelS}>
+                      {t('tournament.custom_text')}{' '}
+                      <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)' }}>{t('tournament.optional')}</span>
+                    </label>
+                    <textarea
+                      value={form.text}
+                      onChange={e => setForm(f => ({ ...f, text: e.target.value }))}
+                      rows={3} placeholder={t('tournament.custom_placeholder')}
+                      style={{ ...inputS, resize: 'vertical', fontFamily: 'var(--font-body)' }}
+                    />
                   </div>
                 )}
 
-                <motion.button type="submit" disabled={loading}
-                  whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.99 }}
-                  className="w-full py-4 rounded-2xl font-black text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 transition-all shadow-xl shadow-violet-500/25 flex items-center justify-center gap-2 text-base"
+                <motion.button
+                  type="submit" disabled={loading}
+                  whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }}
+                  style={{
+                    width: '100%', padding: '14px 24px', borderRadius: 12, border: 'none',
+                    background: 'var(--accent)', color: '#fff', fontWeight: 800, fontSize: 15,
+                    cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    boxShadow: '0 8px 24px rgba(13,148,136,0.28)', transition: 'all 0.2s',
+                  }}
                 >
-                  {loading
-                    ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating…</span>
-                    : <><Sparkles size={18} /> Create Tournament</>
-                  }
+                  {loading ? (
+                    <>
+                      <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block', flexShrink: 0 }} />
+                      {t('tournament.creating')}
+                    </>
+                  ) : (
+                    <><Sparkles size={17} /> {t('tournament.create_btn')}</>
+                  )}
                 </motion.button>
               </motion.form>
             )}
@@ -578,24 +889,49 @@ function TournamentHome({ onCreated, onJoined }) {
             {tab === 'join' && (
               <motion.form key="join"
                 initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
-                transition={{ duration: 0.2 }}
-                onSubmit={handleJoin} className="space-y-5"
+                transition={{ duration: 0.18 }}
+                onSubmit={handleJoin}
+                style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
               >
-                <div className="text-center py-4">
-                  <p className="text-white/40 text-sm mb-4">Enter the tournament code shared by your teacher</p>
-                  <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+                    {t('tournament.join_hint')}
+                  </p>
+                  <input
+                    value={joinCode}
+                    onChange={e => setJoinCode(e.target.value.toUpperCase())}
                     required maxLength={10}
-                    className="w-full px-6 py-5 rounded-2xl bg-white/5 border-2 border-white/10 text-white placeholder-white/20 focus:outline-none focus:border-violet-400 font-mono text-3xl tracking-[0.3em] text-center transition-all"
-                    placeholder="TRN-XXXX" />
+                    placeholder={t('tournament.join_placeholder')}
+                    style={{
+                      width: '100%', padding: '16px 20px', borderRadius: 14,
+                      border: '2px solid var(--border)', background: 'var(--bg)',
+                      color: 'var(--accent)', fontFamily: 'var(--font-mono)',
+                      fontSize: 28, fontWeight: 800, letterSpacing: '0.22em',
+                      textAlign: 'center', outline: 'none', boxSizing: 'border-box',
+                      transition: 'border-color 0.2s',
+                    }}
+                  />
                 </div>
-                <motion.button type="submit" disabled={loading}
-                  whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.99 }}
-                  className="w-full py-4 rounded-2xl font-black text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 transition-all shadow-xl shadow-violet-500/25 flex items-center justify-center gap-2 text-base"
+
+                <motion.button
+                  type="submit" disabled={loading}
+                  whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }}
+                  style={{
+                    width: '100%', padding: '14px 24px', borderRadius: 12, border: 'none',
+                    background: 'var(--accent)', color: '#fff', fontWeight: 800, fontSize: 15,
+                    cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    boxShadow: '0 8px 24px rgba(13,148,136,0.28)', transition: 'all 0.2s',
+                  }}
                 >
-                  {loading
-                    ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Finding…</span>
-                    : <><Zap size={18} /> Find Tournament</>
-                  }
+                  {loading ? (
+                    <>
+                      <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block', flexShrink: 0 }} />
+                      {t('tournament.finding')}
+                    </>
+                  ) : (
+                    <><Zap size={17} /> {t('tournament.find_btn')}</>
+                  )}
                 </motion.button>
               </motion.form>
             )}
@@ -606,12 +942,38 @@ function TournamentHome({ onCreated, onJoined }) {
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Spinner ───────────────────────────────────────────────────────────────────
+
+function Spinner() {
+  const { t } = useTranslation()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: 12 }}>
+      <div style={{ width: 40, height: 40, border: '2.5px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('tournament.connecting')}</p>
+    </div>
+  )
+}
+
+// ─── Shared styles ─────────────────────────────────────────────────────────────
+
+const labelS = {
+  display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+  textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6,
+}
+const inputS = {
+  width: '100%', padding: '10px 13px', borderRadius: 10,
+  border: '1.5px solid var(--border)', background: 'var(--bg)',
+  color: 'var(--text)', fontSize: 13, fontWeight: 500, outline: 'none',
+  display: 'block', boxSizing: 'border-box', transition: 'border-color 0.2s',
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TournamentLobby() {
   const { joinCode: paramCode } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { t } = useTranslation()
 
   const [phase,       setPhase]       = useState(paramCode ? 'joining' : 'home')
   const [joinCode,    setJoinCode]    = useState(paramCode || null)
@@ -625,13 +987,11 @@ export default function TournamentLobby() {
   useEffect(() => {
     if (!paramCode) return
     getTournament(paramCode).then(r => {
-      const t = r.data
-      setTournament(t)
-      if (t.status === 'active' || t.status === 'finished') {
-        loadBracket(paramCode); return
-      }
-      if (t.is_participant || t.is_creator) setPhase('lobby')
-    }).catch(() => setError('Tournament not found.'))
+      const trn = r.data
+      setTournament(trn)
+      if (trn.status === 'active' || trn.status === 'finished') { loadBracket(paramCode); return }
+      if (trn.is_participant || trn.is_creator) setPhase('lobby')
+    }).catch(() => setError(t('tournament.err_not_found')))
   }, [paramCode])
 
   const loadBracket = async (code) => {
@@ -639,7 +999,7 @@ export default function TournamentLobby() {
       const { data } = await getBracket(code)
       setBracket(data)
       setPhase('bracket')
-    } catch { setError('Could not load bracket.') }
+    } catch { setError(t('tournament.err_bracket')) }
   }
 
   useEffect(() => {
@@ -654,7 +1014,7 @@ export default function TournamentLobby() {
   const { send } = useWebSocket(wsPath, {
     onMessage: useCallback((msg) => {
       switch (msg.type) {
-        case 'lobby_state':       setLobbyState(msg); break
+        case 'lobby_state': setLobbyState(msg); break
         case 'participant_joined':
           setLobbyState(prev => {
             if (!prev) return prev
@@ -662,7 +1022,9 @@ export default function TournamentLobby() {
             return { ...prev, participant_count: msg.count, participants: already ? prev.participants : [...(prev.participants || []), msg.user] }
           }); break
         case 'participant_left':
-          setLobbyState(prev => prev ? { ...prev, participants: (prev.participants||[]).filter(p=>p.id!==msg.user_id), participant_count: Math.max(0,(prev.participant_count||1)-1) } : prev); break
+          setLobbyState(prev => prev
+            ? { ...prev, participants: (prev.participants || []).filter(p => p.id !== msg.user_id), participant_count: Math.max(0, (prev.participant_count || 1) - 1) }
+            : prev); break
         case 'tournament_started': setBracket(msg.bracket); setPhase('bracket'); break
         case 'text_updated':       setLobbyState(prev => prev ? { ...prev, text: msg.text } : prev); break
         case 'error':              setWsError(msg.message || 'Something went wrong'); break
@@ -674,7 +1036,13 @@ export default function TournamentLobby() {
 
   const handleStart = () => { setWsError(''); send({ type: 'start_tournament' }) }
 
-  const handleCreated = (code) => { setJoinCode(code); setPhase('lobby'); navigate(`/tournament/${code}`, { replace: true }) }
+  const handleCreated = (code, tournamentData) => {
+    setJoinCode(code)
+    setTournament(tournamentData)
+    setPhase('joining')
+    // navigate AFTER the user picks Play or Ghost — navigating here would
+    // re-trigger the paramCode useEffect which overwrites phase → 'lobby'
+  }
 
   const handleJoined = (code, tournamentData) => {
     setJoinCode(code); setTournament(tournamentData)
@@ -686,10 +1054,12 @@ export default function TournamentLobby() {
   const handlePlay = async () => {
     setRoleLoading(true)
     try { await joinTournament(joinCode) } catch {}
-    setPhase('lobby'); setRoleLoading(false)
+    setPhase('lobby')
+    navigate(`/tournament/${joinCode}`, { replace: true })
+    setRoleLoading(false)
   }
 
-  const handleWatch = () => setPhase('lobby')
+  const handleWatch      = () => { setPhase('lobby'); navigate(`/tournament/${joinCode}`, { replace: true }) }
   const handleMatchClick = (matchId) => navigate(`/tournament/match/${matchId}`)
 
   const handleWalkover = async (matchId, winnerId) => {
@@ -698,91 +1068,94 @@ export default function TournamentLobby() {
   }
 
   return (
-    <div style={{ background: 'linear-gradient(135deg, #0a0b14 0%, #0d0e1a 60%, #0e0b1f 100%)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
-      {/* Ambient blobs */}
-      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 800, height: 400, background: 'radial-gradient(ellipse, rgba(124,58,237,0.12) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: 0, right: 0, width: 500, height: 300, background: 'radial-gradient(ellipse, rgba(99,102,241,0.08) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <AnimatePresence mode="wait">
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+      <AnimatePresence mode="wait">
 
-          {error ? (
-            <motion.div key="err" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center min-h-screen text-center px-4">
-              <p className="text-red-400 font-semibold mb-4">{error}</p>
-              <button onClick={() => { setError(''); setPhase('home'); setJoinCode(null); navigate('/tournament') }}
-                className="px-6 py-3 rounded-xl bg-violet-600 text-white font-bold hover:bg-violet-500 transition-colors">
-                Go back
-              </button>
-            </motion.div>
-
-          ) : phase === 'home' ? (
-            <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <TournamentHome onCreated={handleCreated} onJoined={handleJoined} />
-            </motion.div>
-
-          ) : phase === 'joining' && tournament ? (
-            <motion.div key="joining" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <RoleSelect tournament={tournament} onPlay={handlePlay} onWatch={handleWatch} loading={roleLoading} />
-            </motion.div>
-
-          ) : phase === 'lobby' ? (
-            <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              {lobbyState
-                ? <LobbyRoom state={lobbyState} onStart={handleStart} wsError={wsError} onClearError={() => setWsError('')} />
-                : (
-                  <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-                    <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm text-white/30">Connecting…</p>
-                  </div>
-                )}
-            </motion.div>
-
-          ) : phase === 'bracket' && bracket ? (
-            <motion.div key="bracket" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="max-w-6xl mx-auto px-6 py-10"
+        {error ? (
+          <motion.div key="err" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', textAlign: 'center', padding: 24 }}
+          >
+            <div style={{ fontSize: 44, marginBottom: 16 }}>⚠️</div>
+            <p style={{ color: 'var(--danger)', fontWeight: 600, marginBottom: 20, fontSize: 15 }}>{error}</p>
+            <button
+              onClick={() => { setError(''); setPhase('home'); setJoinCode(null); navigate('/tournament') }}
+              style={{
+                padding: '11px 26px', borderRadius: 10, border: 'none',
+                background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 14,
+                cursor: 'pointer', boxShadow: '0 6px 18px rgba(13,148,136,0.25)',
+              }}
             >
-              {/* Bracket header */}
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-black text-white flex items-center gap-2.5">
-                    <Trophy size={22} className="text-amber-400" />
+              {t('tournament.go_back')}
+            </button>
+          </motion.div>
+
+        ) : phase === 'home' ? (
+          <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <TournamentHome onCreated={handleCreated} onJoined={handleJoined} />
+          </motion.div>
+
+        ) : phase === 'joining' && tournament ? (
+          <motion.div key="joining" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <RoleSelect tournament={tournament} onPlay={handlePlay} onWatch={handleWatch} loading={roleLoading} />
+          </motion.div>
+
+        ) : phase === 'lobby' ? (
+          <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {lobbyState
+              ? <LobbyRoom state={lobbyState} onStart={handleStart} wsError={wsError} onClearError={() => setWsError('')} />
+              : <Spinner />
+            }
+          </motion.div>
+
+        ) : phase === 'bracket' && bracket ? (
+          <motion.div key="bracket" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 20px 40px' }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Trophy size={20} color="var(--accent)" />
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: 'var(--text)' }}>
                     {bracket.name}
                   </h2>
-                  <p className="text-sm text-white/40 mt-0.5">
-                    {bracket.status === 'finished' ? '🏆 Tournament complete!' : 'Tap your highlighted match to play'}
-                  </p>
                 </div>
-                <span className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest border ${
-                  bracket.status === 'finished'
-                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
-                    : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
-                }`}>
-                  {bracket.status}
-                </span>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+                  {bracket.status === 'finished' ? t('tournament.tournament_complete') : t('tournament.tap_to_play')}
+                </p>
               </div>
-
-              {/* Bracket */}
-              <div className="rounded-3xl border border-white/10 bg-white/3 backdrop-blur-sm p-8 shadow-2xl">
-                <BracketView
-                  bracket={bracket}
-                  myUserId={user?.id}
-                  isTeacher={user?.role === 'teacher'}
-                  onMatchClick={handleMatchClick}
-                  onWalkover={handleWalkover}
-                />
-              </div>
-
-              <Standings participants={bracket.participants || []} />
-            </motion.div>
-
-          ) : (
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+              <span style={{
+                padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 800,
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                background: bracket.status === 'finished' ? 'rgba(5,150,105,0.1)' : 'var(--accent-bg)',
+                color: bracket.status === 'finished' ? 'var(--success)' : 'var(--accent)',
+                border: `1px solid ${bracket.status === 'finished' ? 'rgba(5,150,105,0.25)' : 'var(--accent)'}`,
+              }}>
+                {bracket.status}
+              </span>
             </div>
-          )}
 
-        </AnimatePresence>
-      </div>
+            {/* Bracket card */}
+            <div style={{
+              background: 'var(--surface)', borderRadius: 20, border: '1px solid var(--border)',
+              padding: '24px', boxShadow: 'var(--shadow-md)',
+            }}>
+              <BracketView
+                bracket={bracket} myUserId={user?.id}
+                isTeacher={user?.role === 'teacher'}
+                onMatchClick={handleMatchClick} onWalkover={handleWalkover}
+              />
+            </div>
+
+            <Standings participants={bracket.participants || []} />
+          </motion.div>
+
+        ) : (
+          <Spinner />
+        )}
+
+      </AnimatePresence>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

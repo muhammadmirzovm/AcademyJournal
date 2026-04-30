@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Eye, EyeOff, Zap, Loader2, ArrowRight } from 'lucide-react'
+import { Eye, EyeOff, Code2, Loader2, ArrowRight } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -39,91 +39,121 @@ export default function Login() {
   }
 
   return (
-    <div style={{ background: 'linear-gradient(135deg, #0a0b14 0%, #0d0e1a 100%)', minHeight: '100vh', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 16px' }}>
-
+    <div style={{
+      background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+      minHeight: '100vh', position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 16px'
+    }}>
       {/* Ambient glow */}
-      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 600, height: 350, background: 'radial-gradient(ellipse, rgba(139,92,246,0.12) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 600, height: 350, background: 'radial-gradient(ellipse, rgba(20,184,168,0.1) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
 
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 180, damping: 22 }}
-        style={{ position: 'relative', zIndex: 1 }}
-        className="w-full max-w-[400px]"
+        style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 400 }}
       >
         {/* Header */}
-        <div className="text-center mb-8">
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <motion.div
             animate={{ rotate: [0, -8, 8, -4, 4, 0] }}
             transition={{ duration: 3, repeat: Infinity, repeatDelay: 4 }}
-            className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 items-center justify-center mb-5 shadow-xl shadow-violet-500/30"
+            style={{
+              display: 'inline-flex', width: 64, height: 64, borderRadius: 18,
+              background: 'linear-gradient(135deg, #14B8A8, #0D9488)',
+              alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+              boxShadow: '0 8px 32px rgba(20,184,168,0.35)'
+            }}
           >
-            <Zap size={28} className="text-white" fill="white" />
+            <Code2 size={28} color="#fff" />
           </motion.div>
-          <h1 className="text-3xl font-black text-white mb-1">{t('auth.welcome_back')}</h1>
-          <p className="text-white/40 text-sm">
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>{t('auth.welcome_back')}</h1>
+          <p style={{ fontSize: 14, color: 'rgba(30,41,59,0.6)' }}>
             {t('auth.no_account')}{' '}
-            <Link to="/register" className="text-violet-400 font-semibold hover:text-violet-300 transition-colors">
+            <Link to="/register" style={{ color: '#14B8A8', fontWeight: 600, textDecoration: 'none' }}>
               {t('auth.create_one')}
             </Link>
           </p>
         </div>
 
         {/* Form card */}
-        <div className="rounded-3xl border border-white/10 bg-white/4 backdrop-blur-sm p-8 shadow-2xl">
+        <div style={{
+          borderRadius: 24, border: '1px solid rgba(0,0,0,0.1)',
+          background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(12px)',
+          padding: 32, boxShadow: '0 24px 80px rgba(0,0,0,0.4)'
+        }}>
           {errors.general && (
             <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-              className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontSize: 14 }}>
               {errors.general}
             </motion.div>
           )}
 
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5">
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(30,41,59,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
                 {t('auth.username')}
               </label>
               <input
                 value={form.username} onChange={e => set('username', e.target.value)}
                 placeholder="johndoe" autoComplete="username" autoFocus
-                className={`w-full px-4 py-3.5 rounded-xl bg-white/5 border text-white text-base placeholder-white/25 focus:outline-none transition-all ${
-                  errors.username ? 'border-red-500/50' : 'border-white/10 focus:border-violet-400'
-                }`}
+                style={{
+                  width: '100%', padding: '13px 16px', borderRadius: 12, boxSizing: 'border-box',
+                  background: 'rgba(255,255,255,0.8)',
+                  border: `1px solid ${errors.username ? 'rgba(239,68,68,0.5)' : 'rgba(0,0,0,0.1)'}`,
+                  color: '#1e293b', fontSize: 15, outline: 'none',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={e => !errors.username && (e.target.style.borderColor = '#14B8A8')}
+                onBlur={e => !errors.username && (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
               />
-              {errors.username && <p className="text-xs text-red-400 mt-1">{errors.username}</p>}
+              {errors.username && <p style={{ fontSize: 12, color: '#f87171', marginTop: 4 }}>{errors.username}</p>}
             </div>
 
             <div>
-              <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5">
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(30,41,59,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
                 {t('auth.password')}
               </label>
-              <div className="relative">
+              <div style={{ position: 'relative' }}>
                 <input
                   type={showPass ? 'text' : 'password'}
                   value={form.password} onChange={e => set('password', e.target.value)}
                   placeholder={t('auth.your_password')} autoComplete="current-password"
-                  className={`w-full px-4 py-3.5 pr-12 rounded-xl bg-white/5 border text-white text-base placeholder-white/25 focus:outline-none transition-all ${
-                    errors.password ? 'border-red-500/50' : 'border-white/10 focus:border-violet-400'
-                  }`}
+                  style={{
+                    width: '100%', padding: '13px 48px 13px 16px', borderRadius: 12, boxSizing: 'border-box',
+                    background: 'rgba(255,255,255,0.8)',
+                    border: `1px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'rgba(0,0,0,0.1)'}`,
+                    color: '#1e293b', fontSize: 15, outline: 'none', transition: 'border-color 0.2s',
+                  }}
+                  onFocus={e => !errors.password && (e.target.style.borderColor = '#14B8A8')}
+                  onBlur={e => !errors.password && (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
                 />
                 <button type="button" onClick={() => setShowPass(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors p-0.5">
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.3)', padding: 4, display: 'flex' }}>
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password}</p>}
+              {errors.password && <p style={{ fontSize: 12, color: '#f87171', marginTop: 4 }}>{errors.password}</p>}
             </div>
 
             <motion.button type="submit" disabled={loading}
               whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.99 }}
-              className="w-full py-4 mt-3 rounded-2xl font-black text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl shadow-violet-500/25 flex items-center justify-center gap-2 text-base"
+              style={{
+                width: '100%', padding: '14px 0', marginTop: 8, borderRadius: 14, border: 'none',
+                fontWeight: 800, color: '#fff', fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(135deg, #14B8A8, #0D9488)',
+                boxShadow: '0 8px 24px rgba(20,184,168,0.3)',
+                opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
             >
               {loading
-                ? <><Loader2 size={15} className="animate-spin" />{t('auth.signing_in')}</>
-                : <>{t('auth.sign_in_btn')} <ArrowRight size={15} /></>
+                ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} />{t('auth.signing_in')}</>
+                : <>{t('auth.sign_in_btn')} <ArrowRight size={16} /></>
               }
             </motion.button>
           </form>
         </div>
       </motion.div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

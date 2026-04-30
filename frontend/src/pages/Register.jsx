@@ -2,22 +2,26 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { GraduationCap, BookOpen, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
+import { GraduationCap, BookOpen, Eye, EyeOff, ArrowRight, Loader2, Code2 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
-const inputCls = (err) =>
-  `w-full px-4 py-3.5 rounded-xl bg-white/5 border text-white text-base placeholder-white/25 focus:outline-none transition-all ${
-    err ? 'border-red-500/50' : 'border-white/10 focus:border-violet-400'
-  }`
+const inputStyle = (hasErr) => ({
+  width: '100%', padding: '13px 16px', borderRadius: 12, boxSizing: 'border-box',
+  background: 'rgba(255,255,255,0.8)',
+  border: `1px solid ${hasErr ? 'rgba(239,68,68,0.5)' : 'rgba(0,0,0,0.1)'}`,
+  color: '#1e293b', fontSize: 15, outline: 'none', transition: 'border-color 0.2s',
+})
 
 function Field({ label, error, children }) {
   return (
     <div>
-      <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5">{label}</label>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(30,41,59,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
+        {label}
+      </label>
       {children}
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+      {error && <p style={{ fontSize: 12, color: '#f87171', marginTop: 4 }}>{error}</p>}
     </div>
   )
 }
@@ -72,120 +76,153 @@ export default function Register() {
     } finally { setLoading(false) }
   }
 
-  return (
-    <div style={{ background: 'linear-gradient(135deg, #0a0b14 0%, #0d0e1a 100%)', minHeight: '100vh', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px' }}>
+  const focusTeal  = e => { e.target.style.borderColor = '#14B8A8' }
+  const blurNormal = e => { e.target.style.borderColor = 'rgba(0,0,0,0.1)' }
 
-      {/* Background */}
-      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 600, height: 350, background: 'radial-gradient(ellipse, rgba(139,92,246,0.12) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+      minHeight: '100vh', position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px'
+    }}>
+      {/* Ambient glow */}
+      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 600, height: 350, background: 'radial-gradient(ellipse, rgba(20,184,168,0.1) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
 
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 180, damping: 22 }}
-        style={{ position: 'relative', zIndex: 1 }}
-        className="w-full max-w-[460px]"
+        style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 460 }}
       >
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 items-center justify-center mb-5 shadow-xl shadow-violet-500/30">
-            <span className="text-3xl">⚡</span>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{
+            display: 'inline-flex', width: 64, height: 64, borderRadius: 18,
+            background: 'linear-gradient(135deg, #14B8A8, #0D9488)',
+            alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+            boxShadow: '0 8px 32px rgba(20,184,168,0.35)'
+          }}>
+            <Code2 size={28} color="#fff" />
           </div>
-          <h1 className="text-3xl font-black text-white mb-1">{t('auth.create_account')}</h1>
-          <p className="text-white/40 text-sm">
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>{t('auth.create_account')}</h1>
+          <p style={{ fontSize: 14, color: 'rgba(30,41,59,0.6)' }}>
             {t('auth.already_have')}{' '}
-            <Link to="/login" className="text-violet-400 font-semibold hover:text-violet-300 transition-colors">
+            <Link to="/login" style={{ color: '#14B8A8', fontWeight: 600, textDecoration: 'none' }}>
               {t('auth.sign_in_link')}
             </Link>
           </p>
         </div>
 
         {/* Form card */}
-        <div className="rounded-3xl border border-white/10 bg-white/4 backdrop-blur-sm p-8 shadow-2xl">
-          <form onSubmit={submit} className="space-y-4">
+        <div style={{
+          borderRadius: 24, border: '1px solid rgba(0,0,0,0.1)',
+          background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(12px)',
+          padding: 32, boxShadow: '0 24px 80px rgba(0,0,0,0.4)'
+        }}>
+          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Role picker */}
             <div>
-              <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-2">{t('auth.i_am_a')}</label>
-              <div className="grid grid-cols-2 gap-3">
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(30,41,59,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+                {t('auth.i_am_a')}
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {[
                   { value: 'teacher', label: t('auth.teacher'), icon: GraduationCap, desc: t('auth.teacher_desc') },
                   { value: 'student', label: t('auth.student'), icon: BookOpen,      desc: t('auth.student_desc') },
                 ].map(r => (
-                  <motion.button key={r.value} type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  <motion.button key={r.value} type="button"
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     onClick={() => { setRole(r.value); setErrors(e => ({ ...e, role: '' })) }}
-                    className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all cursor-pointer ${
-                      role === r.value
-                        ? 'border-violet-400/60 bg-violet-500/15 text-white'
-                        : 'border-white/10 bg-white/3 text-white/40 hover:border-white/20 hover:text-white/60'
-                    }`}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                      padding: '20px 16px', borderRadius: 16, cursor: 'pointer', transition: 'all 0.2s',
+                      border: `2px solid ${role === r.value ? 'rgba(20,184,168,0.6)' : 'rgba(0,0,0,0.1)'}`,
+                      background: role === r.value ? 'rgba(20,184,168,0.2)' : 'rgba(255,255,255,0.8)',
+                      color: role === r.value ? '#14B8A8' : 'rgba(30,41,59,0.6)',
+                    }}
                   >
                     <r.icon size={22} />
-                    <span className="font-black text-sm">{r.label}</span>
-                    <span className="text-[11px] text-center leading-snug opacity-70">{r.desc}</span>
+                    <span style={{ fontWeight: 800, fontSize: 13 }}>{r.label}</span>
+                    <span style={{ fontSize: 11, textAlign: 'center', lineHeight: 1.4, opacity: 0.7 }}>{r.desc}</span>
                   </motion.button>
                 ))}
               </div>
-              {errors.role && <p className="text-xs text-red-400 mt-1">{errors.role}</p>}
+              {errors.role && <p style={{ fontSize: 12, color: '#f87171', marginTop: 4 }}>{errors.role}</p>}
             </div>
 
             {/* Name row */}
-            <div className="grid grid-cols-2 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label={t('auth.first_name')} error={errors.first_name}>
-                <input className={inputCls(!!errors.first_name)} placeholder="John"
-                  value={form.first_name} onChange={e => set('first_name', e.target.value)} />
+                <input style={inputStyle(!!errors.first_name)} placeholder="John"
+                  value={form.first_name} onChange={e => set('first_name', e.target.value)}
+                  onFocus={focusTeal} onBlur={blurNormal} />
               </Field>
               <Field label={t('auth.last_name')} error={errors.last_name}>
-                <input className={inputCls(!!errors.last_name)} placeholder="Doe"
-                  value={form.last_name} onChange={e => set('last_name', e.target.value)} />
+                <input style={inputStyle(!!errors.last_name)} placeholder="Doe"
+                  value={form.last_name} onChange={e => set('last_name', e.target.value)}
+                  onFocus={focusTeal} onBlur={blurNormal} />
               </Field>
             </div>
 
             <Field label={t('auth.username')} error={errors.username}>
-              <input className={inputCls(!!errors.username)} placeholder="johndoe"
-                value={form.username} onChange={e => set('username', e.target.value)} autoComplete="username" />
+              <input style={inputStyle(!!errors.username)} placeholder="johndoe"
+                value={form.username} onChange={e => set('username', e.target.value)}
+                autoComplete="username" onFocus={focusTeal} onBlur={blurNormal} />
             </Field>
 
             <Field label={t('auth.email')} error={errors.email}>
-              <input type="email" className={inputCls(!!errors.email)} placeholder="john@example.com"
-                value={form.email} onChange={e => set('email', e.target.value)} autoComplete="email" />
+              <input type="email" style={inputStyle(!!errors.email)} placeholder="john@example.com"
+                value={form.email} onChange={e => set('email', e.target.value)}
+                autoComplete="email" onFocus={focusTeal} onBlur={blurNormal} />
             </Field>
 
             <Field label={t('auth.password')} error={errors.password}>
-              <div className="relative">
+              <div style={{ position: 'relative' }}>
                 <input type={showPass ? 'text' : 'password'}
-                  className={inputCls(!!errors.password) + ' pr-11'}
+                  style={{ ...inputStyle(!!errors.password), paddingRight: 44 }}
                   placeholder={t('auth.min_password')}
-                  value={form.password} onChange={e => set('password', e.target.value)} autoComplete="new-password" />
+                  value={form.password} onChange={e => set('password', e.target.value)}
+                  autoComplete="new-password" onFocus={focusTeal} onBlur={blurNormal} />
                 <button type="button" onClick={() => setShowPass(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.3)', padding: 4, display: 'flex' }}>
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </Field>
 
             <Field label={t('auth.confirm_password')} error={errors.confirm}>
-              <div className="relative">
+              <div style={{ position: 'relative' }}>
                 <input type={showConfirm ? 'text' : 'password'}
-                  className={inputCls(!!errors.confirm) + ' pr-11'}
+                  style={{ ...inputStyle(!!errors.confirm), paddingRight: 44 }}
                   placeholder={t('auth.repeat_password')}
-                  value={form.confirm} onChange={e => set('confirm', e.target.value)} autoComplete="new-password" />
+                  value={form.confirm} onChange={e => set('confirm', e.target.value)}
+                  autoComplete="new-password" onFocus={focusTeal} onBlur={blurNormal} />
                 <button type="button" onClick={() => setShowConfirm(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
-                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.3)', padding: 4, display: 'flex' }}>
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </Field>
 
             <motion.button type="submit" disabled={loading}
               whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.99 }}
-              className="w-full py-4 mt-2 rounded-2xl font-black text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl shadow-violet-500/25 flex items-center justify-center gap-2 text-base"
+              style={{
+                width: '100%', padding: '14px 0', marginTop: 4, borderRadius: 14, border: 'none',
+                fontWeight: 800, color: '#fff', fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(135deg, #14B8A8, #0D9488)',
+                boxShadow: '0 8px 24px rgba(20,184,168,0.3)',
+                opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
             >
               {loading
-                ? <><Loader2 size={15} className="animate-spin" />{t('auth.creating')}</>
-                : <>{t('auth.create_btn')} <ArrowRight size={15} /></>
+                ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} />{t('auth.creating')}</>
+                : <>{t('auth.create_btn')} <ArrowRight size={16} /></>
               }
             </motion.button>
           </form>
         </div>
       </motion.div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

@@ -16,20 +16,15 @@ class TournamentListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        # Teachers see tournaments they created; students see ones they joined
-        if user.role == 'teacher':
-            return Tournament.objects.filter(created_by=user)
-        return Tournament.objects.filter(participants__user=user)
+        from django.db.models import Q
+        return Tournament.objects.filter(
+            Q(created_by=user) | Q(participants__user=user)
+        ).distinct()
 
     def create(self, request, *args, **kwargs):
-        if getattr(request.user, 'role', None) != 'teacher':
-            return Response({'detail': 'Only teachers can create tournaments.'},
-                            status=status.HTTP_403_FORBIDDEN)
         ser = TournamentCreateSerializer(data=request.data, context={'request': request})
         ser.is_valid(raise_exception=True)
         tournament = ser.save()
-        # Creator auto-joins as participant
-        Participant.objects.create(tournament=tournament, user=request.user)
         return Response(TournamentSerializer(tournament).data, status=status.HTTP_201_CREATED)
 
 

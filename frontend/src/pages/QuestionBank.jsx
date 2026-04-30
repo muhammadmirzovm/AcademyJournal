@@ -163,7 +163,7 @@ export default function QuestionBank() {
             <Loader2 size={28} color="var(--accent)" style={{ animation: 'spin 0.7s linear infinite' }} />
           </div>
         ) : questions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 320, padding: '64px 24px', color: 'var(--text-muted)' }}>
             <BookOpen size={40} style={{ marginBottom: 12, opacity: 0.4 }} />
             <p style={{ fontWeight: 600, marginBottom: 4 }}>{t('quiz.no_questions')}</p>
             <p style={{ fontSize: 13 }}>{t('quiz.no_questions_sub')}</p>

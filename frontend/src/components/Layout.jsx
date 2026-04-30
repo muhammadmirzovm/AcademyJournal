@@ -3,14 +3,16 @@ import { useLocation } from 'react-router-dom'
 import Navbar from './Navbar'
 
 const FULL_WIDTH_ROUTES = ['/tournament', '/tournament/', '/login', '/register']
+const NO_NAV_ROUTES    = ['/tournament/match/']
 
 export default function Layout({ children }) {
   const location = useLocation()
   const isFullWidth = FULL_WIDTH_ROUTES.some(r => location.pathname.startsWith(r))
+  const hideNav     = NO_NAV_ROUTES.some(r => location.pathname.startsWith(r))
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Navbar />
+      {!hideNav && <Navbar />}
       <motion.main
         key={location.pathname}
         initial={{ opacity: 0, y: 12 }}
