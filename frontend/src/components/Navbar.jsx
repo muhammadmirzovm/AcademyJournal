@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Sun, Moon, Menu, X, Code2, LogOut, User, LayoutDashboard, Users, Globe, BookMarked, Trophy } from 'lucide-react'
+import { Sun, Moon, Menu, X, Code2, LogOut, User, LayoutDashboard, Users, Globe, BookMarked } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -42,7 +42,6 @@ export default function Navbar() {
   const navLinks = user ? [
     { to: '/dashboard',  label: t('nav.dashboard'),  icon: <LayoutDashboard size={15} /> },
     { to: '/groups',     label: t('nav.groups'),     icon: <Users size={15} /> },
-    { to: '/tournament', label: t('nav.tournament'), icon: <Trophy size={15} /> },
     ...(user.role === 'teacher'
       ? [{ to: '/questions', label: t('nav.questions'), icon: <BookMarked size={15} /> }]
       : []),

@@ -12,7 +12,6 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # ── Apps ──────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
-    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -22,11 +21,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    'channels',
     'users',
     'groups',
     'quiz',
-    'tournament',
 ]
 
 MIDDLEWARE = [
@@ -61,15 +58,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 ASGI_APPLICATION  = 'backend.asgi.application'
-
-# ── Channel Layers (Redis) ────────────────────────────────────────────────────
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG':  {'hosts': [REDIS_URL]},
-    }
-}
 
 # ── Database ──────────────────────────────────────────────────────────────────
 DATABASE_URL = os.environ.get('DATABASE_URL')

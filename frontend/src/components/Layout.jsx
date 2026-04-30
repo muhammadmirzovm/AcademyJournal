@@ -2,8 +2,8 @@ import { motion } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
 import Navbar from './Navbar'
 
-const FULL_WIDTH_ROUTES = ['/tournament', '/tournament/', '/login', '/register']
-const NO_NAV_ROUTES    = ['/tournament/match/']
+const FULL_WIDTH_ROUTES = ['/login', '/register']
+const NO_NAV_ROUTES    = []
 
 export default function Layout({ children }) {
   const location = useLocation()

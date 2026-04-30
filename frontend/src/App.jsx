@@ -16,8 +16,6 @@ import LessonDetail from './pages/LessonDetail'
 import Profile from './pages/Profile'
 import QuestionBank from './pages/QuestionBank'
 import GameBoard from './pages/GameBoard'
-import TournamentLobby from './pages/TournamentLobby'
-import MatchRoom from './pages/MatchRoom'
 import NotFound from './pages/NotFound'
 
 function AppShell() {
@@ -47,9 +45,6 @@ function AppShell() {
             <Route path="/groups/:id/games/:gameId" element={<ProtectedRoute><GameBoard /></ProtectedRoute>} />
             <Route path="/questions" element={<ProtectedRoute><QuestionBank /></ProtectedRoute>} />
             <Route path="/profile/:id" element={<Profile />} />
-            <Route path="/tournament" element={<ProtectedRoute><TournamentLobby /></ProtectedRoute>} />
-            <Route path="/tournament/:joinCode" element={<ProtectedRoute><TournamentLobby /></ProtectedRoute>} />
-            <Route path="/tournament/match/:matchId" element={<ProtectedRoute><MatchRoom /></ProtectedRoute>} />
             <Route path="*"          element={<NotFound />} />
           </Routes>
         </Layout>

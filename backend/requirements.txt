@@ -7,9 +7,7 @@ PyJWT==2.12.1
 sqlparse==0.5.5
 asgiref==3.11.1
 
-# Channels / WebSocket
-channels==4.2.2
-channels-redis==4.2.1
+# Production ASGI server
 daphne==4.1.2
 
 # Production
