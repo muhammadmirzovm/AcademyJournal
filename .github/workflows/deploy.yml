@@ -17,7 +17,11 @@ jobs:
 
       - run: |
           mkdir -p "$HOME/.fly"
+          mkdir -p "$HOME/.config/fly"
           echo "access_token: $TOKEN" > "$HOME/.fly/config.yml"
+          echo "access_token: $TOKEN" > "$HOME/.config/fly/config.yml"
+          echo "Config written. Token length: ${#TOKEN}"
+          flyctl auth whoami
           flyctl deploy
         env:
           TOKEN: ${{ secrets.FLY_API_TOKEN }}
