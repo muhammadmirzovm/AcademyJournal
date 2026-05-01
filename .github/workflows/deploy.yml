@@ -16,11 +16,15 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - run: |
-          mkdir -p "$HOME/.fly"
-          mkdir -p "$HOME/.config/fly"
-          echo "access_token: $TOKEN" > "$HOME/.fly/config.yml"
-          echo "access_token: $TOKEN" > "$HOME/.config/fly/config.yml"
-          echo "Config written. Token length: ${#TOKEN}"
+          python3 -c "
+          import os, yaml, pathlib
+          token = os.environ['TOKEN']
+          home = pathlib.Path.home()
+          for path in [home/'.fly'/'config.yml', home/'.config'/'fly'/'config.yml']:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              yaml.dump({'access_token': token}, open(path, 'w'))
+              print(f'Written {path}: {path.stat().st_size} bytes')
+          "
           flyctl auth whoami
           flyctl deploy
         env:
