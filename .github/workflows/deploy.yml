@@ -15,11 +15,9 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Configure Fly auth
-        run: |
-          mkdir -p ~/.fly
-          printf 'access_token: %s\n' "$TOKEN" > ~/.fly/config.yml
+      - run: |
+          mkdir -p "$HOME/.fly"
+          echo "access_token: $TOKEN" > "$HOME/.fly/config.yml"
+          flyctl deploy
         env:
           TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-      - run: flyctl deploy
