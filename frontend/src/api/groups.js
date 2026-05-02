@@ -24,3 +24,7 @@ export const saveScores         = (gid, lid, records)  => api.post(`/groups/${gi
 
 export const getJournal         = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/journal/`)
 export const saveJournal        = (gid, lid, body)     => api.post(`/groups/${gid}/lessons/${lid}/journal/`, { body })
+
+export const getHomework        = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/homework/`)
+export const saveHomework       = (gid, lid, body)     => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { body })
+export const setHomeworkAssignment = (gid, lid, assignment) => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { assignment })

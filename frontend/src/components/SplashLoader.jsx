@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Code2 } from 'lucide-react'
+import { GraduationCap } from 'lucide-react'
 
 export default function SplashLoader({ done }) {
   return (
@@ -28,7 +28,7 @@ export default function SplashLoader({ done }) {
               transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
               style={{ width: 68, height: 68, background: 'var(--accent)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <Code2 size={34} color="#fff" strokeWidth={2} />
+              <GraduationCap size={34} color="#fff" strokeWidth={2} />
             </motion.div>
 
             <motion.div
@@ -37,8 +37,8 @@ export default function SplashLoader({ done }) {
               transition={{ delay: 0.2, duration: 0.35 }}
               style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}
             >
-              <span style={{ color: '#fff' }}>Code</span>
-              <span style={{ color: 'var(--accent)' }}>Learn</span>
+              <span style={{ color: '#fff' }}>Academy </span>
+              <span style={{ color: 'var(--accent)' }}>Journal</span>
             </motion.div>
           </motion.div>
 

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Save, Loader2, CheckSquare, Star, BookOpen, Users } from 'lucide-react'
-import { getGroup, getMembers, getLessons, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal } from '../api/groups'
+import { ChevronRight, Save, Loader2, CheckSquare, Star, BookOpen, Users, ClipboardList } from 'lucide-react'
+import { getGroup, getMembers, getLessons, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment } from '../api/groups'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
@@ -19,6 +19,7 @@ export default function LessonDetail() {
   const [attendance, setAttendance] = useState([])
   const [scores, setScores]         = useState([])
   const [journal, setJournal]       = useState([])
+  const [homework, setHomework]     = useState({ assignment: '', submissions: [] })
   const [tab, setTab]               = useState('attendance')
   const [loading, setLoading]       = useState(true)
 
@@ -32,12 +33,14 @@ export default function LessonDetail() {
       getAttendance(groupId, lessonId),
       getScores(groupId, lessonId),
       getJournal(groupId, lessonId),
-    ]).then(([g, m, a, s, j]) => {
+      getHomework(groupId, lessonId),
+    ]).then(([g, m, a, s, j, hw]) => {
       setGroup(g.data)
       setMembers(m.data)
       setAttendance(a.data)
       setScores(s.data)
       setJournal(j.data)
+      setHomework(hw.data)
       getLessons(groupId).then(r => setLesson(r.data.find(l => String(l.id) === String(lessonId))))
     }).catch(() => show(t('lesson.toast_fail_load'), 'error'))
     .finally(() => setLoading(false))
@@ -50,6 +53,7 @@ export default function LessonDetail() {
     { key: 'attendance', label: t('lesson.tab_attendance') },
     { key: 'scores',     label: t('lesson.tab_scores') },
     { key: 'journal',    label: t('lesson.tab_journal') },
+    { key: 'homework',   label: t('lesson.tab_homework') },
   ]
 
   return (
@@ -94,6 +98,10 @@ export default function LessonDetail() {
           {tab === 'journal' && (
             <JournalTab journal={journal} groupId={groupId} lessonId={lessonId}
               isTeacher={isTeacher} onSaved={setJournal} />
+          )}
+          {tab === 'homework' && (
+            <HomeworkTab homework={homework} groupId={groupId} lessonId={lessonId}
+              isTeacher={isTeacher} onSaved={setHomework} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -342,6 +350,121 @@ function JournalTab({ journal, groupId, lessonId, isTeacher, onSaved }) {
           style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
           {saving ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
           {saving ? t('lesson.saving') : journal.length ? t('lesson.update_journal') : t('lesson.submit_journal')}
+        </motion.button>
+      </div>
+    </div>
+  )
+}
+
+// ── Homework ──────────────────────────────────────────────────────────────────
+
+function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
+  const { show } = useToast()
+  const { t } = useTranslation()
+  const [assignment, setAssignment] = useState(homework.assignment || '')
+  const [body, setBody]             = useState('')
+  const [savingAssignment, setSavingAssignment] = useState(false)
+  const [savingSubmission, setSavingSubmission] = useState(false)
+
+  useEffect(() => {
+    setAssignment(homework.assignment || '')
+    if (!isTeacher) setBody(homework.submissions[0]?.body || '')
+  }, [homework])
+
+  const saveAssignment = async () => {
+    setSavingAssignment(true)
+    try {
+      const { data } = await setHomeworkAssignment(groupId, lessonId, assignment)
+      onSaved(hw => ({ ...hw, assignment: data.assignment }))
+      show(t('lesson.toast_homework_saved'), 'success')
+    } catch { show(t('lesson.toast_fail_homework'), 'error') }
+    finally { setSavingAssignment(false) }
+  }
+
+  const submitHomework = async () => {
+    if (!body.trim()) { show(t('lesson.err_homework_empty'), 'error'); return }
+    setSavingSubmission(true)
+    try {
+      const { data } = await saveHomework(groupId, lessonId, body)
+      onSaved(hw => ({ ...hw, submissions: [data] }))
+      show(t('lesson.toast_homework_submitted'), 'success')
+    } catch { show(t('lesson.toast_fail_homework'), 'error') }
+    finally { setSavingSubmission(false) }
+  }
+
+  if (isTeacher) {
+    return (
+      <div style={{ maxWidth: 720 }}>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>{t('lesson.homework_assignment_hint')}</p>
+        <textarea
+          value={assignment}
+          onChange={e => setAssignment(e.target.value)}
+          placeholder={t('lesson.homework_assignment_placeholder')}
+          rows={5}
+          style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, lineHeight: 1.7, resize: 'vertical', outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, marginBottom: 32 }}>
+          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={saveAssignment} disabled={savingAssignment}
+            style={{ ...primaryBtn, opacity: savingAssignment ? 0.7 : 1 }}>
+            {savingAssignment ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
+            {savingAssignment ? t('lesson.saving') : t('lesson.save_assignment')}
+          </motion.button>
+        </div>
+
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>
+          {homework.submissions.length} {t('lesson.submissions_count')}
+        </p>
+        {homework.submissions.length === 0 ? (
+          <EmptyTab icon={ClipboardList} text={t('lesson.no_submissions')} />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {homework.submissions.map((s, i) => (
+              <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-bg)', border: '1.5px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: 'var(--accent)' }}>
+                    {s.student_name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 600, fontSize: 13 }}>{s.student_name}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(s.submitted_at).toLocaleString()}</p>
+                  </div>
+                </div>
+                <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{s.body}</p>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      {assignment ? (
+        <div style={{ background: 'var(--surface)', border: '1.5px solid var(--accent)', borderRadius: 10, padding: '16px 20px', marginBottom: 24 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('lesson.assignment')}</p>
+          <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{assignment}</p>
+        </div>
+      ) : (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px', marginBottom: 24 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>{t('lesson.no_assignment_yet')}</p>
+        </div>
+      )}
+
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>{t('lesson.homework_hint')}</p>
+      <textarea
+        value={body}
+        onChange={e => setBody(e.target.value)}
+        placeholder={t('lesson.homework_placeholder')}
+        rows={7}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, lineHeight: 1.7, resize: 'vertical', outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={submitHomework} disabled={savingSubmission}
+          style={{ ...primaryBtn, opacity: savingSubmission ? 0.7 : 1 }}>
+          {savingSubmission ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
+          {savingSubmission ? t('lesson.saving') : homework.submissions.length ? t('lesson.update_homework') : t('lesson.submit_homework')}
         </motion.button>
       </div>
     </div>

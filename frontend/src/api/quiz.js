@@ -1,6 +1,7 @@
 import api from './axios'
 
-export const getTopics          = ()                  => api.get('/quiz/topics/')
+export const getTopics          = (params)            => api.get('/quiz/topics/', { params })
+export const getQuestionBanks   = ()                  => api.get('/quiz/question-banks/')
 export const createTopic        = (data)              => api.post('/quiz/topics/', data)
 export const updateTopic        = (id, data)          => api.patch(`/quiz/topics/${id}/`, data)
 export const deleteTopic        = (id)                => api.delete(`/quiz/topics/${id}/`)

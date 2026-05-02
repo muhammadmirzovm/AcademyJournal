@@ -3,11 +3,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum, Count
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission
 from .serializers import (
     GroupSerializer, MemberSerializer, LessonSerializer,
     AttendanceSerializer, BulkAttendanceSerializer,
     ScoreSerializer, BulkScoreSerializer, JournalSerializer,
+    HomeworkSubmissionSerializer,
 )
 
 
@@ -265,6 +266,44 @@ class JournalView(APIView):
             defaults={'body': body}
         )
         return Response(JournalSerializer(journal).data, status=201)
+
+
+# ── Homework ──────────────────────────────────────────────────────────────────
+
+class HomeworkView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, group_pk, lesson_pk):
+        lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
+        if lesson.group.teacher == request.user:
+            submissions = HomeworkSubmission.objects.filter(lesson=lesson).select_related('student')
+        else:
+            submissions = HomeworkSubmission.objects.filter(lesson=lesson, student=request.user)
+        return Response({
+            'assignment': lesson.homework,
+            'submissions': HomeworkSubmissionSerializer(submissions, many=True).data,
+        })
+
+    def post(self, request, group_pk, lesson_pk):
+        lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
+
+        if request.user.role == 'teacher':
+            if lesson.group.teacher != request.user:
+                return Response({'detail': 'Only the lesson teacher can set homework.'}, status=403)
+            assignment = request.data.get('assignment', '').strip()
+            lesson.homework = assignment
+            lesson.save(update_fields=['homework'])
+            return Response({'assignment': lesson.homework})
+
+        body = request.data.get('body', '').strip()
+        if not body:
+            return Response({'detail': 'Submission cannot be empty.'}, status=400)
+
+        submission, _ = HomeworkSubmission.objects.update_or_create(
+            lesson=lesson, student=request.user,
+            defaults={'body': body}
+        )
+        return Response(HomeworkSubmissionSerializer(submission).data, status=201)
 
 
 # ── Membership ────────────────────────────────────────────────────────────────

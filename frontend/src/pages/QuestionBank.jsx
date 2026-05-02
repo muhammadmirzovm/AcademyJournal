@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, Pencil, BookOpen, Loader2, X, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 import Modal from '../components/ui/Modal'
 import {
   getTopics, createTopic, deleteTopic,
   getQuestions, createQuestion, updateQuestion, deleteQuestion,
+  getQuestionBanks,
 } from '../api/quiz'
 
 const DIFF_COLOR = { easy: '#22C55E', medium: '#F59E0B', hard: '#EF4444' }
@@ -17,7 +19,10 @@ const PAGE_SIZE  = 12
 export default function QuestionBank() {
   const { show } = useToast()
   const { t } = useTranslation()
+  const { user } = useAuth()
 
+  const [banks,     setBanks]     = useState([])
+  const [selBank,   setSelBank]   = useState(null)
   const [topics,    setTopics]    = useState([])
   const [questions, setQuestions] = useState([])
   const [selTopic,  setSelTopic]  = useState(null)
@@ -30,12 +35,16 @@ export default function QuestionBank() {
   const [newTopicName, setNewTopicName] = useState('')
   const [addingTopic,  setAddingTopic]  = useState(false)
 
+  useEffect(() => {
+    getQuestionBanks().then(res => setBanks(res.data)).catch(() => {})
+  }, [])
+
   const load = async () => {
     setLoading(true)
     try {
       const [tRes, qRes] = await Promise.all([
-        getTopics(),
-        getQuestions({ topic: selTopic || undefined, difficulty: selDiff || undefined }),
+        getTopics(selBank ? { owner: selBank } : undefined),
+        getQuestions({ owner: selBank || undefined, topic: selTopic || undefined, difficulty: selDiff || undefined }),
       ])
       setTopics(tRes.data)
       setQuestions(qRes.data)
@@ -43,6 +52,7 @@ export default function QuestionBank() {
     finally { setLoading(false) }
   }
 
+  useEffect(() => { setPage(1); setSelTopic(null); load() }, [selBank])
   useEffect(() => { setPage(1); load() }, [selTopic, selDiff])
 
   const handleAddTopic = async () => {
@@ -88,7 +98,27 @@ export default function QuestionBank() {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', minHeight: 'calc(100vh - 100px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minHeight: 'calc(100vh - 100px)' }}>
+
+      {/* Bank filter */}
+      {banks.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Bank:</span>
+          <button onClick={() => setSelBank(null)}
+            style={{ padding: '5px 12px', borderRadius: 8, border: `1.5px solid ${!selBank ? 'var(--accent)' : 'var(--border)'}`, background: !selBank ? 'var(--accent-bg)' : 'transparent', color: !selBank ? 'var(--accent)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            All
+          </button>
+          {banks.map(b => (
+            <button key={b.id} onClick={() => setSelBank(b.id)}
+              style={{ padding: '5px 12px', borderRadius: 8, border: `1.5px solid ${selBank === b.id ? 'var(--accent)' : 'var(--border)'}`, background: selBank === b.id ? 'var(--accent-bg)' : 'transparent', color: selBank === b.id ? 'var(--accent)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              {b.name}{b.is_me ? ' (you)' : ''}
+              <span style={{ marginLeft: 5, fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{b.question_count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+    <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
 
       {/* Topic sidebar */}
       <div style={{ width: 220, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, position: 'sticky', top: 80 }}>
@@ -107,9 +137,11 @@ export default function QuestionBank() {
               {tp.name}
               <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>{tp.question_count}</span>
             </button>
-            <button onClick={() => handleDeleteTopic(tp.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)', display: 'flex' }}>
-              <Trash2 size={12} />
-            </button>
+            {tp.created_by_id === user?.id && (
+              <button onClick={() => handleDeleteTopic(tp.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)', display: 'flex' }}>
+                <Trash2 size={12} />
+              </button>
+            )}
           </div>
         ))}
 
@@ -189,7 +221,7 @@ export default function QuestionBank() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
                 <AnimatePresence>
                   {pageQs.map((q, i) => (
-                    <QuestionCard key={q.id} q={q} index={i}
+                    <QuestionCard key={q.id} q={q} index={i} userId={user?.id}
                       onEdit={() => { setEditingQ(q); setShowQModal(true) }}
                       onDelete={() => handleDeleteQuestion(q.id)} />
                   ))}
@@ -227,16 +259,18 @@ export default function QuestionBank() {
       </div>
 
       <QuestionModal open={showQModal} onClose={() => { setShowQModal(false); setEditingQ(null) }}
-        editing={editingQ} topics={topics} onSave={handleSaveQuestion} />
+        editing={editingQ} topics={topics.filter(tp => tp.created_by_id === user?.id)} onSave={handleSaveQuestion} />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
     </div>
   )
 }
 
-function QuestionCard({ q, index, onEdit, onDelete }) {
+function QuestionCard({ q, index, userId, onEdit, onDelete }) {
   const { t } = useTranslation()
   const [confirm, setConfirm] = useState(false)
+  const isOwn = q.created_by_id === userId
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: index * 0.03 }}
@@ -262,18 +296,23 @@ function QuestionCard({ q, index, onEdit, onDelete }) {
         {q.text.length > 120 ? q.text.slice(0, 120) + '…' : q.text}
       </p>
 
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-        {confirm ? (
-          <>
-            <button onClick={onDelete} style={{ ...dangerBtn, padding: '4px 10px', fontSize: 12 }}>{t('quiz.delete')}</button>
-            <button onClick={() => setConfirm(false)} style={{ ...ghostBtn, padding: '4px 10px', fontSize: 12 }}>{t('quiz.cancel')}</button>
-          </>
-        ) : (
-          <>
-            <button onClick={onEdit} style={iconBtn}><Pencil size={13} color="var(--text-muted)" /></button>
-            <button onClick={() => setConfirm(true)} style={iconBtn}><Trash2 size={13} color="var(--text-muted)" /></button>
-          </>
+      {/* Footer: owner + actions */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
+          {isOwn ? 'You' : q.created_by_name}
+        </span>
+        {isOwn && (
+          confirm ? (
+            <>
+              <button onClick={onDelete} style={{ ...dangerBtn, padding: '4px 10px', fontSize: 12 }}>{t('quiz.delete')}</button>
+              <button onClick={() => setConfirm(false)} style={{ ...ghostBtn, padding: '4px 10px', fontSize: 12 }}>{t('quiz.cancel')}</button>
+            </>
+          ) : (
+            <>
+              <button onClick={onEdit} style={iconBtn}><Pencil size={13} color="var(--text-muted)" /></button>
+              <button onClick={() => setConfirm(true)} style={iconBtn}><Trash2 size={13} color="var(--text-muted)" /></button>
+            </>
+          )
         )}
       </div>
     </motion.div>

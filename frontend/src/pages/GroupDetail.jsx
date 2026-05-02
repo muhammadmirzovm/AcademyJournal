@@ -7,7 +7,7 @@ import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
 } from '../api/groups'
-import { getGames, createGame, deleteGame, getQuestions, getTopics } from '../api/quiz'
+import { getGames, createGame, deleteGame, getQuestions, getTopics, getQuestionBanks } from '../api/quiz'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
@@ -661,31 +661,46 @@ function GameRow({ game, groupId, index, isTeacher, onDelete }) {
 
 function NewGameModal({ open, onClose, groupId, onCreated }) {
   const { show } = useToast(); const { t } = useTranslation()
-  const [loading,      setLoading]      = useState(false)
-  const [topics,       setTopics]       = useState([])
-  const [topicCounts,  setTopicCounts]  = useState({})
-  const [topicsLoaded, setTopicsLoaded] = useState(false)
+  const [loading,       setLoading]       = useState(false)
+  const [banks,         setBanks]         = useState([])
+  const [selectedBank,  setSelectedBank]  = useState(null)
+  const [topics,        setTopics]        = useState([])
+  const [topicCounts,   setTopicCounts]   = useState({})
+  const [topicsLoading, setTopicsLoading] = useState(false)
   const [form, setForm] = useState({ name: '', timer_seconds: 30, team_count: 2 })
+  const [formError, setFormError] = useState('')
 
   useEffect(() => {
-    if (open && !topicsLoaded) {
-      getTopics().then(res => {
-        setTopics(res.data)
-        const init = {}
-        res.data.forEach(tp => { init[tp.id] = 0 })
-        setTopicCounts(init)
-        setTopicsLoaded(true)
+    if (open) {
+      getQuestionBanks().then(res => {
+        setBanks(res.data)
+        const me = res.data.find(b => b.is_me)
+        const initial = me ? me.id : (res.data[0]?.id ?? null)
+        setSelectedBank(initial)
       }).catch(() => {})
     }
     if (!open) {
       setForm({ name: '', timer_seconds: 30, team_count: 2 })
+      setTopics([])
       setTopicCounts({})
-      setTopicsLoaded(false)
+      setBanks([])
+      setSelectedBank(null)
+      setFormError('')
     }
   }, [open])
 
+  useEffect(() => {
+    if (!selectedBank) { setTopics([]); setTopicCounts({}); return }
+    setTopicsLoading(true)
+    getTopics({ owner: selectedBank }).then(res => {
+      setTopics(res.data)
+      const init = {}
+      res.data.forEach(tp => { init[tp.id] = 0 })
+      setTopicCounts(init)
+    }).catch(() => {}).finally(() => setTopicsLoading(false))
+  }, [selectedBank])
+
   const totalQ = Object.values(topicCounts).reduce((a, b) => a + (Number(b) || 0), 0)
-  const [formError, setFormError] = useState('')
 
   const submit = async e => {
     e.preventDefault()
@@ -694,7 +709,7 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
     setFormError('')
     setLoading(true)
     try {
-      const { data } = await createGame(groupId, { ...form, topic_counts: topicCounts })
+      const { data } = await createGame(groupId, { ...form, topic_counts: topicCounts, source_teacher_id: selectedBank })
       onCreated(data)
     } catch (err) {
       const msg = err?.response?.data?.detail || t('quiz.toast_game_fail')
@@ -724,6 +739,24 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
           </div>
         </div>
 
+        {/* Question bank selector */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Question Bank</label>
+          {banks.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>No question banks available.</p>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+              {banks.map(b => (
+                <button key={b.id} type="button" onClick={() => setSelectedBank(b.id)}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${selectedBank === b.id ? 'var(--accent)' : 'var(--border)'}`, background: selectedBank === b.id ? 'var(--accent-bg)' : 'var(--bg)', color: selectedBank === b.id ? 'var(--accent)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+                  {b.name} {b.is_me && '(you)'}
+                  <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{b.question_count}q</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {t('quiz.questions_per_topic')}
@@ -734,19 +767,24 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
         </div>
 
         <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20, paddingRight: 2 }}>
-          {topics.length === 0 && (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '12px 0' }}>{t('quiz.no_topics_hint')}</p>
-          )}
-          {topics.map(tp => (
-            <div key={tp.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: (topicCounts[tp.id] || 0) > 0 ? 'var(--accent-bg)' : 'var(--bg)', border: `1px solid ${(topicCounts[tp.id] || 0) > 0 ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '8px 12px', transition: 'all 0.15s' }}>
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{tp.name}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tp.question_count} {t('quiz.available')}</span>
-              <input type="number" min={0} max={tp.question_count}
-                value={topicCounts[tp.id] ?? 0}
-                onChange={e => setTopicCounts(c => ({ ...c, [tp.id]: Math.min(Number(e.target.value), tp.question_count) }))}
-                style={{ width: 52, padding: '4px 8px', borderRadius: 6, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+          {topicsLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+              <Loader2 size={20} color="var(--accent)" style={{ animation: 'spin 0.7s linear infinite' }} />
             </div>
-          ))}
+          ) : topics.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '12px 0' }}>{t('quiz.no_topics_hint')}</p>
+          ) : (
+            topics.map(tp => (
+              <div key={tp.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: (topicCounts[tp.id] || 0) > 0 ? 'var(--accent-bg)' : 'var(--bg)', border: `1px solid ${(topicCounts[tp.id] || 0) > 0 ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '8px 12px', transition: 'all 0.15s' }}>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{tp.name}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tp.question_count} {t('quiz.available')}</span>
+                <input type="number" min={0} max={tp.question_count}
+                  value={topicCounts[tp.id] ?? 0}
+                  onChange={e => setTopicCounts(c => ({ ...c, [tp.id]: Math.min(Number(e.target.value), tp.question_count) }))}
+                  style={{ width: 52, padding: '4px 8px', borderRadius: 6, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+              </div>
+            ))
+          )}
         </div>
 
         {formError && (

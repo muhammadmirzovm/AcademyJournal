@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 from .models import Topic, Question, Game, Team, GameRound
 from .serializers import TopicSerializer, QuestionSerializer, GameSerializer, GameListSerializer
 
@@ -27,7 +28,10 @@ class TopicListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsTeacher]
 
     def get_queryset(self):
-        return Topic.objects.filter(created_by=self.request.user)
+        qs = Topic.objects.all().select_related('created_by')
+        if owner := self.request.query_params.get('owner'):
+            qs = qs.filter(created_by_id=owner)
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -48,7 +52,9 @@ class QuestionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsTeacher]
 
     def get_queryset(self):
-        qs = Question.objects.filter(created_by=self.request.user).select_related('topic')
+        qs = Question.objects.all().select_related('topic', 'created_by')
+        if owner := self.request.query_params.get('owner'):
+            qs = qs.filter(created_by_id=owner)
         if t := self.request.query_params.get('topic'):
             qs = qs.filter(topic_id=t)
         if d := self.request.query_params.get('difficulty'):
@@ -65,6 +71,31 @@ class QuestionDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Question.objects.filter(created_by=self.request.user)
+
+
+# ── Question Banks ─────────────────────────────────────────────────────────────
+
+class QuestionBankListView(APIView):
+    permission_classes = [IsTeacher]
+
+    def get(self, request):
+        teacher_ids = Question.objects.values_list('created_by_id', flat=True).distinct()
+        teachers = User.objects.filter(id__in=teacher_ids).annotate(
+            question_count=Count('questions', distinct=True),
+            topic_count=Count('topics', distinct=True),
+        )
+        result = []
+        for t in teachers:
+            result.append({
+                'id':             t.id,
+                'name':           t.get_full_name() or t.username,
+                'username':       t.username,
+                'question_count': t.question_count,
+                'topic_count':    t.topic_count,
+                'is_me':          t.id == request.user.id,
+            })
+        result.sort(key=lambda x: (0 if x['is_me'] else 1, x['name'].lower()))
+        return Response(result)
 
 
 # ── Game helpers ──────────────────────────────────────────────────────────────
@@ -123,12 +154,15 @@ class GameListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         game = serializer.save(group=group, created_by=request.user)
 
+        source_id = request.data.get('source_teacher_id')
+        source_teacher = get_object_or_404(User, pk=source_id) if source_id else request.user
+
         topic_counts = request.data.get('topic_counts', {})
         chosen = []
         for topic_id, count in topic_counts.items():
             count = max(0, int(count))
             if count > 0:
-                chosen.extend(pick_topic_questions(request.user, topic_id, count))
+                chosen.extend(pick_topic_questions(source_teacher, topic_id, count))
         if chosen:
             game.questions.set(chosen)
 

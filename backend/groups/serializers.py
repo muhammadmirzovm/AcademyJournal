@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -61,7 +61,7 @@ class GroupSerializer(serializers.ModelSerializer):
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Lesson
-        fields = ('id', 'group', 'title', 'date', 'created_at')
+        fields = ('id', 'group', 'title', 'date', 'homework', 'created_at')
         read_only_fields = ('group',)
 
 
@@ -109,6 +109,18 @@ class BulkScoreSerializer(serializers.Serializer):
             if not (0 <= int(r['value']) <= 5):
                 raise serializers.ValidationError('Score value must be 0–5.')
         return value
+
+
+class HomeworkSubmissionSerializer(serializers.ModelSerializer):
+    student_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = HomeworkSubmission
+        fields = ('id', 'lesson', 'student', 'student_name', 'body', 'submitted_at')
+        read_only_fields = ('lesson', 'student')
+
+    def get_student_name(self, obj):
+        return f'{obj.student.first_name} {obj.student.last_name}'.strip() or obj.student.username
 
 
 class JournalSerializer(serializers.ModelSerializer):

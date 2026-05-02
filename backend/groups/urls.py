@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     GroupListCreateView, GroupDetailView, JoinGroupView, GroupMembersView,
     LessonListCreateView, LessonDetailView,
-    AttendanceView, ScoreView, JournalView,
+    AttendanceView, ScoreView, JournalView, HomeworkView,
     MembershipDetailView, CoinView,
 )
 
@@ -18,4 +18,5 @@ urlpatterns = [
     path('groups/<int:group_pk>/lessons/<int:lesson_pk>/attendance/',           AttendanceView.as_view(),       name='attendance'),
     path('groups/<int:group_pk>/lessons/<int:lesson_pk>/scores/',               ScoreView.as_view(),            name='scores'),
     path('groups/<int:group_pk>/lessons/<int:lesson_pk>/journal/',              JournalView.as_view(),          name='journal'),
+    path('groups/<int:group_pk>/lessons/<int:lesson_pk>/homework/',             HomeworkView.as_view(),         name='homework'),
 ]

@@ -53,7 +53,7 @@ function DashboardMockup() {
           {['#EF4444','#F59E0B','#22C55E'].map(c => <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />)}
         </div>
         <div style={{ flex: 1, background: 'var(--surface)', borderRadius: 5, padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, maxWidth: 220, margin: '0 auto' }}>
-          <ShieldCheck size={9} color="var(--accent)" /> codelearnmonday.vercel.app
+          <ShieldCheck size={9} color="var(--accent)" /> academyjournal.vercel.app
         </div>
       </div>
 

@@ -1,6 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
   <rect width="48" height="48" rx="10" fill="#0D9488"/>
-  <path d="M14 18L8 24L14 30" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M34 18L40 24L34 30" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M28 13L20 35" stroke="white" stroke-width="2.8" stroke-linecap="round"/>
+  <!-- Graduation cap top (mortarboard) -->
+  <polygon points="24,12 40,20 24,28 8,20" fill="white"/>
+  <!-- Cap tassel string -->
+  <line x1="40" y1="20" x2="40" y2="30" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Tassel -->
+  <circle cx="40" cy="31.5" r="2" fill="white"/>
+  <!-- Left side of graduation gown opening -->
+  <path d="M13 22v8c0 3.5 5 7 11 7s11-3.5 11-7v-8" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
 </svg>

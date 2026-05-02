@@ -3,22 +3,34 @@ from .models import Topic, Question, Game, Team, GameRound
 
 
 class TopicSerializer(serializers.ModelSerializer):
-    question_count = serializers.IntegerField(source='questions.count', read_only=True)
+    question_count  = serializers.IntegerField(source='questions.count', read_only=True)
+    created_by_id   = serializers.IntegerField(source='created_by.id', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model  = Topic
-        fields = ['id', 'name', 'question_count', 'created_at']
+        fields = ['id', 'name', 'question_count', 'created_by_id', 'created_by_name', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def get_created_by_name(self, obj):
+        u = obj.created_by
+        return u.get_full_name() or u.username
 
 
 class QuestionSerializer(serializers.ModelSerializer):
-    topic_name = serializers.CharField(source='topic.name', read_only=True)
+    topic_name      = serializers.CharField(source='topic.name', read_only=True)
+    created_by_id   = serializers.IntegerField(source='created_by.id', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model  = Question
         fields = ['id', 'topic', 'topic_name', 'text', 'hint', 'answer_type', 'points',
-                  'difficulty', 'options', 'correct_answer', 'created_at']
+                  'difficulty', 'options', 'correct_answer', 'created_by_id', 'created_by_name', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def get_created_by_name(self, obj):
+        u = obj.created_by
+        return u.get_full_name() or u.username
 
 
 class TeamSerializer(serializers.ModelSerializer):

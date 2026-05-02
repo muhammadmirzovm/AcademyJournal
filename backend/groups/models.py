@@ -38,6 +38,7 @@ class Lesson(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=200)
     date = models.DateField()
+    homework = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -83,6 +84,19 @@ class Journal(models.Model):
 
     def __str__(self):
         return f'{self.student.username} journal — {self.lesson.title}'
+
+
+class HomeworkSubmission(models.Model):
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='homework_submissions')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homework_submissions')
+    body = models.TextField()
+    submitted_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('lesson', 'student')
+
+    def __str__(self):
+        return f'{self.student.username} homework — {self.lesson.title}'
 
 
 class CoinTransaction(models.Model):

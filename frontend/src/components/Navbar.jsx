@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Sun, Moon, Menu, X, Code2, LogOut, User, LayoutDashboard, Users, Globe, BookMarked } from 'lucide-react'
+import { Sun, Moon, Menu, X, GraduationCap, LogOut, User, LayoutDashboard, Users, Globe, BookMarked } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -69,11 +69,11 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0, marginRight: 8 }}>
             <div style={{ width: 32, height: 32, background: 'var(--accent)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 12px rgba(16,185,129,0.35)' }}>
-              <Code2 size={17} color="#fff" />
+              <GraduationCap size={17} color="#fff" />
             </div>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, letterSpacing: '-0.3px' }}>
-              <span style={{ color: '#fff' }}>Code</span>
-              <span style={{ color: '#14B8A8' }}>Learn</span>
+              <span style={{ color: '#fff' }}>Academy </span>
+              <span style={{ color: '#14B8A8' }}>Journal</span>
             </span>
           </Link>
 
