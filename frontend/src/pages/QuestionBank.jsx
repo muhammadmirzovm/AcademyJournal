@@ -155,8 +155,8 @@ export default function QuestionBank() {
               <button onClick={handleAddTopic} style={{ flex: 1, padding: '4px 0', borderRadius: 5, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
                 <Check size={11} /> {t('quiz.add')}
               </button>
-              <button onClick={() => setAddingTopic(false)} style={{ flex: 1, padding: '4px 0', borderRadius: 5, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer' }}>
-                <X size={11} />
+              <button onClick={() => setAddingTopic(false)} style={{ flex: 1, padding: '4px 0', borderRadius: 5, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                <X size={11} /> {t('quiz.cancel')}
               </button>
             </div>
           </div>
@@ -259,7 +259,7 @@ export default function QuestionBank() {
       </div>
 
       <QuestionModal open={showQModal} onClose={() => { setShowQModal(false); setEditingQ(null) }}
-        editing={editingQ} topics={topics.filter(tp => tp.created_by_id === user?.id)} onSave={handleSaveQuestion} />
+        editing={editingQ} topics={topics} onSave={handleSaveQuestion} />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
