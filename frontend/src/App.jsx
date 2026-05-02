@@ -16,6 +16,7 @@ import LessonDetail from './pages/LessonDetail'
 import Profile from './pages/Profile'
 import QuestionBank from './pages/QuestionBank'
 import GameBoard from './pages/GameBoard'
+import InviteLanding from './pages/InviteLanding'
 import NotFound from './pages/NotFound'
 
 function AppShell() {
@@ -44,8 +45,9 @@ function AppShell() {
             <Route path="/groups/:groupId/lessons/:lessonId" element={<ProtectedRoute><LessonDetail /></ProtectedRoute>} />
             <Route path="/groups/:id/games/:gameId" element={<ProtectedRoute><GameBoard /></ProtectedRoute>} />
             <Route path="/questions" element={<ProtectedRoute><QuestionBank /></ProtectedRoute>} />
-            <Route path="/profile/:id" element={<Profile />} />
-            <Route path="*"          element={<NotFound />} />
+            <Route path="/profile/:id"        element={<Profile />} />
+            <Route path="/invite/:token"     element={<InviteLanding />} />
+            <Route path="*"                  element={<NotFound />} />
           </Routes>
         </Layout>
       )}

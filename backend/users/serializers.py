@@ -8,7 +8,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
 
     class Meta:
-        model = User
+        model  = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'password', 'role')
 
     def create(self, validated_data):
@@ -16,11 +16,17 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    academy_name  = serializers.CharField(source='academy.name', read_only=True)
+    academy_color = serializers.CharField(source='academy.primary_color', read_only=True)
+
     class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'bio')
+        model  = User
+        fields = (
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'role', 'bio', 'academy', 'academy_name', 'academy_color',
+        )
 
 
 class UserStatsSerializer(serializers.Serializer):
-    score_trend = serializers.ListField()
+    score_trend        = serializers.ListField()
     attendance_summary = serializers.DictField()
