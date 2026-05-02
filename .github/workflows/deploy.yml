@@ -15,17 +15,4 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - run: |
-          python3 -c "
-          import os, yaml, pathlib
-          token = os.environ['TOKEN']
-          home = pathlib.Path.home()
-          for path in [home/'.fly'/'config.yml', home/'.config'/'fly'/'config.yml']:
-              path.parent.mkdir(parents=True, exist_ok=True)
-              yaml.dump({'access_token': token}, open(path, 'w'))
-              print(f'Written {path}: {path.stat().st_size} bytes')
-          "
-          flyctl auth whoami
-          flyctl deploy
-        env:
-          TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - run: env | grep -iE "fly|config|home" | sort
