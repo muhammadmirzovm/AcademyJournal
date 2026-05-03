@@ -548,16 +548,20 @@ function InvitesTab({ academy, userRole }) {
 export default function Settings() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('academy')
-  const [academy, setAcademy]     = useState(user?.academy ? { id: user.academy, name: user.academy_name, primary_color: user.academy_color } : null)
+  const [academy, setAcademy]     = useState(null)
   const [fetched, setFetched]     = useState(false)
 
   useEffect(() => {
-    if (user?.academy && !fetched) {
-      api.get('/academy/').then(r => { setAcademy(r.data); setFetched(true) }).catch(() => setFetched(true))
+    if (!user) return
+    if (user.academy) {
+      api.get('/academy/')
+        .then(r => setAcademy(r.data))
+        .catch(() => {})
+        .finally(() => setFetched(true))
     } else {
       setFetched(true)
     }
-  }, [user])
+  }, [user?.id])
 
   if (!user) return null
 
