@@ -41,12 +41,14 @@ export default function Navbar() {
 
   const navLinks = user ? [
     { to: '/dashboard',  label: t('nav.dashboard'),  icon: <LayoutDashboard size={15} /> },
-    { to: '/groups',     label: t('nav.groups'),     icon: <Users size={15} /> },
+    ...(user.role === 'teacher' || user.role === 'admin'
+      ? [{ to: '/groups', label: t('nav.groups'), icon: <Users size={15} /> }]
+      : []),
     ...(user.role === 'teacher'
       ? [{ to: '/questions', label: t('nav.questions'), icon: <BookMarked size={15} /> }]
       : []),
     ...(user.role === 'admin' || user.role === 'teacher'
-      ? [{ to: '/settings', label: 'Settings', icon: <Settings size={15} /> }]
+      ? [{ to: '/settings', label: t('nav.settings'), icon: <Settings size={15} /> }]
       : []),
   ] : []
 
@@ -212,7 +214,7 @@ export default function Navbar() {
 
               {/* Language section */}
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: 8, paddingTop: 14 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '0 12px', marginBottom: 6 }}>Language</p>
+                <p style={{ fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '0 12px', marginBottom: 6 }}>{t('nav.language')}</p>
                 <div style={{ display: 'flex', gap: 6, padding: '0 4px' }}>
                   {LANGS.map(l => (
                     <button key={l.code} onClick={() => setLang(l.code)}

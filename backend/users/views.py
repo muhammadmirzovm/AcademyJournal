@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
 from .serializers import RegisterSerializer, UserSerializer
@@ -46,11 +47,20 @@ class MeView(APIView):
 class ProfileView(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_object(self):
+        target = super().get_object()
+        viewer = self.request.user
+        # Admin/teacher profiles are private — only admins, teachers, or the owner can view
+        if target.role in ('admin', 'teacher') and viewer.role not in ('admin', 'teacher') and viewer.pk != target.pk:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('You do not have permission to view this profile.')
+        return target
 
 
 class UserStatsView(APIView):
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, pk):
         try:
@@ -131,6 +141,71 @@ class UserStatsView(APIView):
                 'total':   total,
             }
         })
+
+
+class ParentChildrenView(APIView):
+    """GET  — parent sees their linked children.
+       POST — admin/teacher links an existing parent to an existing student."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        if request.user.role != 'parent':
+            return Response({'detail': 'Only parents can access this.'}, status=403)
+        from .models import ParentStudent
+        links = ParentStudent.objects.filter(parent=request.user).select_related('student')
+        children = []
+        for link in links:
+            s = link.student
+            full = f'{s.first_name} {s.last_name}'.strip()
+            children.append({
+                'id':         s.id,
+                'username':   s.username,
+                'first_name': s.first_name,
+                'last_name':  s.last_name,
+                'display_name': full or s.username,
+            })
+        return Response(children)
+
+    def post(self, request):
+        user = request.user
+        if user.role not in ('admin', 'teacher'):
+            return Response({'detail': 'Only admins and teachers can link children.'}, status=403)
+        if not user.academy:
+            return Response({'detail': 'No academy.'}, status=400)
+
+        parent_id  = request.data.get('parent')
+        student_id = request.data.get('student')
+        if not parent_id or not student_id:
+            return Response({'detail': 'parent and student are required.'}, status=400)
+
+        from .models import ParentStudent
+        from django.contrib.auth import get_user_model
+        U = get_user_model()
+        parent  = get_object_or_404(U, pk=parent_id,  academy=user.academy, role='parent')
+        student = get_object_or_404(U, pk=student_id, academy=user.academy, role='student')
+        _, created = ParentStudent.objects.get_or_create(parent=parent, student=student)
+        return Response({'detail': 'Linked.' if created else 'Already linked.'}, status=201 if created else 200)
+
+    def delete(self, request):
+        user = request.user
+        if user.role not in ('admin', 'teacher'):
+            return Response({'detail': 'Only admins and teachers can unlink children.'}, status=403)
+        if not user.academy:
+            return Response({'detail': 'No academy.'}, status=400)
+
+        parent_id  = request.data.get('parent')
+        student_id = request.data.get('student')
+        if not parent_id or not student_id:
+            return Response({'detail': 'parent and student are required.'}, status=400)
+
+        from .models import ParentStudent
+        deleted, _ = ParentStudent.objects.filter(
+            parent_id=parent_id, student_id=student_id,
+            parent__academy=user.academy,
+        ).delete()
+        if deleted:
+            return Response(status=204)
+        return Response({'detail': 'Link not found.'}, status=404)
 
 
 class OnlineCountView(APIView):

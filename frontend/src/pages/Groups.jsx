@@ -13,7 +13,7 @@ export default function Groups() {
   const { user } = useAuth()
   const { show } = useToast()
   const { t } = useTranslation()
-  const isTeacher = user?.role === 'teacher'
+  const isTeacher = user?.role === 'teacher' || user?.role === 'admin'
 
   const [groups, setGroups]         = useState([])
   const [loading, setLoading]       = useState(true)

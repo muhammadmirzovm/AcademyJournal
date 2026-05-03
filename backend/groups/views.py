@@ -12,9 +12,9 @@ from .serializers import (
 )
 
 
-class IsTeacher(permissions.BasePermission):
+class IsTeacherOrAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'teacher'
+        return request.user.is_authenticated and request.user.role in ('teacher', 'admin')
 
 
 # ── Groups ────────────────────────────────────────────────────────────────────
@@ -24,11 +24,13 @@ class GroupListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsTeacher()]
+            return [IsTeacherOrAdmin()]
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'admin':
+            return Group.objects.filter(teacher__academy=user.academy)
         if user.role == 'teacher':
             return Group.objects.filter(teacher=user)
         return Group.objects.filter(memberships__student=user)
@@ -46,14 +48,14 @@ class GroupDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         group = self.get_object()
-        if group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can edit this group.'}, status=403)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can edit this group.'}, status=403)
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         group = self.get_object()
-        if group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can delete this group.'}, status=403)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can delete this group.'}, status=403)
         return super().destroy(request, *args, **kwargs)
 
 
@@ -155,9 +157,9 @@ class LessonListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         group = get_object_or_404(Group, pk=self.kwargs['group_pk'])
-        if group.teacher != self.request.user:
+        if group.teacher != self.request.user and self.request.user.role != 'admin':
             from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('Only the teacher can add lessons.')
+            raise PermissionDenied('Only the teacher or admin can add lessons.')
         lesson = serializer.save(group=group)
         for membership in group.memberships.all():
             Attendance.objects.get_or_create(lesson=lesson, student=membership.student, defaults={'present': False})
@@ -172,14 +174,14 @@ class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         lesson = self.get_object()
-        if lesson.group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can edit lessons.'}, status=403)
+        if lesson.group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can edit lessons.'}, status=403)
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         lesson = self.get_object()
-        if lesson.group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can delete lessons.'}, status=403)
+        if lesson.group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can delete lessons.'}, status=403)
         return super().destroy(request, *args, **kwargs)
 
 
@@ -195,8 +197,8 @@ class AttendanceView(APIView):
 
     def post(self, request, group_pk, lesson_pk):
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
-        if lesson.group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can mark attendance.'}, status=403)
+        if lesson.group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can mark attendance.'}, status=403)
 
         serializer = BulkAttendanceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -223,8 +225,8 @@ class ScoreView(APIView):
 
     def post(self, request, group_pk, lesson_pk):
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
-        if lesson.group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can enter scores.'}, status=403)
+        if lesson.group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can enter scores.'}, status=403)
 
         serializer = BulkScoreSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -313,8 +315,8 @@ class MembershipDetailView(APIView):
 
     def patch(self, request, pk, member_pk):
         group = get_object_or_404(Group, pk=pk)
-        if group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can update membership.'}, status=403)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can update membership.'}, status=403)
         membership = get_object_or_404(GroupMembership, pk=member_pk, group=group)
 
         joined_at = request.data.get('joined_at')
@@ -347,8 +349,8 @@ class MembershipDetailView(APIView):
 
     def delete(self, request, pk, member_pk):
         group = get_object_or_404(Group, pk=pk)
-        if group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can remove students.'}, status=403)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can remove students.'}, status=403)
         membership = get_object_or_404(GroupMembership, pk=member_pk, group=group)
         membership.delete()
         return Response(status=204)
@@ -361,8 +363,8 @@ class CoinView(APIView):
 
     def post(self, request, pk):
         group = get_object_or_404(Group, pk=pk)
-        if group.teacher != request.user:
-            return Response({'detail': 'Only the teacher can manage coins.'}, status=403)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can manage coins.'}, status=403)
 
         student_id = request.data.get('student')
         amount     = request.data.get('amount')

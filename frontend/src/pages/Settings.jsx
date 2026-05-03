@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import {
   Building2, Link2, Plus, Copy, Check, Trash2,
   Loader2, Upload, Users, GraduationCap,
@@ -10,16 +11,16 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
 const ALL_TABS = [
-  { id: 'academy',  label: 'Academy',  icon: Building2, roles: ['admin', 'teacher', 'student', 'parent'] },
-  { id: 'members',  label: 'Members',  icon: Users,     roles: ['admin', 'teacher'] },
-  { id: 'invites',  label: 'Invites',  icon: Link2,     roles: ['admin', 'teacher'] },
+  { id: 'academy', icon: Building2, roles: ['admin', 'teacher', 'student', 'parent'] },
+  { id: 'members', icon: Users,     roles: ['admin', 'teacher'] },
+  { id: 'invites', icon: Link2,     roles: ['admin', 'teacher'] },
 ]
 
-const ALL_ROLE_OPTIONS = [
-  { value: 'student', label: 'Student',  icon: GraduationCap, color: '#14B8A8' },
-  { value: 'teacher', label: 'Teacher',  icon: Users,          color: '#8B5CF6' },
-  { value: 'admin',   label: 'Admin',    icon: Shield,         color: '#F59E0B' },
-  { value: 'parent',  label: 'Parent',   icon: Users,          color: '#EC4899' },
+const ROLE_OPTION_DEFS = [
+  { value: 'student', icon: GraduationCap, color: '#14B8A8' },
+  { value: 'teacher', icon: Users,          color: '#8B5CF6' },
+  { value: 'admin',   icon: Shield,         color: '#F59E0B' },
+  { value: 'parent',  icon: Users,          color: '#EC4899' },
 ]
 
 const ROLE_OPTIONS_BY_ROLE = {
@@ -34,6 +35,7 @@ const PRESET_COLORS = [
 ]
 
 function CopyButton({ text }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const copy = () => {
     navigator.clipboard.writeText(text)
@@ -50,13 +52,14 @@ function CopyButton({ text }) {
         fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
       }}>
       {copied ? <Check size={12} /> : <Copy size={12} />}
-      {copied ? 'Copied!' : 'Copy'}
+      {copied ? t('groups.copied') : t('groups.copy')}
     </button>
   )
 }
 
 // ── Create Academy ─────────────────────────────────────────────────────────────
 function CreateAcademy({ onCreated }) {
+  const { t } = useTranslation()
   const { show }  = useToast()
   const { setUser, user } = useAuth()
   const [form, setForm]   = useState({ name: '', primary_color: '#0D9488' })
@@ -65,7 +68,7 @@ function CreateAcademy({ onCreated }) {
 
   const submit = async e => {
     e.preventDefault()
-    if (!form.name.trim()) { setErrors({ name: 'Academy name is required' }); return }
+    if (!form.name.trim()) { setErrors({ name: t('settings.err_name_required') }); return }
     setLoading(true)
     try {
       const slug = form.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -81,7 +84,7 @@ function CreateAcademy({ onCreated }) {
         Object.entries(d).forEach(([k, v]) => { mapped[k] = Array.isArray(v) ? v[0] : v })
         setErrors(mapped)
       } else {
-        show('Failed to create academy.', 'error')
+        show(t('settings.err_save'), 'error')
       }
     } finally { setLoading(false) }
   }
@@ -99,20 +102,20 @@ function CreateAcademy({ onCreated }) {
           <Building2 size={32} color="#fff" />
         </div>
         <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
-          Create your Academy
+          {t('settings.create_academy_title')}
         </h2>
         <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-          Set up your academy to invite teachers and students
+          {t('settings.create_academy_sub')}
         </p>
       </div>
 
       <div style={{ background: 'var(--card)', borderRadius: 20, border: '1px solid var(--border)', padding: 28, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
-            <label style={labelStyle}>Academy Name</label>
+            <label style={labelStyle}>{t('settings.academy_name')}</label>
             <input
               style={{ ...inputStyle(!!errors.name) }}
-              placeholder="e.g. Bright Minds Academy"
+              placeholder={t('settings.academy_name_placeholder')}
               value={form.name}
               onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors({}) }}
             />
@@ -120,7 +123,7 @@ function CreateAcademy({ onCreated }) {
           </div>
 
           <div>
-            <label style={labelStyle}>Brand Color</label>
+            <label style={labelStyle}>{t('settings.brand_color')}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               {PRESET_COLORS.map(c => (
                 <button key={c} type="button" onClick={() => setForm(f => ({ ...f, primary_color: c }))}
@@ -152,8 +155,8 @@ function CreateAcademy({ onCreated }) {
               boxShadow: '0 8px 24px rgba(20,184,168,0.3)',
             }}>
             {loading
-              ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> Creating…</>
-              : <><Sparkles size={16} /> Create Academy</>
+              ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> {t('settings.creating')}</>
+              : <><Sparkles size={16} /> {t('settings.create_btn')}</>
             }
           </motion.button>
         </form>
@@ -164,6 +167,7 @@ function CreateAcademy({ onCreated }) {
 
 // ── Academy Tab ────────────────────────────────────────────────────────────────
 function AcademyTab({ academy, onUpdated }) {
+  const { t } = useTranslation()
   const { show }  = useToast()
   const logoRef   = useRef()
   const [form, setForm]       = useState({ name: academy.name, primary_color: academy.primary_color })
@@ -180,7 +184,7 @@ function AcademyTab({ academy, onUpdated }) {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
-      show('Failed to save changes.', 'error')
+      show(t('settings.err_save'), 'error')
     } finally { setLoading(false) }
   }
 
@@ -192,9 +196,9 @@ function AcademyTab({ academy, onUpdated }) {
       // Do NOT set Content-Type manually — browser must set it with the boundary
       const { data } = await api.patch('/academy/', fd)
       onUpdated(data)
-      show('Logo updated!', 'success')
+      show(t('settings.logo_updated'), 'success')
     } catch {
-      show('Failed to upload logo.', 'error')
+      show(t('settings.err_logo_upload'), 'error')
     } finally { setLogoLoading(false) }
   }
 
@@ -203,9 +207,9 @@ function AcademyTab({ academy, onUpdated }) {
     try {
       const { data } = await api.delete('/academy/logo/')
       onUpdated(data)
-      show('Logo removed.', 'success')
+      show(t('settings.logo_removed'), 'success')
     } catch {
-      show('Failed to remove logo.', 'error')
+      show(t('settings.err_logo_remove'), 'error')
     } finally { setLogoLoading(false) }
   }
 
@@ -213,7 +217,7 @@ function AcademyTab({ academy, onUpdated }) {
     <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Logo */}
       <div>
-        <label style={labelStyle}>Academy Logo</label>
+        <label style={labelStyle}>{t('settings.academy_logo')}</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{
             width: 80, height: 80, borderRadius: 18,
@@ -242,7 +246,7 @@ function AcademyTab({ academy, onUpdated }) {
                 ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />
                 : <Upload size={14} />
               }
-              {academy.logo_url ? 'Change Logo' : 'Upload Logo'}
+              {academy.logo_url ? t('settings.change_logo') : t('settings.upload_logo')}
             </button>
             {academy.logo_url && (
               <button type="button" onClick={removeLogo} disabled={logoLoading}
@@ -253,24 +257,24 @@ function AcademyTab({ academy, onUpdated }) {
                   fontWeight: 600, cursor: logoLoading ? 'not-allowed' : 'pointer',
                 }}>
                 <Trash2 size={14} />
-                Remove Logo
+                {t('settings.remove_logo')}
               </button>
             )}
-            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>PNG, JPG up to 2MB</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('settings.logo_hint')}</p>
           </div>
         </div>
       </div>
 
       {/* Name */}
       <div>
-        <label style={labelStyle}>Academy Name</label>
+        <label style={labelStyle}>{t('settings.academy_name')}</label>
         <input style={inputStyle(false)} value={form.name}
           onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
       </div>
 
       {/* Color */}
       <div>
-        <label style={labelStyle}>Brand Color</label>
+        <label style={labelStyle}>{t('settings.brand_color')}</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
           {PRESET_COLORS.map(c => (
             <button key={c} type="button" onClick={() => setForm(f => ({ ...f, primary_color: c }))}
@@ -301,8 +305,8 @@ function AcademyTab({ academy, onUpdated }) {
             <Building2 size={18} color="#fff" />
           </div>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: form.primary_color }}>{form.name || 'Academy Name'}</p>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Invite page preview</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: form.primary_color }}>{form.name || t('settings.academy_name')}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('settings.invite_preview')}</p>
           </div>
         </div>
       </div>
@@ -319,10 +323,10 @@ function AcademyTab({ academy, onUpdated }) {
           transition: 'background 0.3s',
         }}>
         {loading
-          ? <><Loader2 size={15} style={{ animation: 'spin 0.7s linear infinite' }} /> Saving…</>
+          ? <><Loader2 size={15} style={{ animation: 'spin 0.7s linear infinite' }} /> {t('settings.saving')}</>
           : saved
-            ? <><Check size={15} /> Saved!</>
-            : 'Save Changes'
+            ? <><Check size={15} /> {t('settings.saved')}</>
+            : t('settings.save_changes')
         }
       </motion.button>
     </form>
@@ -338,11 +342,15 @@ const ROLE_BADGE = {
 }
 
 function MembersTab({ userRole }) {
+  const { t } = useTranslation()
   const { show } = useToast()
-  const [members, setMembers]   = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [removing, setRemoving] = useState(null)
-  const [search, setSearch]     = useState('')
+  const [members, setMembers]     = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [removing, setRemoving]   = useState(null)
+  const [search, setSearch]       = useState('')
+  const [linking, setLinking]     = useState(null)   // parent member id being linked
+  const [linkStudent, setLinkStudent] = useState('')
+  const [linkSaving, setLinkSaving]   = useState(false)
 
   useEffect(() => {
     api.get('/academy/members/')
@@ -352,14 +360,15 @@ function MembersTab({ userRole }) {
   }, [])
 
   const removeMember = async (member) => {
-    if (!window.confirm(`Remove ${member.first_name || member.username} from the academy?`)) return
+    const name = member.first_name || member.username
+    if (!window.confirm(t('settings.remove_confirm', { name }))) return
     setRemoving(member.id)
     try {
       await api.delete(`/academy/members/${member.id}/`)
       setMembers(prev => prev.filter(m => m.id !== member.id))
-      show('Member removed.', 'success')
+      show(t('settings.member_removed'), 'success')
     } catch (err) {
-      show(err.response?.data?.detail || 'Failed to remove member.', 'error')
+      show(err.response?.data?.detail || t('settings.err_remove_member'), 'error')
     } finally { setRemoving(null) }
   }
 
@@ -367,6 +376,19 @@ function MembersTab({ userRole }) {
     if (member.role === 'admin') return userRole === 'admin'
     if (member.role === 'teacher') return userRole === 'admin'
     return true // student/parent: both admin and teacher can remove
+  }
+
+  const linkChild = async (parentId) => {
+    if (!linkStudent) return
+    setLinkSaving(true)
+    try {
+      await api.post('/auth/link-child/', { parent: parentId, student: linkStudent })
+      show(t('settings.child_linked'), 'success')
+      setLinking(null)
+      setLinkStudent('')
+    } catch (err) {
+      show(err.response?.data?.detail || t('settings.err_link_child'), 'error')
+    } finally { setLinkSaving(false) }
   }
 
   const filtered = members.filter(m =>
@@ -383,7 +405,7 @@ function MembersTab({ userRole }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Search */}
       <input
-        placeholder="Search members…"
+        placeholder={t('settings.search_members')}
         value={search} onChange={e => setSearch(e.target.value)}
         style={{ ...inputStyle(false), fontSize: 14 }}
       />
@@ -391,8 +413,8 @@ function MembersTab({ userRole }) {
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
           <Users size={36} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
-          <p style={{ fontWeight: 600 }}>{search ? 'No results' : 'No members yet'}</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>Invite people using the Invites tab</p>
+          <p style={{ fontWeight: 600 }}>{search ? t('settings.no_results') : t('settings.no_members')}</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>{t('settings.no_members_sub')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -425,15 +447,15 @@ function MembersTab({ userRole }) {
                     </span>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                      background: badge.bg, color: badge.color, textTransform: 'capitalize',
+                      background: badge.bg, color: badge.color,
                     }}>
-                      {m.role}
+                      {t(`settings.role_${m.role}`, { defaultValue: m.role })}
                     </span>
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                     @{m.username}
                     {m.invited_by && (
-                      <span> · invited by <strong>{m.invited_by.first_name || m.invited_by.username}</strong></span>
+                      <span> · {t('settings.invited_by')} <strong>{m.invited_by.first_name || m.invited_by.username}</strong></span>
                     )}
                   </p>
                 </div>
@@ -442,6 +464,39 @@ function MembersTab({ userRole }) {
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0, marginRight: 8 }}>
                   {new Date(m.date_joined).toLocaleDateString()}
                 </div>
+
+                {/* Link child button (parents only) */}
+                {m.role === 'parent' && (
+                  linking === m.id ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <select value={linkStudent} onChange={e => setLinkStudent(e.target.value)}
+                        style={{ fontSize: 12, padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', maxWidth: 140 }}>
+                        <option value="">{t('settings.pick_student')}</option>
+                        {members.filter(s => s.role === 'student').map(s => (
+                          <option key={s.id} value={s.id}>{s.first_name ? `${s.first_name} ${s.last_name}` : s.username}</option>
+                        ))}
+                      </select>
+                      <button onClick={() => linkChild(m.id)} disabled={!linkStudent || linkSaving}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: 'none', background: '#EC4899', color: '#fff', fontSize: 12, fontWeight: 700, cursor: (!linkStudent || linkSaving) ? 'not-allowed' : 'pointer', opacity: (!linkStudent || linkSaving) ? 0.6 : 1 }}>
+                        {linkSaving ? <Loader2 size={11} style={{ animation: 'spin 0.7s linear infinite' }} /> : t('settings.link')}
+                      </button>
+                      <button onClick={() => { setLinking(null); setLinkStudent('') }}
+                        style={{ display: 'flex', alignItems: 'center', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setLinking(m.id); setLinkStudent('') }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
+                        borderRadius: 9, border: '1px solid rgba(236,72,153,0.25)',
+                        background: 'rgba(236,72,153,0.07)', color: '#EC4899',
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
+                      }}>
+                      + {t('settings.link_child')}
+                    </button>
+                  )
+                )}
 
                 {/* Remove button */}
                 {canRemove(m) && (
@@ -459,7 +514,7 @@ function MembersTab({ userRole }) {
                       ? <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} />
                       : <UserX size={12} />
                     }
-                    Remove
+                    {t('settings.remove')}
                   </button>
                 )}
               </motion.div>
@@ -473,15 +528,17 @@ function MembersTab({ userRole }) {
 
 // ── Invites Tab ────────────────────────────────────────────────────────────────
 function InvitesTab({ academy, userRole }) {
+  const { t } = useTranslation()
   const { show } = useToast()
   const [invites, setInvites]   = useState([])
   const [groups, setGroups]     = useState([])
+  const [students, setStudents] = useState([])
   const [loadingList, setLoadingList] = useState(true)
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ role: 'student', group: '', max_uses: 1, days_valid: 7, note: '' })
+  const [form, setForm] = useState({ role: 'student', group: '', student: '', max_uses: 1, days_valid: 7, note: '' })
 
-  const allowedRoles = ALL_ROLE_OPTIONS.filter(r =>
+  const allowedRoleDefs = ROLE_OPTION_DEFS.filter(r =>
     (ROLE_OPTIONS_BY_ROLE[userRole] || ['student', 'parent']).includes(r.value)
   )
 
@@ -489,9 +546,11 @@ function InvitesTab({ academy, userRole }) {
     Promise.all([
       api.get('/invites/').catch(() => ({ data: [] })),
       api.get('/groups/').catch(() => ({ data: [] })),
-    ]).then(([inv, grp]) => {
+      api.get('/academy/members/').catch(() => ({ data: [] })),
+    ]).then(([inv, grp, mem]) => {
       setInvites(inv.data)
       setGroups(grp.data)
+      setStudents((mem.data || []).filter(m => m.role === 'student'))
     }).finally(() => setLoadingList(false))
   }, [])
 
@@ -501,13 +560,14 @@ function InvitesTab({ academy, userRole }) {
     try {
       const payload = { ...form, max_uses: Number(form.max_uses), days_valid: Number(form.days_valid) }
       if (!payload.group) delete payload.group
+      if (payload.role !== 'parent' || !payload.student) delete payload.student
       const { data } = await api.post('/invites/create/', payload)
       setInvites(prev => [data, ...prev])
       setShowForm(false)
-      setForm({ role: 'student', group: '', max_uses: 1, days_valid: 7, note: '' })
-      show('Invite link created!', 'success')
+      setForm({ role: 'student', group: '', student: '', max_uses: 1, days_valid: 7, note: '' })
+      show(t('settings.invite_created'), 'success')
     } catch {
-      show('Failed to create invite.', 'error')
+      show(t('settings.err_invite_create'), 'error')
     } finally { setCreating(false) }
   }
 
@@ -530,7 +590,7 @@ function InvitesTab({ academy, userRole }) {
             boxShadow: showForm ? 'none' : `0 4px 16px ${color}44`,
           }}>
           <Plus size={15} />
-          New Invite Link
+          {t('settings.new_invite')}
         </motion.button>
       </div>
 
@@ -539,14 +599,14 @@ function InvitesTab({ academy, userRole }) {
         {showForm && (
           <motion.div initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.98 }}
             style={{ background: 'var(--card)', borderRadius: 16, border: `1.5px solid ${color}44`, padding: 24 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 18 }}>Generate Invite Link</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 18 }}>{t('settings.generate_invite')}</h3>
             <form onSubmit={createInvite} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Role picker */}
               <div>
-                <label style={labelStyle}>Role</label>
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${allowedRoles.length}, 1fr)`, gap: 8 }}>
-                  {allowedRoles.map(r => (
+                <label style={labelStyle}>{t('settings.role')}</label>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${allowedRoleDefs.length}, 1fr)`, gap: 8 }}>
+                  {allowedRoleDefs.map(r => (
                     <button key={r.value} type="button" onClick={() => setForm(f => ({ ...f, role: r.value }))}
                       style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
@@ -555,7 +615,9 @@ function InvitesTab({ academy, userRole }) {
                         cursor: 'pointer', transition: 'all 0.15s',
                       }}>
                       <r.icon size={16} style={{ color: form.role === r.value ? r.color : 'var(--text-muted)' }} />
-                      <span style={{ fontSize: 11, fontWeight: 700, color: form.role === r.value ? r.color : 'var(--text-muted)' }}>{r.label}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: form.role === r.value ? r.color : 'var(--text-muted)' }}>
+                        {t(`settings.role_${r.value}`)}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -564,35 +626,51 @@ function InvitesTab({ academy, userRole }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 {/* Max uses */}
                 <div>
-                  <label style={labelStyle}><Hash size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Max Uses</label>
+                  <label style={labelStyle}><Hash size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />{t('settings.max_uses')}</label>
                   <input type="number" min="1" max="500" style={inputStyle(false)}
                     value={form.max_uses} onChange={e => setForm(f => ({ ...f, max_uses: e.target.value }))} />
                 </div>
 
                 {/* Days valid */}
                 <div>
-                  <label style={labelStyle}><Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Valid (days)</label>
+                  <label style={labelStyle}><Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />{t('settings.valid_days')}</label>
                   <input type="number" min="1" max="365" style={inputStyle(false)}
                     value={form.days_valid} onChange={e => setForm(f => ({ ...f, days_valid: e.target.value }))} />
                 </div>
               </div>
 
-              {/* Group (optional) */}
+              {/* Group (optional, students only) */}
               {groups.length > 0 && form.role === 'student' && (
                 <div>
-                  <label style={labelStyle}>Auto-join Group (optional)</label>
+                  <label style={labelStyle}>{t('settings.autojoin_group')}</label>
                   <select style={{ ...inputStyle(false), appearance: 'none' }}
                     value={form.group} onChange={e => setForm(f => ({ ...f, group: e.target.value }))}>
-                    <option value="">No group</option>
+                    <option value="">{t('settings.no_group')}</option>
                     {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Student link (parents only) */}
+              {form.role === 'parent' && (
+                <div>
+                  <label style={labelStyle}>{t('settings.link_student')}</label>
+                  <select style={{ ...inputStyle(false), appearance: 'none' }}
+                    value={form.student} onChange={e => setForm(f => ({ ...f, student: e.target.value }))}>
+                    <option value="">{t('settings.no_student')}</option>
+                    {students.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {(s.first_name || s.last_name) ? `${s.first_name} ${s.last_name}`.trim() : s.username}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
 
               {/* Note */}
               <div>
-                <label style={labelStyle}>Note (shown on invite page)</label>
-                <input style={inputStyle(false)} placeholder="e.g. Welcome to Spring 2025 class!"
+                <label style={labelStyle}>{t('settings.invite_note')}</label>
+                <input style={inputStyle(false)} placeholder={t('settings.invite_note_placeholder')}
                   value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
               </div>
 
@@ -605,11 +683,14 @@ function InvitesTab({ academy, userRole }) {
                     cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   }}>
-                  {creating ? <><Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Creating…</> : <><Link2 size={14} /> Create Link</>}
+                  {creating
+                    ? <><Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> {t('settings.creating')}</>
+                    : <><Link2 size={14} /> {t('settings.create_link')}</>
+                  }
                 </motion.button>
                 <button type="button" onClick={() => setShowForm(false)}
                   style={{ padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.12)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
-                  Cancel
+                  {t('settings.cancel')}
                 </button>
               </div>
             </form>
@@ -625,13 +706,13 @@ function InvitesTab({ academy, userRole }) {
       ) : invites.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
           <Link2 size={36} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
-          <p style={{ fontWeight: 600 }}>No invite links yet</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>Create one above to invite people to your academy</p>
+          <p style={{ fontWeight: 600 }}>{t('settings.no_invites')}</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>{t('settings.no_invites_sub')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {invites.map(inv => {
-            const roleOpt  = ALL_ROLE_OPTIONS.find(r => r.value === inv.role) || ALL_ROLE_OPTIONS[0]
+            const roleDef  = ROLE_OPTION_DEFS.find(r => r.value === inv.role) || ROLE_OPTION_DEFS[0]
             const expired  = !inv.is_valid
             const usedUp   = inv.use_count >= inv.max_uses
             const url      = inviteUrl(inv.token)
@@ -639,27 +720,28 @@ function InvitesTab({ academy, userRole }) {
               <motion.div key={inv.id} layout
                 style={{
                   padding: '14px 18px', borderRadius: 14,
-                  border: `1px solid ${expired || usedUp ? 'rgba(0,0,0,0.08)' : roleOpt.color + '33'}`,
-                  background: expired || usedUp ? 'rgba(0,0,0,0.02)' : `${roleOpt.color}08`,
+                  border: `1px solid ${expired || usedUp ? 'rgba(0,0,0,0.08)' : roleDef.color + '33'}`,
+                  background: expired || usedUp ? 'rgba(0,0,0,0.02)' : `${roleDef.color}08`,
                   opacity: expired || usedUp ? 0.6 : 1,
                 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                    background: expired || usedUp ? 'rgba(0,0,0,0.06)' : `${roleOpt.color}22`,
+                    background: expired || usedUp ? 'rgba(0,0,0,0.06)' : `${roleDef.color}22`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <roleOpt.icon size={16} style={{ color: expired || usedUp ? 'var(--text-muted)' : roleOpt.color }} />
+                    <roleDef.icon size={16} style={{ color: expired || usedUp ? 'var(--text-muted)' : roleDef.color }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: expired || usedUp ? 'var(--text-muted)' : roleOpt.color, textTransform: 'capitalize' }}>
-                        {inv.role}
+                      <span style={{ fontSize: 13, fontWeight: 700, color: expired || usedUp ? 'var(--text-muted)' : roleDef.color }}>
+                        {t(`settings.role_${inv.role}`, { defaultValue: inv.role })}
                       </span>
-                      {inv.group && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.06)', color: 'var(--text-muted)' }}>Group attached</span>}
+                      {inv.group && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.06)', color: 'var(--text-muted)' }}>{t('settings.group_attached')}</span>}
+                      {inv.student_name && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'rgba(236,72,153,0.1)', color: '#EC4899' }}>👤 {inv.student_name}</span>}
                       {(expired || usedUp) && (
                         <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
-                          {usedUp ? 'Used up' : 'Expired'}
+                          {usedUp ? t('settings.used_up') : t('settings.expired')}
                         </span>
                       )}
                     </div>
@@ -668,10 +750,10 @@ function InvitesTab({ academy, userRole }) {
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Users size={10} /> {inv.use_count}/{inv.max_uses} used
+                        <Users size={10} /> {inv.use_count}/{inv.max_uses} {t('settings.used')}
                       </span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={10} /> Expires {new Date(inv.expires_at).toLocaleDateString()}
+                        <Clock size={10} /> {t('settings.expires')} {new Date(inv.expires_at).toLocaleDateString()}
                       </span>
                       {inv.note && <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>"{inv.note}"</span>}
                     </div>
@@ -689,6 +771,7 @@ function InvitesTab({ academy, userRole }) {
 
 // ── Main Settings Page ─────────────────────────────────────────────────────────
 export default function Settings() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('academy')
   const [academy, setAcademy]     = useState(null)
@@ -748,7 +831,9 @@ export default function Settings() {
           </div>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginBottom: 2 }}>{academy.name}</h1>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user.role} · Settings</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+              {t(`settings.role_${user.role}`, { defaultValue: user.role })} · {t('nav.settings')}
+            </p>
           </div>
         </div>
       </div>
@@ -766,7 +851,7 @@ export default function Settings() {
               boxShadow: activeTab === tab.id ? `0 2px 10px ${color}44` : 'none',
             }}>
             <tab.icon size={14} />
-            {tab.label}
+            {t(`settings.tab_${tab.id}`)}
           </button>
         ))}
       </div>
@@ -780,8 +865,8 @@ export default function Settings() {
                 ? <AcademyTab academy={academy} onUpdated={setAcademy} />
                 : <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
                     <AlertCircle size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.4 }} />
-                    <p style={{ fontWeight: 600 }}>Admin only</p>
-                    <p style={{ fontSize: 13, marginTop: 4 }}>Only academy admins can edit branding and settings</p>
+                    <p style={{ fontWeight: 600 }}>{t('settings.admin_only')}</p>
+                    <p style={{ fontSize: 13, marginTop: 4 }}>{t('settings.admin_only_sub')}</p>
                   </div>
               }
             </motion.div>

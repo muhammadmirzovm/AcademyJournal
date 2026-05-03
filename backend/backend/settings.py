@@ -10,6 +10,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-eagy6i18qj6t37kgub_r=
 DEBUG = os.environ.get('DEBUG', 'true').lower() == 'true'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+# Trust Fly.io / reverse-proxy HTTPS headers so build_absolute_uri returns https://
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # ── Apps ──────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',

@@ -147,7 +147,7 @@ export default function GroupDetail() {
   const [games,             setGames]             = useState([])
   const [showNewGame,       setShowNewGame]        = useState(false)
 
-  const isTeacher = user?.role === 'teacher' && group?.teacher === user?.id
+  const isTeacher = (user?.role === 'teacher' && group?.teacher === user?.id) || user?.role === 'admin'
 
   const load = async () => {
     setLoading(true)

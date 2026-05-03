@@ -54,6 +54,13 @@ class InviteToken(models.Model):
         blank=True,
         related_name='used_invites',
     )
+    student    = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='parent_invites',
+        limit_choices_to={'role': 'student'},
+    )
     note       = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
-  GraduationCap, BookOpen, Users,
+  GraduationCap, BookOpen, Users, Shield, Heart,
   Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star,
 } from 'lucide-react'
 import { getProfile, getUserStats, updateMe } from '../api/users'
@@ -20,6 +20,7 @@ export default function Profile() {
   const { user: me, setUser } = useAuth()
   const { show } = useToast()
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const isOwn = String(me?.id) === String(id)
 
   const [profile, setProfile] = useState(null)
@@ -38,6 +39,17 @@ export default function Profile() {
       getUserStats(id),
       isOwn ? getGroups() : Promise.resolve({ data: [] }),
     ]).then(([p, s, g]) => {
+      const targetRole    = p.data.role
+      const viewerRole    = me?.role
+      const viewerIsOwner = String(me?.id) === String(id)
+      if (
+        (targetRole === 'admin' || targetRole === 'teacher') &&
+        viewerRole !== 'admin' && viewerRole !== 'teacher' &&
+        !viewerIsOwner
+      ) {
+        navigate('/dashboard', { replace: true })
+        return
+      }
       setProfile(p.data)
       setBio(p.data.bio || '')
       setStats(s.data)
@@ -142,12 +154,12 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      {/* Charts — teacher vs student */}
+      {/* Charts — teacher/admin vs student vs parent */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
         style={{ marginBottom: 24 }}>
-        {stats?.role === 'teacher' ? (
+        {(profile.role === 'teacher' || profile.role === 'admin') ? (
           <TeacherStats stats={stats} />
-        ) : (
+        ) : profile.role === 'parent' ? null : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
             <div style={chartCard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
@@ -174,7 +186,7 @@ export default function Profile() {
       </motion.div>
 
       {/* Sticker shelf — students only */}
-      {stats?.role === 'student' && (
+      {profile.role === 'student' && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginBottom: 24, boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
@@ -204,8 +216,8 @@ export default function Profile() {
               >
                 <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 4 }}>{g.name}</p>
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {me?.role === 'teacher' ? <GraduationCap size={11} /> : <BookOpen size={11} />}
-                  {me?.role === 'teacher' ? t('profile.teaching') : `${g.member_count} ${t('dashboard.students')}`}
+                  {(me?.role === 'teacher' || me?.role === 'admin') ? <GraduationCap size={11} /> : <BookOpen size={11} />}
+                  {(me?.role === 'teacher' || me?.role === 'admin') ? t('profile.teaching') : `${g.member_count} ${t('dashboard.students')}`}
                 </p>
               </Link>
             ))}
@@ -247,13 +259,21 @@ function StickerShelf({ count, t }) {
   )
 }
 
+const ROLE_BADGE_MAP = {
+  teacher: { color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.3)', icon: GraduationCap, key: 'profile.teacher_badge' },
+  student: { color: '#14B8A8', bg: 'rgba(20,184,168,0.1)',  border: 'rgba(20,184,168,0.3)',  icon: BookOpen,     key: 'profile.student_badge' },
+  admin:   { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.3)',  icon: Shield,       key: 'profile.admin_badge' },
+  parent:  { color: '#EC4899', bg: 'rgba(236,72,153,0.1)',  border: 'rgba(236,72,153,0.3)',  icon: Heart,        key: 'profile.parent_badge' },
+}
+
 function RoleBadge({ role }) {
   const { t } = useTranslation()
-  const isTeacher = role === 'teacher'
+  const cfg = ROLE_BADGE_MAP[role] || ROLE_BADGE_MAP.student
+  const Icon = cfg.icon
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: isTeacher ? 'var(--accent)' : 'var(--warning)', background: isTeacher ? 'var(--accent-bg)' : 'rgba(217,119,6,0.1)', border: `1px solid ${isTeacher ? 'var(--accent)' : 'rgba(217,119,6,0.35)'}`, borderRadius: 99, padding: '3px 10px' }}>
-      {isTeacher ? <GraduationCap size={12} /> : <BookOpen size={12} />}
-      {isTeacher ? t('profile.teacher_badge') : t('profile.student_badge')}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 99, padding: '3px 10px' }}>
+      <Icon size={12} />
+      {t(cfg.key)}
     </span>
   )
 }

@@ -133,6 +133,7 @@ class InviteCreateView(APIView):
 
         role       = request.data.get('role', 'student')
         group_id   = request.data.get('group')
+        student_id = request.data.get('student')
         max_uses   = int(request.data.get('max_uses', 1))
         days_valid = int(request.data.get('days_valid', 7))
         note       = request.data.get('note', '').strip()
@@ -150,9 +151,16 @@ class InviteCreateView(APIView):
             from groups.models import Group
             group = get_object_or_404(Group, pk=group_id)
 
+        student = None
+        if student_id and role == 'parent':
+            from django.contrib.auth import get_user_model
+            User_model = get_user_model()
+            student = get_object_or_404(User_model, pk=student_id, academy=academy, role='student')
+
         invite = InviteToken.objects.create(
             academy    = academy,
             group      = group,
+            student    = student,
             role       = role,
             created_by = user,
             expires_at = timezone.now() + timedelta(days=days_valid),
@@ -181,12 +189,17 @@ class InviteVerifyView(APIView):
         if not invite.is_valid:
             return Response({'detail': 'This invite link has expired or reached its use limit.'}, status=400)
         academy_data = AcademyBrandSerializer(invite.academy, context={'request': request}).data
+        student_name = None
+        if invite.student:
+            s = invite.student
+            student_name = f'{s.first_name} {s.last_name}'.strip() or s.username
         return Response({
-            'token':      str(invite.token),
-            'role':       invite.role,
-            'academy':    academy_data,
-            'group_name': invite.group.name if invite.group else None,
-            'note':       invite.note,
+            'token':        str(invite.token),
+            'role':         invite.role,
+            'academy':      academy_data,
+            'group_name':   invite.group.name if invite.group else None,
+            'student_name': student_name,
+            'note':         invite.note,
         })
 
 
@@ -217,6 +230,10 @@ class InviteAcceptView(APIView):
                     Attendance.objects.get_or_create(
                         lesson=lesson, student=user, defaults={'present': False}
                     )
+
+        if invite.role == 'parent' and invite.student:
+            from users.models import ParentStudent
+            ParentStudent.objects.get_or_create(parent=user, student=invite.student)
 
         invite.use_count += 1
         invite.used_by.add(user)

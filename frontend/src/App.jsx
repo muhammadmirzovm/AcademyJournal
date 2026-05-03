@@ -41,14 +41,14 @@ function AppShell() {
             <Route path="/register"  element={<Register />} />
             <Route path="/login"     element={<Login />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/groups"    element={<ProtectedRoute><Groups /></ProtectedRoute>} />
-            <Route path="/groups/:id" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
-            <Route path="/groups/:groupId/lessons/:lessonId" element={<ProtectedRoute><LessonDetail /></ProtectedRoute>} />
-            <Route path="/groups/:id/games/:gameId" element={<ProtectedRoute><GameBoard /></ProtectedRoute>} />
-            <Route path="/questions" element={<ProtectedRoute><QuestionBank /></ProtectedRoute>} />
-            <Route path="/profile/:id"        element={<Profile />} />
+            <Route path="/groups"    element={<ProtectedRoute roles={['teacher','admin']}><Groups /></ProtectedRoute>} />
+            <Route path="/groups/:id" element={<ProtectedRoute roles={['teacher','admin','student']}><GroupDetail /></ProtectedRoute>} />
+            <Route path="/groups/:groupId/lessons/:lessonId" element={<ProtectedRoute roles={['teacher','admin','student']}><LessonDetail /></ProtectedRoute>} />
+            <Route path="/groups/:id/games/:gameId" element={<ProtectedRoute roles={['teacher','admin','student']}><GameBoard /></ProtectedRoute>} />
+            <Route path="/questions" element={<ProtectedRoute roles={['teacher','admin']}><QuestionBank /></ProtectedRoute>} />
+            <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/invite/:token"     element={<InviteLanding />} />
-            <Route path="/settings"          element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/settings"          element={<ProtectedRoute roles={['teacher','admin']}><Settings /></ProtectedRoute>} />
             <Route path="*"                  element={<NotFound />} />
           </Routes>
         </Layout>

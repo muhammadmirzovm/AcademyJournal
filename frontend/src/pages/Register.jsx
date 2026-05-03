@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { GraduationCap, Lock, LogIn } from 'lucide-react'
 
 export default function Register() {
+  const { t } = useTranslation()
+
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -30,11 +33,10 @@ export default function Register() {
         </div>
 
         <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1e293b', marginBottom: 10 }}>
-          Invite Only
+          {t('register.title')}
         </h1>
         <p style={{ fontSize: 15, color: 'rgba(30,41,59,0.6)', lineHeight: 1.7, marginBottom: 32 }}>
-          AcademyJournal is invite-only.<br />
-          You need an invite link from your academy admin or teacher to create an account.
+          {t('register.sub')}
         </p>
 
         <div style={{
@@ -48,9 +50,9 @@ export default function Register() {
               <Lock size={18} color="#0D9488" />
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>How to get access</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>{t('register.how_title')}</p>
               <p style={{ fontSize: 13, color: 'rgba(30,41,59,0.6)', lineHeight: 1.6 }}>
-                Ask your teacher or academy admin to send you an invite link. The link will take you directly to the registration page.
+                {t('register.how_sub')}
               </p>
             </div>
           </div>
@@ -65,7 +67,7 @@ export default function Register() {
             boxShadow: '0 8px 24px rgba(20,184,168,0.3)',
           }}>
           <LogIn size={16} />
-          Already have an account? Sign in
+          {t('register.signin_link')}
         </Link>
       </motion.div>
     </div>

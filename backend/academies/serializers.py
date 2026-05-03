@@ -35,15 +35,24 @@ class AcademyBrandSerializer(serializers.ModelSerializer):
 class InviteTokenSerializer(serializers.ModelSerializer):
     academy_name = serializers.CharField(source='academy.name', read_only=True)
     is_valid     = serializers.SerializerMethodField()
+    student_name = serializers.SerializerMethodField()
 
     class Meta:
         model  = InviteToken
         fields = (
             'id', 'token', 'role', 'academy', 'academy_name',
-            'group', 'expires_at', 'max_uses', 'use_count',
+            'group', 'student', 'student_name',
+            'expires_at', 'max_uses', 'use_count',
             'note', 'is_valid', 'created_at',
         )
-        read_only_fields = ('token', 'use_count', 'created_at')
+        read_only_fields = ('token', 'use_count', 'created_at', 'student_name')
 
     def get_is_valid(self, obj):
         return obj.is_valid
+
+    def get_student_name(self, obj):
+        if not obj.student:
+            return None
+        s = obj.student
+        full = f'{s.first_name} {s.last_name}'.strip()
+        return full or s.username

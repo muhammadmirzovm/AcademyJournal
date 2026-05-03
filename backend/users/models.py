@@ -26,3 +26,24 @@ class User(AbstractUser):
 
     def __str__(self):
         return f'{self.username} ({self.role})'
+
+
+class ParentStudent(models.Model):
+    parent  = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='children',
+        limit_choices_to={'role': 'parent'},
+    )
+    student = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='parents',
+        limit_choices_to={'role': 'student'},
+    )
+
+    class Meta:
+        unique_together = ('parent', 'student')
+
+    def __str__(self):
+        return f'{self.parent.username} → {self.student.username}'
