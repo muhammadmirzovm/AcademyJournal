@@ -9,9 +9,9 @@ import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
-const TABS = [
-  { id: 'academy',  label: 'Academy',  icon: Building2 },
-  { id: 'invites',  label: 'Invites',  icon: Link2 },
+const ALL_TABS = [
+  { id: 'academy',  label: 'Academy',  icon: Building2, roles: ['admin', 'teacher', 'student', 'parent'] },
+  { id: 'invites',  label: 'Invites',  icon: Link2,     roles: ['admin', 'teacher'] },
 ]
 
 const ALL_ROLE_OPTIONS = [
@@ -344,8 +344,8 @@ function InvitesTab({ academy, userRole }) {
 
   useEffect(() => {
     Promise.all([
-      api.get('/invites/'),
-      api.get('/groups/'),
+      api.get('/invites/').catch(() => ({ data: [] })),
+      api.get('/groups/').catch(() => ({ data: [] })),
     ]).then(([inv, grp]) => {
       setInvites(inv.data)
       setGroups(grp.data)
@@ -581,7 +581,7 @@ export default function Settings() {
   }
 
   const color = academy.primary_color || '#14B8A8'
-  const canEdit = user.role === 'admin' || user.role === 'teacher'
+  const TABS = ALL_TABS.filter(t => t.roles.includes(user.role))
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px' }}>
