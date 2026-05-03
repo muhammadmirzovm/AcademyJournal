@@ -488,7 +488,7 @@ function InvitesTab({ academy, userRole }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {invites.map(inv => {
-            const roleOpt  = ROLE_OPTIONS.find(r => r.value === inv.role) || ROLE_OPTIONS[0]
+            const roleOpt  = ALL_ROLE_OPTIONS.find(r => r.value === inv.role) || ALL_ROLE_OPTIONS[0]
             const expired  = !inv.is_valid
             const usedUp   = inv.use_count >= inv.max_uses
             const url      = inviteUrl(inv.token)
