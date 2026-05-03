@@ -17,6 +17,7 @@ import Profile from './pages/Profile'
 import QuestionBank from './pages/QuestionBank'
 import GameBoard from './pages/GameBoard'
 import InviteLanding from './pages/InviteLanding'
+import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 
 function AppShell() {
@@ -47,6 +48,7 @@ function AppShell() {
             <Route path="/questions" element={<ProtectedRoute><QuestionBank /></ProtectedRoute>} />
             <Route path="/profile/:id"        element={<Profile />} />
             <Route path="/invite/:token"     element={<InviteLanding />} />
+            <Route path="/settings"          element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="*"                  element={<NotFound />} />
           </Routes>
         </Layout>
