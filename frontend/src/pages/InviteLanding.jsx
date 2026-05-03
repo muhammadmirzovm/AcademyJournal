@@ -27,9 +27,10 @@ export default function InviteLanding() {
   const [mode,    setMode]    = useState('choose')   // choose | register | login
   const [loading, setLoading] = useState(false)
 
-  const [form, setForm] = useState({ first_name: '', last_name: '', username: '', email: '', password: '' })
+  const [form, setForm] = useState({ first_name: '', last_name: '', username: '', email: '', password: '', confirm: '' })
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
-  const [showPass, setShowPass] = useState(false)
+  const [showPass, setShowPass]       = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
@@ -58,12 +59,15 @@ export default function InviteLanding() {
     if (!form.username)   errs.username   = 'Required'
     if (!form.email)      errs.email      = 'Required'
     if (form.password.length < 6) errs.password = 'Min 6 characters'
+    if (!form.confirm)    errs.confirm    = 'Please confirm your password'
+    else if (form.confirm !== form.password) errs.confirm = 'Passwords do not match'
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setLoading(true)
     try {
+      const { confirm: _, ...payload } = form
       const { data } = await api.post('/auth/register/', {
-        ...form,
+        ...payload,
         role: invite.role,
       })
       login(data.tokens, data.user)
@@ -337,6 +341,21 @@ export default function InviteLanding() {
                       </button>
                     </div>
                     {errors.password && <p style={{ fontSize: 11, color: '#f87171', marginTop: 3 }}>{errors.password}</p>}
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(30,41,59,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Confirm Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <input type={showConfirm ? 'text' : 'password'}
+                        style={{ ...inputStyle(!!errors.confirm), paddingRight: 44 }}
+                        placeholder="Repeat your password"
+                        value={form.confirm} onChange={e => set('confirm', e.target.value)} autoComplete="new-password"
+                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                      <button type="button" onClick={() => setShowConfirm(s => !s)}
+                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.3)', display: 'flex' }}>
+                        {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {errors.confirm && <p style={{ fontSize: 11, color: '#f87171', marginTop: 3 }}>{errors.confirm}</p>}
                   </div>
                   <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
                     style={{

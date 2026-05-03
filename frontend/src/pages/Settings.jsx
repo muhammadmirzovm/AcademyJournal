@@ -14,12 +14,17 @@ const TABS = [
   { id: 'invites',  label: 'Invites',  icon: Link2 },
 ]
 
-const ROLE_OPTIONS = [
+const ALL_ROLE_OPTIONS = [
   { value: 'student', label: 'Student',  icon: GraduationCap, color: '#14B8A8' },
   { value: 'teacher', label: 'Teacher',  icon: Users,          color: '#8B5CF6' },
   { value: 'admin',   label: 'Admin',    icon: Shield,         color: '#F59E0B' },
   { value: 'parent',  label: 'Parent',   icon: Users,          color: '#EC4899' },
 ]
+
+const ROLE_OPTIONS_BY_ROLE = {
+  admin:   ['student', 'teacher', 'admin', 'parent'],
+  teacher: ['student', 'parent'],
+}
 
 const PRESET_COLORS = [
   '#0D9488', '#14B8A8', '#8B5CF6', '#6366F1',
@@ -300,7 +305,7 @@ function AcademyTab({ academy, onUpdated }) {
 }
 
 // ── Invites Tab ────────────────────────────────────────────────────────────────
-function InvitesTab({ academy }) {
+function InvitesTab({ academy, userRole }) {
   const { show } = useToast()
   const [invites, setInvites]   = useState([])
   const [groups, setGroups]     = useState([])
@@ -308,6 +313,10 @@ function InvitesTab({ academy }) {
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ role: 'student', group: '', max_uses: 1, days_valid: 7, note: '' })
+
+  const allowedRoles = ALL_ROLE_OPTIONS.filter(r =>
+    (ROLE_OPTIONS_BY_ROLE[userRole] || ['student', 'parent']).includes(r.value)
+  )
 
   useEffect(() => {
     Promise.all([
@@ -369,8 +378,8 @@ function InvitesTab({ academy }) {
               {/* Role picker */}
               <div>
                 <label style={labelStyle}>Role</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  {ROLE_OPTIONS.map(r => (
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${allowedRoles.length}, 1fr)`, gap: 8 }}>
+                  {allowedRoles.map(r => (
                     <button key={r.value} type="button" onClick={() => setForm(f => ({ ...f, role: r.value }))}
                       style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
@@ -596,26 +605,19 @@ export default function Settings() {
         <AnimatePresence mode="wait">
           {activeTab === 'academy' && (
             <motion.div key="academy" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
-              {canEdit
+              {user.role === 'admin'
                 ? <AcademyTab academy={academy} onUpdated={setAcademy} />
                 : <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
                     <AlertCircle size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.4 }} />
-                    <p style={{ fontWeight: 600 }}>Read-only</p>
-                    <p style={{ fontSize: 13, marginTop: 4 }}>Only admins can edit academy settings</p>
+                    <p style={{ fontWeight: 600 }}>Admin only</p>
+                    <p style={{ fontSize: 13, marginTop: 4 }}>Only academy admins can edit branding and settings</p>
                   </div>
               }
             </motion.div>
           )}
           {activeTab === 'invites' && (
             <motion.div key="invites" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
-              {canEdit
-                ? <InvitesTab academy={academy} />
-                : <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
-                    <AlertCircle size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.4 }} />
-                    <p style={{ fontWeight: 600 }}>No access</p>
-                    <p style={{ fontSize: 13, marginTop: 4 }}>Only admins and teachers can manage invites</p>
-                  </div>
-              }
+              <InvitesTab academy={academy} userRole={user.role} />
             </motion.div>
           )}
         </AnimatePresence>

@@ -58,6 +58,11 @@ class InviteCreateView(APIView):
         days_valid = int(request.data.get('days_valid', 7))
         note       = request.data.get('note', '').strip()
 
+        # Role hierarchy enforcement
+        if user.role == 'teacher' and role not in ('student', 'parent'):
+            return Response({'detail': 'Teachers can only invite students and parents.'}, status=403)
+        if user.role == 'admin' and role not in ('teacher', 'student', 'parent', 'admin'):
+            return Response({'detail': 'Invalid role.'}, status=400)
         if role not in ('teacher', 'student', 'admin', 'parent'):
             return Response({'detail': 'Invalid role.'}, status=400)
 
