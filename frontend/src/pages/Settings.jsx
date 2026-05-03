@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Building2, Palette, Link2, Plus, Copy, Check, Trash2,
-  Loader2, Upload, Users, GraduationCap, ChevronDown,
-  Clock, Hash, Shield, Sparkles, AlertCircle,
+  Building2, Link2, Plus, Copy, Check, Trash2,
+  Loader2, Upload, Users, GraduationCap,
+  Clock, Hash, Shield, Sparkles, AlertCircle, UserX,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -11,6 +11,7 @@ import { useToast } from '../context/ToastContext'
 
 const ALL_TABS = [
   { id: 'academy',  label: 'Academy',  icon: Building2, roles: ['admin', 'teacher', 'student', 'parent'] },
+  { id: 'members',  label: 'Members',  icon: Users,     roles: ['admin', 'teacher'] },
   { id: 'invites',  label: 'Invites',  icon: Link2,     roles: ['admin', 'teacher'] },
 ]
 
@@ -328,6 +329,148 @@ function AcademyTab({ academy, onUpdated }) {
   )
 }
 
+// ── Members Tab ────────────────────────────────────────────────────────────────
+const ROLE_BADGE = {
+  admin:   { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
+  teacher: { color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
+  student: { color: '#14B8A8', bg: 'rgba(20,184,168,0.12)' },
+  parent:  { color: '#EC4899', bg: 'rgba(236,72,153,0.12)' },
+}
+
+function MembersTab({ userRole }) {
+  const { show } = useToast()
+  const [members, setMembers]   = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [removing, setRemoving] = useState(null)
+  const [search, setSearch]     = useState('')
+
+  useEffect(() => {
+    api.get('/academy/members/')
+      .then(r => setMembers(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const removeMember = async (member) => {
+    if (!window.confirm(`Remove ${member.first_name || member.username} from the academy?`)) return
+    setRemoving(member.id)
+    try {
+      await api.delete(`/academy/members/${member.id}/`)
+      setMembers(prev => prev.filter(m => m.id !== member.id))
+      show('Member removed.', 'success')
+    } catch (err) {
+      show(err.response?.data?.detail || 'Failed to remove member.', 'error')
+    } finally { setRemoving(null) }
+  }
+
+  const canRemove = (member) => {
+    if (member.role === 'admin') return userRole === 'admin'
+    if (member.role === 'teacher') return userRole === 'admin'
+    return true // student/parent: both admin and teacher can remove
+  }
+
+  const filtered = members.filter(m =>
+    `${m.first_name} ${m.last_name} ${m.username} ${m.email}`.toLowerCase().includes(search.toLowerCase())
+  )
+
+  if (loading) return (
+    <div style={{ textAlign: 'center', padding: 40 }}>
+      <Loader2 size={24} style={{ color: '#14B8A8', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Search */}
+      <input
+        placeholder="Search members…"
+        value={search} onChange={e => setSearch(e.target.value)}
+        style={{ ...inputStyle(false), fontSize: 14 }}
+      />
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+          <Users size={36} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
+          <p style={{ fontWeight: 600 }}>{search ? 'No results' : 'No members yet'}</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>Invite people using the Invites tab</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map(m => {
+            const badge = ROLE_BADGE[m.role] || ROLE_BADGE.student
+            const initials = (m.first_name?.[0] || m.username?.[0] || '?').toUpperCase()
+            return (
+              <motion.div key={m.id} layout
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 16px', borderRadius: 14,
+                  border: '1px solid var(--border)',
+                  background: 'var(--card)',
+                }}>
+                {/* Avatar */}
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                  background: `linear-gradient(135deg, ${badge.color}, ${badge.color}bb)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 15, fontWeight: 800, color: '#fff',
+                }}>
+                  {initials}
+                </div>
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                      {m.first_name ? `${m.first_name} ${m.last_name}` : m.username}
+                    </span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                      background: badge.bg, color: badge.color, textTransform: 'capitalize',
+                    }}>
+                      {m.role}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                    @{m.username}
+                    {m.invited_by && (
+                      <span> · invited by <strong>{m.invited_by.first_name || m.invited_by.username}</strong></span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Joined date */}
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0, marginRight: 8 }}>
+                  {new Date(m.date_joined).toLocaleDateString()}
+                </div>
+
+                {/* Remove button */}
+                {canRemove(m) && (
+                  <button onClick={() => removeMember(m)} disabled={removing === m.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
+                      borderRadius: 9, border: '1px solid rgba(239,68,68,0.2)',
+                      background: 'rgba(239,68,68,0.06)', color: '#EF4444',
+                      fontSize: 12, fontWeight: 600, cursor: removing === m.id ? 'not-allowed' : 'pointer',
+                      flexShrink: 0, transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)' }}>
+                    {removing === m.id
+                      ? <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} />
+                      : <UserX size={12} />
+                    }
+                    Remove
+                  </button>
+                )}
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Invites Tab ────────────────────────────────────────────────────────────────
 function InvitesTab({ academy, userRole }) {
   const { show } = useToast()
@@ -641,6 +784,11 @@ export default function Settings() {
                     <p style={{ fontSize: 13, marginTop: 4 }}>Only academy admins can edit branding and settings</p>
                   </div>
               }
+            </motion.div>
+          )}
+          {activeTab === 'members' && (
+            <motion.div key="members" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
+              <MembersTab userRole={user.role} />
             </motion.div>
           )}
           {activeTab === 'invites' && (

@@ -56,6 +56,69 @@ class AcademyLogoView(APIView):
         return Response(AcademySerializer(academy, context={'request': request}).data)
 
 
+class AcademyMembersView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        user = request.user
+        if user.role not in ('admin', 'teacher') or not user.academy:
+            return Response({'detail': 'No access.'}, status=403)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        members = User.objects.filter(academy=user.academy).exclude(pk=user.pk).select_related('academy')
+
+        # Build invited_by map: user_id → inviter username
+        invites = InviteToken.objects.filter(academy=user.academy).prefetch_related('used_by')
+        invited_by = {}
+        for inv in invites:
+            for used_user in inv.used_by.all():
+                if used_user.id not in invited_by:
+                    invited_by[used_user.id] = {
+                        'username':   inv.created_by.username,
+                        'first_name': inv.created_by.first_name,
+                        'role':       inv.created_by.role,
+                    }
+
+        data = []
+        for m in members:
+            data.append({
+                'id':         m.id,
+                'username':   m.username,
+                'first_name': m.first_name,
+                'last_name':  m.last_name,
+                'email':      m.email,
+                'role':       m.role,
+                'date_joined': m.date_joined,
+                'invited_by': invited_by.get(m.id),
+            })
+
+        return Response(data)
+
+    def delete(self, request, member_id):
+        user = request.user
+        if user.role not in ('admin', 'teacher') or not user.academy:
+            return Response({'detail': 'No access.'}, status=403)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        member = get_object_or_404(User, pk=member_id, academy=user.academy)
+
+        # Teachers can only remove students and parents
+        if user.role == 'teacher' and member.role not in ('student', 'parent'):
+            return Response({'detail': 'Teachers can only remove students and parents.'}, status=403)
+
+        # Nobody can remove an admin except another admin
+        if member.role == 'admin' and user.role != 'admin':
+            return Response({'detail': 'Only admins can remove other admins.'}, status=403)
+
+        member.academy = None
+        member.save(update_fields=['academy'])
+        return Response(status=204)
+
+
 class InviteCreateView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
