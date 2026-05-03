@@ -188,11 +188,23 @@ function AcademyTab({ academy, onUpdated }) {
     const fd = new FormData()
     fd.append('logo', file)
     try {
-      const { data } = await api.patch('/academy/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      // Do NOT set Content-Type manually — browser must set it with the boundary
+      const { data } = await api.patch('/academy/', fd)
       onUpdated(data)
       show('Logo updated!', 'success')
     } catch {
       show('Failed to upload logo.', 'error')
+    } finally { setLogoLoading(false) }
+  }
+
+  const removeLogo = async () => {
+    setLogoLoading(true)
+    try {
+      const { data } = await api.delete('/academy/logo/')
+      onUpdated(data)
+      show('Logo removed.', 'success')
+    } catch {
+      show('Failed to remove logo.', 'error')
     } finally { setLogoLoading(false) }
   }
 
@@ -204,18 +216,18 @@ function AcademyTab({ academy, onUpdated }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{
             width: 80, height: 80, borderRadius: 18,
-            background: academy.logo
+            background: academy.logo_url
               ? 'transparent'
               : `linear-gradient(135deg, ${form.primary_color}, ${form.primary_color}cc)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '2px solid rgba(0,0,0,0.08)', overflow: 'hidden', flexShrink: 0,
           }}>
-            {academy.logo
-              ? <img src={academy.logo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {academy.logo_url
+              ? <img src={academy.logo_url} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : <Building2 size={30} color="#fff" />
             }
           </div>
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => e.target.files[0] && uploadLogo(e.target.files[0])} />
             <button type="button" onClick={() => logoRef.current.click()} disabled={logoLoading}
@@ -229,9 +241,21 @@ function AcademyTab({ academy, onUpdated }) {
                 ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />
                 : <Upload size={14} />
               }
-              Upload Logo
+              {academy.logo_url ? 'Change Logo' : 'Upload Logo'}
             </button>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>PNG, JPG up to 2MB</p>
+            {academy.logo_url && (
+              <button type="button" onClick={removeLogo} disabled={logoLoading}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px',
+                  borderRadius: 10, border: '1.5px solid rgba(239,68,68,0.25)',
+                  background: 'rgba(239,68,68,0.05)', color: '#EF4444', fontSize: 13,
+                  fontWeight: 600, cursor: logoLoading ? 'not-allowed' : 'pointer',
+                }}>
+                <Trash2 size={14} />
+                Remove Logo
+              </button>
+            )}
+            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>PNG, JPG up to 2MB</p>
           </div>
         </div>
       </div>
@@ -570,8 +594,8 @@ export default function Settings() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             boxShadow: `0 4px 16px ${color}44`,
           }}>
-            {academy.logo
-              ? <img src={academy.logo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 14 }} />
+            {academy.logo_url
+              ? <img src={academy.logo_url} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 14 }} />
               : <Building2 size={22} color="#fff" />
             }
           </div>

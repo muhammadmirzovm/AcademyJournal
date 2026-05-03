@@ -3,10 +3,18 @@ from .models import Academy, InviteToken
 
 
 class AcademySerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+
     class Meta:
         model  = Academy
-        fields = ('id', 'name', 'slug', 'logo', 'primary_color', 'created_at')
-        read_only_fields = ('created_at',)
+        fields = ('id', 'name', 'slug', 'logo', 'logo_url', 'primary_color', 'created_at')
+        read_only_fields = ('created_at', 'logo_url')
+
+    def get_logo_url(self, obj):
+        request = self.context.get('request')
+        if obj.logo and request:
+            return request.build_absolute_uri(obj.logo.url)
+        return None
 
 
 class AcademyBrandSerializer(serializers.ModelSerializer):
