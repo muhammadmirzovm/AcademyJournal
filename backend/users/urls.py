@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     RegisterView, MeView, ProfileView, UserStatsView,
     OnlineCountView, PlatformStatsView,
-    ParentChildrenView, AdminStatsView, UserChildrenView,
+    ParentChildrenView, AdminStatsView, UserChildrenView, UserGroupsView,
 )
 
 urlpatterns = [
@@ -16,6 +16,7 @@ urlpatterns = [
     path('users/<int:pk>/', ProfileView.as_view(), name='profile'),
     path('users/<int:pk>/stats/', UserStatsView.as_view(), name='user_stats'),
     path('users/<int:pk>/children/', UserChildrenView.as_view(), name='user_children'),
+    path('users/<int:pk>/groups/',   UserGroupsView.as_view(),   name='user_groups'),
     path('my-children/', ParentChildrenView.as_view(), name='my_children'),
     path('link-child/', ParentChildrenView.as_view(), name='link_child'),
     path('admin-stats/', AdminStatsView.as_view(), name='admin_stats'),

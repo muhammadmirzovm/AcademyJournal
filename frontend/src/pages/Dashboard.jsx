@@ -171,6 +171,9 @@ export default function Dashboard() {
                           </span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display_name}</p>
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 1 }}>
+                              {s.groups?.length > 0 ? s.groups.join(', ') : '—'}
+                            </p>
                             <p style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}><Star size={10} color="#F59E0B" fill="#F59E0B" /> {s.sticker_count} {t('dashboard.stickers')}</p>
                           </div>
                           <span style={{ fontSize: 13, fontWeight: 700, color: s.comprehension >= 70 ? '#14B8A8' : s.comprehension >= 40 ? '#F59E0B' : '#EF4444', flexShrink: 0 }}>

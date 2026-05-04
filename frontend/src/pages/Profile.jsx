@@ -6,8 +6,7 @@ import {
   GraduationCap, BookOpen, Users, Shield, Heart,
   Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy,
 } from 'lucide-react'
-import { getProfile, getUserStats, updateMe, getUserChildren } from '../api/users'
-import { getGroups } from '../api/groups'
+import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups } from '../api/users'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import ScoreLineChart from '../components/charts/ScoreLineChart'
@@ -38,8 +37,7 @@ export default function Profile() {
     Promise.all([
       getProfile(id),
       getUserStats(id),
-      isOwn ? getGroups() : Promise.resolve({ data: [] }),
-    ]).then(([p, s, g]) => {
+    ]).then(([p, s]) => {
       const targetRole    = p.data.role
       const viewerRole    = me?.role
       const viewerIsOwner = String(me?.id) === String(id)
@@ -54,8 +52,12 @@ export default function Profile() {
       setProfile(p.data)
       setBio(p.data.bio || '')
       setStats(s.data)
-      setGroups(g.data)
-      if (p.data.role === 'parent') {
+      if (targetRole === 'student' || targetRole === 'teacher') {
+        if (viewerIsOwner || viewerRole === 'admin' || viewerRole === 'teacher') {
+          getUserGroups(id).then(r => setGroups(r.data)).catch(() => {})
+        }
+      }
+      if (targetRole === 'parent') {
         getUserChildren(id).then(r => setChildren(r.data)).catch(() => {})
       }
     }).catch(() => show(t('profile.fail_load'), 'error'))
@@ -241,7 +243,7 @@ export default function Profile() {
       )}
 
       {/* Groups */}
-      {isOwn && groups.length > 0 && (
+      {groups.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
@@ -257,8 +259,12 @@ export default function Profile() {
               >
                 <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 4 }}>{g.name}</p>
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {(me?.role === 'teacher' || me?.role === 'admin') ? <GraduationCap size={11} /> : <BookOpen size={11} />}
-                  {(me?.role === 'teacher' || me?.role === 'admin') ? t('profile.teaching') : `${g.member_count} ${t('dashboard.students')}`}
+                  {profile.role === 'teacher' ? <GraduationCap size={11} /> : <BookOpen size={11} />}
+                  {profile.role === 'teacher'
+                    ? t('profile.teaching')
+                    : g.teacher_name
+                      ? `${g.teacher_name} · ${g.member_count} ${t('dashboard.students')}`
+                      : `${g.member_count} ${t('dashboard.students')}`}
                 </p>
               </Link>
             ))}

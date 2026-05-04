@@ -159,6 +159,39 @@ class UserStatsView(APIView):
         })
 
 
+class UserGroupsView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, pk):
+        viewer = request.user
+        if viewer.pk != pk and viewer.role not in ('admin', 'teacher'):
+            return Response({'detail': 'No permission.'}, status=403)
+        try:
+            target = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=404)
+
+        from groups.models import Group, GroupMembership
+        if target.role == 'student':
+            memberships = GroupMembership.objects.filter(student=target).select_related('group', 'group__teacher')
+            groups = []
+            for m in memberships:
+                g = m.group
+                teacher_full = f'{g.teacher.first_name} {g.teacher.last_name}'.strip() or g.teacher.username
+                groups.append({
+                    'id':           g.id,
+                    'name':         g.name,
+                    'teacher_name': teacher_full,
+                    'member_count': g.memberships.count(),
+                })
+        elif target.role == 'teacher':
+            gs = Group.objects.filter(teacher=target)
+            groups = [{'id': g.id, 'name': g.name, 'member_count': g.memberships.count()} for g in gs]
+        else:
+            groups = []
+        return Response(groups)
+
+
 class AdminStatsView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -207,8 +240,10 @@ class AdminStatsView(APIView):
                     'total_score':   0,
                     'total_possible': 0,
                     'sticker_count': 0,
+                    'group_names':   set(),
                 }
             student_map[sid]['sticker_count'] += m.sticker_count
+            student_map[sid]['group_names'].add(m.group.name)
             join_date   = m.joined_at.date()
             lessons     = m.group.lessons.filter(date__gte=join_date)
             lesson_count = lessons.count()
@@ -229,6 +264,7 @@ class AdminStatsView(APIView):
                 'display_name':  full or s['username'],
                 'comprehension': comp,
                 'sticker_count': s['sticker_count'],
+                'groups':        sorted(s['group_names']),
             })
         top_students = sorted(top_students, key=lambda x: (x['comprehension'], x['sticker_count']), reverse=True)[:5]
 
