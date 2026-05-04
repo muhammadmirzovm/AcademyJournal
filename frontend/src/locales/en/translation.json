@@ -140,7 +140,17 @@
     "no_groups_student": "You haven't joined any groups yet.",
     "create_group": "Create group",
     "join_group": "Join group",
-    "students": "students"
+    "students": "students",
+    "total_students": "Total Students",
+    "total_teachers": "Total Teachers",
+    "total_groups": "Total Groups",
+    "total_lessons": "Total Lessons",
+    "top_groups": "Top Groups",
+    "by_avg_score": "Ranked by avg score",
+    "top_students": "Top Students",
+    "by_comprehension": "Ranked by comprehension",
+    "no_data_yet": "No data yet.",
+    "stickers": "stickers"
   },
   "groups": {
     "title": "My Groups",
@@ -307,7 +317,8 @@
     "fail_update": "Failed to update profile.",
     "toast_updated": "Profile updated!",
     "stickers": "Stickers",
-    "no_stickers": "No stickers yet."
+    "no_stickers": "No stickers yet.",
+    "linked_children": "Linked Children"
   },
   "teacher_stats": {
     "total_students": "Total Students",

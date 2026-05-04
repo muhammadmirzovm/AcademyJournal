@@ -68,8 +68,24 @@ class UserStatsView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=404)
 
-        from django.db.models import Avg, Count
+        from django.db.models import Avg, Count, Sum
         from groups.models import Score, Attendance, Group, GroupMembership, Lesson
+
+        if user.role == 'admin':
+            academy = user.academy
+            if not academy:
+                return Response({'role': 'admin', 'total_students': 0, 'total_teachers': 0, 'total_groups': 0, 'total_lessons': 0})
+            total_students = User.objects.filter(academy=academy, role='student').count()
+            total_teachers = User.objects.filter(academy=academy, role='teacher').count()
+            total_groups   = Group.objects.filter(teacher__academy=academy).count()
+            total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
+            return Response({
+                'role': 'admin',
+                'total_students': total_students,
+                'total_teachers': total_teachers,
+                'total_groups':   total_groups,
+                'total_lessons':  total_lessons,
+            })
 
         if user.role == 'teacher':
             groups = Group.objects.filter(teacher=user).prefetch_related('memberships', 'lessons')
@@ -141,6 +157,112 @@ class UserStatsView(APIView):
                 'total':   total,
             }
         })
+
+
+class AdminStatsView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        user = request.user
+        if user.role != 'admin' or not user.academy:
+            return Response({'detail': 'Admin only.'}, status=403)
+
+        academy = user.academy
+        from groups.models import Group, Lesson, Score, GroupMembership
+        from django.db.models import Avg, Sum
+
+        total_students = User.objects.filter(academy=academy, role='student').count()
+        total_teachers = User.objects.filter(academy=academy, role='teacher').count()
+        total_groups   = Group.objects.filter(teacher__academy=academy).count()
+        total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
+
+        # Top groups by avg score (converted to 0-100%)
+        groups = Group.objects.filter(teacher__academy=academy)
+        group_data = []
+        for g in groups:
+            avg = Score.objects.filter(lesson__group=g).aggregate(avg=Avg('value'))['avg']
+            group_data.append({
+                'id':           g.id,
+                'name':         g.name,
+                'teacher_name': g.teacher.first_name or g.teacher.username,
+                'member_count': g.memberships.count(),
+                'avg_score':    round(avg * 20, 1) if avg else 0,
+            })
+        top_groups = sorted(group_data, key=lambda x: x['avg_score'], reverse=True)[:5]
+
+        # Top students by comprehension %
+        memberships = GroupMembership.objects.filter(
+            group__teacher__academy=academy
+        ).select_related('student', 'group')
+
+        student_map = {}
+        for m in memberships:
+            sid = m.student.id
+            if sid not in student_map:
+                student_map[sid] = {
+                    'id':            sid,
+                    'username':      m.student.username,
+                    'first_name':    m.student.first_name,
+                    'last_name':     m.student.last_name,
+                    'total_score':   0,
+                    'total_possible': 0,
+                    'sticker_count': 0,
+                }
+            student_map[sid]['sticker_count'] += m.sticker_count
+            join_date   = m.joined_at.date()
+            lessons     = m.group.lessons.filter(date__gte=join_date)
+            lesson_count = lessons.count()
+            if lesson_count > 0:
+                score_sum = Score.objects.filter(
+                    lesson__in=lessons, student=m.student
+                ).aggregate(total=Sum('value'))['total'] or 0
+                student_map[sid]['total_score']    += score_sum
+                student_map[sid]['total_possible'] += lesson_count * 5
+
+        top_students = []
+        for s in student_map.values():
+            comp = round(s['total_score'] / s['total_possible'] * 100) if s['total_possible'] > 0 else 0
+            full = f"{s['first_name']} {s['last_name']}".strip()
+            top_students.append({
+                'id':            s['id'],
+                'username':      s['username'],
+                'display_name':  full or s['username'],
+                'comprehension': comp,
+                'sticker_count': s['sticker_count'],
+            })
+        top_students = sorted(top_students, key=lambda x: (x['comprehension'], x['sticker_count']), reverse=True)[:5]
+
+        return Response({
+            'total_students': total_students,
+            'total_teachers': total_teachers,
+            'total_groups':   total_groups,
+            'total_lessons':  total_lessons,
+            'top_groups':     top_groups,
+            'top_students':   top_students,
+        })
+
+
+class UserChildrenView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, pk):
+        viewer = request.user
+        if viewer.pk != pk and viewer.role not in ('admin', 'teacher'):
+            return Response({'detail': 'No permission.'}, status=403)
+        from .models import ParentStudent
+        links = ParentStudent.objects.filter(parent_id=pk).select_related('student')
+        children = []
+        for link in links:
+            s = link.student
+            full = f'{s.first_name} {s.last_name}'.strip()
+            children.append({
+                'id':           s.id,
+                'username':     s.username,
+                'first_name':   s.first_name,
+                'last_name':    s.last_name,
+                'display_name': full or s.username,
+            })
+        return Response(children)
 
 
 class ParentChildrenView(APIView):

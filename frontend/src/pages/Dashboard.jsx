@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2 } from 'lucide-react'
+import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star } from 'lucide-react'
 import { getGroups, joinGroup } from '../api/groups'
+import { getAdminStats } from '../api/users'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -32,9 +33,10 @@ export default function Dashboard() {
   const isParent  = role === 'parent'
   const isStudent = role === 'student'
 
-  const [groups,   setGroups]   = useState([])
-  const [children, setChildren] = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const [groups,     setGroups]     = useState([])
+  const [children,   setChildren]   = useState([])
+  const [adminStats, setAdminStats] = useState(null)
+  const [loading,    setLoading]    = useState(true)
 
   const [showJoin, setShowJoin] = useState(false)
   const [joinKey,  setJoinKey]  = useState('')
@@ -44,10 +46,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (isParent) {
       api.get('/auth/my-children/').then(r => setChildren(r.data)).finally(() => setLoading(false))
+    } else if (role === 'admin') {
+      getAdminStats().then(r => setAdminStats(r.data)).finally(() => setLoading(false))
     } else {
       getGroups().then(r => setGroups(r.data)).finally(() => setLoading(false))
     }
-  }, [isParent])
+  }, [role])
 
   const handleJoin = async e => {
     e.preventDefault()
@@ -78,12 +82,111 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="fade-up-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 32 }}>
-        {!isParent && (
-          <StatCard icon={Users} label={t('dashboard.groups_label')} value={loading ? '…' : groups.length} color="var(--accent)" />
+      <div className="fade-up-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 32 }}>
+        {role === 'admin' ? (
+          <>
+            <StatCard icon={Users}     label={t('dashboard.total_students')} value={loading ? '…' : (adminStats?.total_students ?? '…')} color="#14B8A8" />
+            <StatCard icon={GraduationCap} label={t('dashboard.total_teachers')} value={loading ? '…' : (adminStats?.total_teachers ?? '…')} color="#8B5CF6" />
+            <StatCard icon={BookOpen}  label={t('dashboard.total_groups')}   value={loading ? '…' : (adminStats?.total_groups   ?? '…')} color="#0891B2" />
+            <StatCard icon={Trophy}    label={t('dashboard.total_lessons')}  value={loading ? '…' : (adminStats?.total_lessons  ?? '…')} color="#F59E0B" />
+          </>
+        ) : (
+          <>
+            {!isParent && (
+              <StatCard icon={Users} label={t('dashboard.groups_label')} value={loading ? '…' : groups.length} color="var(--accent)" />
+            )}
+            <StatCard icon={BookOpen} label={t('dashboard.role_label')} value={t(ROLE_LABEL[role] || ROLE_LABEL.student)} color="var(--warning)" />
+          </>
         )}
-        <StatCard icon={BookOpen} label={t('dashboard.role_label')} value={t(ROLE_LABEL[role] || ROLE_LABEL.student)} color="var(--warning)" />
       </div>
+
+      {/* Admin overview */}
+      {role === 'admin' && (
+        <div className="fade-up-3">
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <CardSkeleton /><CardSkeleton />
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+
+              {/* Top Groups */}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(8,145,178,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Trophy size={16} color="#0891B2" />
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 14 }}>{t('dashboard.top_groups')}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('dashboard.by_avg_score')}</p>
+                  </div>
+                  <Link to="/groups" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                    {t('dashboard.view_all')} <ArrowRight size={12} />
+                  </Link>
+                </div>
+                {adminStats?.top_groups?.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('dashboard.no_data_yet')}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {adminStats?.top_groups?.map((g, i) => (
+                      <motion.div key={g.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
+                        <Link to={`/groups/${g.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ width: 24, height: 24, borderRadius: '50%', background: ['#F59E0B','#94A3B8','#CD7F32','var(--accent)','var(--accent)'][i] + '22', color: ['#F59E0B','#94A3B8','#CD7F32','var(--accent)','var(--accent)'][i], fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {i + 1}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</p>
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{g.teacher_name} · {g.member_count} {t('dashboard.students')}</p>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: g.avg_score >= 70 ? '#14B8A8' : g.avg_score >= 40 ? '#F59E0B' : '#EF4444', flexShrink: 0 }}>
+                            {g.avg_score}%
+                          </span>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Top Students */}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Star size={16} color="#F59E0B" fill="#F59E0B" />
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 14 }}>{t('dashboard.top_students')}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('dashboard.by_comprehension')}</p>
+                  </div>
+                </div>
+                {adminStats?.top_students?.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('dashboard.no_data_yet')}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {adminStats?.top_students?.map((s, i) => (
+                      <motion.div key={s.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
+                        <Link to={`/profile/${s.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ width: 24, height: 24, borderRadius: '50%', background: ['#F59E0B','#94A3B8','#CD7F32','var(--accent)','var(--accent)'][i] + '22', color: ['#F59E0B','#94A3B8','#CD7F32','var(--accent)','var(--accent)'][i], fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {i + 1}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display_name}</p>
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}><Star size={10} color="#F59E0B" fill="#F59E0B" /> {s.sticker_count} {t('dashboard.stickers')}</p>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: s.comprehension >= 70 ? '#14B8A8' : s.comprehension >= 40 ? '#F59E0B' : '#EF4444', flexShrink: 0 }}>
+                            {s.comprehension}%
+                          </span>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Parents */}
       {isParent ? (

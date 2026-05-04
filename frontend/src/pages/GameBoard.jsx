@@ -299,8 +299,8 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
           <AnimatePresence>
             {hintVisible && question.hint && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#F59E0B', fontStyle: 'italic' }}>
-                💡 {question.hint}
+                style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#F59E0B', fontStyle: 'italic', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <Lightbulb size={14} style={{ flexShrink: 0, marginTop: 1 }} />{question.hint}
               </motion.div>
             )}
           </AnimatePresence>
@@ -489,8 +489,8 @@ function WinnerScreen({ teams, groupId, gameId, isTeacher, onReset, t }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       style={{ textAlign: 'center', padding: '40px 0' }}>
       <motion.h2 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-        style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, marginBottom: 8 }}>
-        🏆 {t('quiz.game_over')}
+        style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        <Trophy size={30} color="#F59E0B" />{t('quiz.game_over')}
       </motion.h2>
       <p style={{ color: 'var(--text-muted)', marginBottom: 40 }}>{sorted[0]?.name} {t('quiz.wins')}</p>
 

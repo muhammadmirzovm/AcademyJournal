@@ -140,7 +140,17 @@
     "no_groups_student": "Вы ещё не вступили ни в одну группу.",
     "create_group": "Создать группу",
     "join_group": "Вступить в группу",
-    "students": "учеников"
+    "students": "учеников",
+    "total_students": "Всего учеников",
+    "total_teachers": "Всего учителей",
+    "total_groups": "Всего групп",
+    "total_lessons": "Всего уроков",
+    "top_groups": "Лучшие группы",
+    "by_avg_score": "По среднему баллу",
+    "top_students": "Лучшие ученики",
+    "by_comprehension": "По уровню понимания",
+    "no_data_yet": "Данных пока нет.",
+    "stickers": "стикеров"
   },
   "groups": {
     "title": "Мои группы",
@@ -307,7 +317,8 @@
     "fail_update": "Не удалось обновить профиль.",
     "toast_updated": "Профиль обновлён!",
     "stickers": "Стикеры",
-    "no_stickers": "Стикеров пока нет."
+    "no_stickers": "Стикеров пока нет.",
+    "linked_children": "Привязанные дети"
   },
   "teacher_stats": {
     "total_students": "Всего учеников",

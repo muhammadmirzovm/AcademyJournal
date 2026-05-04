@@ -140,7 +140,17 @@
     "no_groups_student": "Hali hech qanday guruhga qo'shilmadingiz.",
     "create_group": "Guruh yaratish",
     "join_group": "Guruhga qo'shilish",
-    "students": "o'quvchi"
+    "students": "o'quvchi",
+    "total_students": "Jami o'quvchilar",
+    "total_teachers": "Jami o'qituvchilar",
+    "total_groups": "Jami guruhlar",
+    "total_lessons": "Jami darslar",
+    "top_groups": "Eng yaxshi guruhlar",
+    "by_avg_score": "O'rtacha ball bo'yicha",
+    "top_students": "Eng yaxshi o'quvchilar",
+    "by_comprehension": "Tushunish darajasi bo'yicha",
+    "no_data_yet": "Hali ma'lumot yo'q.",
+    "stickers": "stiker"
   },
   "groups": {
     "title": "Mening guruhlarim",
@@ -307,7 +317,8 @@
     "fail_update": "Profilni yangilashda xatolik.",
     "toast_updated": "Profil yangilandi!",
     "stickers": "Stikerlar",
-    "no_stickers": "Hali stiker yo'q."
+    "no_stickers": "Hali stiker yo'q.",
+    "linked_children": "Bog'langan farzandlar"
   },
   "teacher_stats": {
     "total_students": "Jami o'quvchilar",

@@ -4,9 +4,9 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
-  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star,
+  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy,
 } from 'lucide-react'
-import { getProfile, getUserStats, updateMe } from '../api/users'
+import { getProfile, getUserStats, updateMe, getUserChildren } from '../api/users'
 import { getGroups } from '../api/groups'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -23,10 +23,11 @@ export default function Profile() {
   const navigate = useNavigate()
   const isOwn = String(me?.id) === String(id)
 
-  const [profile, setProfile] = useState(null)
-  const [stats, setStats]     = useState(null)
-  const [groups, setGroups]   = useState([])
-  const [loading, setLoading] = useState(true)
+  const [profile,  setProfile]  = useState(null)
+  const [stats,    setStats]    = useState(null)
+  const [groups,   setGroups]   = useState([])
+  const [children, setChildren] = useState([])
+  const [loading,  setLoading]  = useState(true)
   const [editing, setEditing] = useState(false)
   const [bio, setBio]         = useState('')
   const [saving, setSaving]   = useState(false)
@@ -54,6 +55,9 @@ export default function Profile() {
       setBio(p.data.bio || '')
       setStats(s.data)
       setGroups(g.data)
+      if (p.data.role === 'parent') {
+        getUserChildren(id).then(r => setChildren(r.data)).catch(() => {})
+      }
     }).catch(() => show(t('profile.fail_load'), 'error'))
     .finally(() => setLoading(false))
   }, [id])
@@ -154,12 +158,49 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      {/* Charts — teacher/admin vs student vs parent */}
+      {/* Stats section — role-specific */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
         style={{ marginBottom: 24 }}>
-        {(profile.role === 'teacher' || profile.role === 'admin') ? (
+        {profile.role === 'admin' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+            <ProfileStatCard icon={Users}        label={t('dashboard.total_students')} value={stats?.total_students ?? '…'} color="#14B8A8" />
+            <ProfileStatCard icon={GraduationCap} label={t('dashboard.total_teachers')} value={stats?.total_teachers ?? '…'} color="#8B5CF6" />
+            <ProfileStatCard icon={BookOpen}     label={t('dashboard.total_groups')}   value={stats?.total_groups   ?? '…'} color="#0891B2" />
+            <ProfileStatCard icon={Trophy}       label={t('dashboard.total_lessons')}  value={stats?.total_lessons  ?? '…'} color="#F59E0B" />
+          </div>
+        ) : profile.role === 'teacher' ? (
           <TeacherStats stats={stats} />
-        ) : profile.role === 'parent' ? null : (
+        ) : profile.role === 'parent' ? (
+          <div style={chartCard}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+              <div style={{ ...chartIconWrap, background: 'rgba(236,72,153,0.1)' }}>
+                <Heart size={16} color="#EC4899" />
+              </div>
+              <p style={{ fontWeight: 700, fontSize: 14 }}>{t('profile.linked_children')}</p>
+            </div>
+            {children.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('dashboard.no_children')}</p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                {children.map(child => (
+                  <Link key={child.id} to={`/profile/${child.id}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', textDecoration: 'none', transition: 'border-color 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = '#EC4899'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(20,184,168,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <GraduationCap size={16} color="var(--accent)" />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{child.display_name}</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{child.username}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
             <div style={chartCard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
@@ -275,6 +316,20 @@ function RoleBadge({ role }) {
       <Icon size={12} />
       {t(cfg.key)}
     </span>
+  )
+}
+
+function ProfileStatCard({ icon: Icon, label, value, color }) {
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={19} color={color} />
+      </div>
+      <div>
+        <p style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{value}</p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{label}</p>
+      </div>
+    </div>
   )
 }
 
