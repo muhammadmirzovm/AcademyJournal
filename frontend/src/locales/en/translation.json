@@ -118,7 +118,9 @@
     "welcome_toast": "Account created! Welcome to Academy Journal.",
     "min_password": "Min. 6 characters",
     "repeat_password": "Repeat your password",
-    "your_password": "Your password"
+    "your_password": "Your password",
+    "or": "or",
+    "telegram_hint": "Forgot password? Login with Telegram."
   },
   "dashboard": {
     "welcome": "Welcome back, {{name}}",
@@ -318,7 +320,12 @@
     "toast_updated": "Profile updated!",
     "stickers": "Stickers",
     "no_stickers": "No stickers yet.",
-    "linked_children": "Linked Children"
+    "linked_children": "Linked Children",
+    "change_password": "Change Password",
+    "set_password": "Set Password",
+    "current_password": "Current Password",
+    "new_password": "New Password",
+    "password_changed": "Password changed successfully!"
   },
   "teacher_stats": {
     "total_students": "Total Students",
@@ -435,7 +442,9 @@
     "err_required": "Required",
     "err_generic": "Something went wrong. Please try again.",
     "err_accept": "Could not accept invite.",
-    "welcome": "Welcome to {{name}}!"
+    "welcome": "Welcome to {{name}}!",
+    "telegram_option": "Continue with Telegram",
+    "telegram_option_sub": "One click, no password needed"
   },
   "register": {
     "title": "Invite Only",

@@ -22,13 +22,18 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     academy_name  = serializers.CharField(source='academy.name', read_only=True)
     academy_color = serializers.CharField(source='academy.primary_color', read_only=True)
+    has_password  = serializers.SerializerMethodField()
 
     class Meta:
         model  = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name',
             'role', 'bio', 'academy', 'academy_name', 'academy_color',
+            'has_password',
         )
+
+    def get_has_password(self, obj):
+        return obj.has_usable_password()
 
 
 class UserStatsSerializer(serializers.Serializer):

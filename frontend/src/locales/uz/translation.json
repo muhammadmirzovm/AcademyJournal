@@ -118,7 +118,9 @@
     "welcome_toast": "Hisob yaratildi! Academy Journal'ga xush kelibsiz.",
     "min_password": "Kamida 6 ta belgi",
     "repeat_password": "Parolni takrorlang",
-    "your_password": "Parolingiz"
+    "your_password": "Parolingiz",
+    "or": "yoki",
+    "telegram_hint": "Parolni unutdingizmi? Telegram orqali kiring."
   },
   "dashboard": {
     "welcome": "Xush kelibsiz, {{name}}",
@@ -318,7 +320,12 @@
     "toast_updated": "Profil yangilandi!",
     "stickers": "Stikerlar",
     "no_stickers": "Hali stiker yo'q.",
-    "linked_children": "Bog'langan farzandlar"
+    "linked_children": "Bog'langan farzandlar",
+    "change_password": "Parolni o'zgartirish",
+    "set_password": "Parol o'rnatish",
+    "current_password": "Joriy parol",
+    "new_password": "Yangi parol",
+    "password_changed": "Parol muvaffaqiyatli o'zgartirildi!"
   },
   "teacher_stats": {
     "total_students": "Jami o'quvchilar",
@@ -435,7 +442,9 @@
     "err_required": "Majburiy",
     "err_generic": "Nimadir xato ketdi. Qayta urinib ko'ring.",
     "err_accept": "Taklifni qabul qilib bo'lmadi.",
-    "welcome": "{{name}}ga xush kelibsiz!"
+    "welcome": "{{name}}ga xush kelibsiz!",
+    "telegram_option": "Telegram orqali kirish",
+    "telegram_option_sub": "Bir bosish, parol kerak emas"
   },
   "register": {
     "title": "Faqat taklif orqali",

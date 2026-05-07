@@ -4,9 +4,9 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
-  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy,
+  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock,
 } from 'lucide-react'
-import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups } from '../api/users'
+import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword } from '../api/users'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import ScoreLineChart from '../components/charts/ScoreLineChart'
@@ -27,9 +27,12 @@ export default function Profile() {
   const [groups,   setGroups]   = useState([])
   const [children, setChildren] = useState([])
   const [loading,  setLoading]  = useState(true)
-  const [editing, setEditing] = useState(false)
-  const [bio, setBio]         = useState('')
-  const [saving, setSaving]   = useState(false)
+  const [editing, setEditing]     = useState(false)
+  const [bio, setBio]             = useState('')
+  const [saving, setSaving]       = useState(false)
+  const [pwForm, setPwForm]       = useState({ old_password: '', new_password: '', confirm: '' })
+  const [pwErrors, setPwErrors]   = useState({})
+  const [pwSaving, setPwSaving]   = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -79,6 +82,29 @@ export default function Profile() {
   const cancelEdit = () => {
     setEditing(false)
     setBio(profile?.bio || '')
+  }
+
+  const setPw = (k, v) => setPwForm(f => ({ ...f, [k]: v }))
+
+  const savePassword = async e => {
+    e.preventDefault()
+    const errs = {}
+    const hasPass = me?.has_password
+    if (hasPass && !pwForm.old_password) errs.old_password = t('auth.err_password_required')
+    if (pwForm.new_password.length < 6)  errs.new_password = t('auth.err_password_len')
+    if (!pwForm.confirm)                  errs.confirm = t('auth.err_confirm_required')
+    else if (pwForm.confirm !== pwForm.new_password) errs.confirm = t('auth.err_confirm_match')
+    if (Object.keys(errs).length) { setPwErrors(errs); return }
+    setPwSaving(true)
+    try {
+      await changePassword({ old_password: pwForm.old_password, new_password: pwForm.new_password })
+      show(t('profile.password_changed'), 'success')
+      setPwForm({ old_password: '', new_password: '', confirm: '' })
+      setPwErrors({})
+    } catch (err) {
+      const msg = err.response?.data?.detail
+      setPwErrors({ old_password: msg || t('auth.err_invalid') })
+    } finally { setPwSaving(false) }
   }
 
   if (loading) return <ProfileSkeleton />
@@ -272,6 +298,51 @@ export default function Profile() {
         </motion.div>
       )}
 
+      {/* Security — password change, own profile only */}
+      {isOwn && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginTop: 24, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <div style={{ ...chartIconWrap, background: 'rgba(139,92,246,0.1)' }}>
+              <Lock size={16} color="#8B5CF6" />
+            </div>
+            <p style={{ fontWeight: 700, fontSize: 14 }}>
+              {me?.has_password ? t('profile.change_password') : t('profile.set_password')}
+            </p>
+          </div>
+          <form onSubmit={savePassword} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 400 }}>
+            {me?.has_password && (
+              <div>
+                <label style={labelStyle}>{t('profile.current_password')}</label>
+                <input type="password" value={pwForm.old_password} onChange={e => setPw('old_password', e.target.value)}
+                  placeholder="••••••••" autoComplete="current-password"
+                  style={{ ...pwInputStyle(!!pwErrors.old_password) }} />
+                {pwErrors.old_password && <p style={errStyle}>{pwErrors.old_password}</p>}
+              </div>
+            )}
+            <div>
+              <label style={labelStyle}>{t('profile.new_password')}</label>
+              <input type="password" value={pwForm.new_password} onChange={e => setPw('new_password', e.target.value)}
+                placeholder="••••••••" autoComplete="new-password"
+                style={{ ...pwInputStyle(!!pwErrors.new_password) }} />
+              {pwErrors.new_password && <p style={errStyle}>{pwErrors.new_password}</p>}
+            </div>
+            <div>
+              <label style={labelStyle}>{t('auth.confirm_password')}</label>
+              <input type="password" value={pwForm.confirm} onChange={e => setPw('confirm', e.target.value)}
+                placeholder="••••••••" autoComplete="new-password"
+                style={{ ...pwInputStyle(!!pwErrors.confirm) }} />
+              {pwErrors.confirm && <p style={errStyle}>{pwErrors.confirm}</p>}
+            </div>
+            <motion.button type="submit" disabled={pwSaving} whileTap={{ scale: 0.97 }}
+              style={{ ...primaryBtn, opacity: pwSaving ? 0.7 : 1, alignSelf: 'flex-start' }}>
+              {pwSaving ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Lock size={13} />}
+              {pwSaving ? t('profile.saving') : (me?.has_password ? t('profile.change_password') : t('profile.set_password'))}
+            </motion.button>
+          </form>
+        </motion.div>
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
@@ -338,6 +409,10 @@ function ProfileStatCard({ icon: Icon, label, value, color }) {
     </div>
   )
 }
+
+const labelStyle  = { display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }
+const pwInputStyle = (hasErr) => ({ width: '100%', padding: '11px 14px', borderRadius: 9, border: `1.5px solid ${hasErr ? 'var(--danger)' : 'var(--border)'}`, background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' })
+const errStyle    = { fontSize: 12, color: 'var(--danger)', marginTop: 4 }
 
 const chartCard     = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }
 const chartIconWrap = { width: 34, height: 34, borderRadius: 8, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }

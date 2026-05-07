@@ -118,7 +118,9 @@
     "welcome_toast": "Аккаунт создан! Добро пожаловать в Academy Journal.",
     "min_password": "Мин. 6 символов",
     "repeat_password": "Повторите пароль",
-    "your_password": "Ваш пароль"
+    "your_password": "Ваш пароль",
+    "or": "или",
+    "telegram_hint": "Забыли пароль? Войдите через Telegram."
   },
   "dashboard": {
     "welcome": "С возвращением, {{name}}",
@@ -318,7 +320,12 @@
     "toast_updated": "Профиль обновлён!",
     "stickers": "Стикеры",
     "no_stickers": "Стикеров пока нет.",
-    "linked_children": "Привязанные дети"
+    "linked_children": "Привязанные дети",
+    "change_password": "Сменить пароль",
+    "set_password": "Установить пароль",
+    "current_password": "Текущий пароль",
+    "new_password": "Новый пароль",
+    "password_changed": "Пароль успешно изменён!"
   },
   "teacher_stats": {
     "total_students": "Всего учеников",
@@ -435,7 +442,9 @@
     "err_required": "Обязательно",
     "err_generic": "Что-то пошло не так. Попробуйте снова.",
     "err_accept": "Не удалось принять приглашение.",
-    "welcome": "Добро пожаловать в {{name}}!"
+    "welcome": "Добро пожаловать в {{name}}!",
+    "telegram_option": "Войти через Telegram",
+    "telegram_option_sub": "Один клик, пароль не нужен"
   },
   "register": {
     "title": "Только по приглашению",

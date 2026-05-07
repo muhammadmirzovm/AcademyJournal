@@ -4,6 +4,7 @@ from .views import (
     RegisterView, MeView, ProfileView, UserStatsView,
     OnlineCountView, PlatformStatsView,
     ParentChildrenView, AdminStatsView, UserChildrenView, UserGroupsView,
+    TelegramAuthView, ChangePasswordView,
 )
 
 urlpatterns = [
@@ -19,5 +20,7 @@ urlpatterns = [
     path('users/<int:pk>/groups/',   UserGroupsView.as_view(),   name='user_groups'),
     path('my-children/', ParentChildrenView.as_view(), name='my_children'),
     path('link-child/', ParentChildrenView.as_view(), name='link_child'),
-    path('admin-stats/', AdminStatsView.as_view(), name='admin_stats'),
+    path('admin-stats/',     AdminStatsView.as_view(),    name='admin_stats'),
+    path('telegram/',        TelegramAuthView.as_view(),  name='telegram_auth'),
+    path('change-password/', ChangePasswordView.as_view(), name='change_password'),
 ]

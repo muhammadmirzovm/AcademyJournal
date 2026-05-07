@@ -4,8 +4,10 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Code2, Loader2, ArrowRight } from 'lucide-react'
 import api from '../api/axios'
+import { telegramAuth } from '../api/users'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import TelegramLoginButton from '../components/TelegramLoginButton'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -19,6 +21,19 @@ export default function Login() {
   const [errors, setErrors]     = useState({})
 
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: '', general: '' })) }
+
+  const handleTelegram = async (tgUser) => {
+    setLoading(true)
+    try {
+      const { data } = await telegramAuth(tgUser)
+      login(data.tokens, data.user)
+      show(`${t('auth.welcome_back')}, ${data.user.first_name || data.user.username}!`, 'success')
+      navigate('/dashboard')
+    } catch (err) {
+      const msg = err.response?.data?.detail || t('auth.err_invalid')
+      setErrors({ general: msg })
+    } finally { setLoading(false) }
+  }
 
   const submit = async e => {
     e.preventDefault()
@@ -151,6 +166,20 @@ export default function Login() {
               }
             </motion.button>
           </form>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0 0' }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.1)' }} />
+            <span style={{ fontSize: 12, color: 'rgba(30,41,59,0.4)', fontWeight: 500 }}>{t('auth.or')}</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.1)' }} />
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <TelegramLoginButton onAuth={handleTelegram} disabled={loading} />
+          </div>
+          <p style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: 'rgba(30,41,59,0.4)' }}>
+            {t('auth.telegram_hint')}
+          </p>
         </div>
       </motion.div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
