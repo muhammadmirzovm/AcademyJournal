@@ -60,7 +60,6 @@ export default function InviteLanding() {
     const errs = {}
     if (!form.first_name) errs.first_name = t('invite.err_required')
     if (!form.username)   errs.username   = t('invite.err_required')
-    if (!form.email)      errs.email      = t('invite.err_required')
     if (form.password.length < 6) errs.password = t('auth.err_password_len')
     if (!form.confirm)    errs.confirm    = t('auth.err_confirm_required')
     else if (form.confirm !== form.password) errs.confirm = t('auth.err_confirm_match')
@@ -353,11 +352,10 @@ export default function InviteLanding() {
                     {errors.username && <p style={{ fontSize: 11, color: '#f87171', marginTop: 3 }}>{errors.username}</p>}
                   </div>
                   <div>
-                    <label style={labelStyle}>{t('auth.email')}</label>
-                    <input type="email" style={inputStyle(!!errors.email)} placeholder="john@example.com"
+                    <label style={labelStyle}>{t('auth.email')} <span style={{ fontWeight: 400, opacity: 0.5 }}>({t('auth.optional')})</span></label>
+                    <input type="email" style={inputStyle(false)} placeholder="john@example.com"
                       value={form.email} onChange={e => set('email', e.target.value)} autoComplete="email"
                       onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
-                    {errors.email && <p style={{ fontSize: 11, color: '#f87171', marginTop: 3 }}>{errors.email}</p>}
                   </div>
                   <div>
                     <label style={labelStyle}>{t('auth.password')}</label>
