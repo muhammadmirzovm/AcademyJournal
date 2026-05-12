@@ -237,7 +237,7 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
     return () => clearInterval(intervalRef.current)
   }, [question?.id])
 
-  const markAnswer = async (correct, stealTeamId = null) => {
+  const markAnswer = async (correct, stealTeamId = null, partialPct = null) => {
     clearInterval(intervalRef.current)
     if (stealTeamId) {
       const st = teams.find(t => t.id === stealTeamId)
@@ -245,9 +245,9 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
       return
     }
     setLoading(true)
-    if (correct) playSound('correct'); else playSound('wrong')
+    if (correct || (partialPct !== null && partialPct > 0)) playSound('correct'); else playSound('wrong')
     try {
-      const { data } = await answerQuestion(groupId, gameId, { correct, steal_team_id: null })
+      const { data } = await answerQuestion(groupId, gameId, { correct, steal_team_id: null, partial_pct: partialPct })
       onDone(data)
     } catch { show(t('quiz.toast_answer_fail'), 'error') }
     finally { setLoading(false) }
@@ -339,7 +339,31 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
           )}
 
           {/* Teacher controls */}
-          {isTeacher && phase === 'answering' && (
+          {isTeacher && phase === 'answering' && question.answer_type === 'open' ? (
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                {t('quiz.partial_score_label')}
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
+                {[25, 50, 75, 100].map(pct => {
+                  const pts = Math.floor(question.points * (question.is_double || false ? 2 : 1) * pct / 100)
+                  const color = pct === 100 ? '#22C55E' : pct >= 75 ? '#65a30d' : pct >= 50 ? '#F59E0B' : '#f97316'
+                  return (
+                    <motion.button key={pct} whileTap={{ scale: 0.94 }} disabled={loading}
+                      onClick={() => markAnswer(pct === 100, null, pct)}
+                      style={{ padding: '12px 4px', borderRadius: 10, border: `2px solid ${color}`, background: `${color}18`, color, fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                      <span style={{ fontSize: 18 }}>{pct}%</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{pts} {t('quiz.pts')}</span>
+                    </motion.button>
+                  )
+                })}
+              </div>
+              <motion.button whileTap={{ scale: 0.96 }} disabled={loading} onClick={() => setPhase('wrong')}
+                style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: '#EF4444', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <X size={16} /> {t('quiz.wrong')} (0 {t('quiz.pts')})
+              </motion.button>
+            </div>
+          ) : isTeacher && phase === 'answering' ? (
             <div style={{ display: 'flex', gap: 12 }}>
               <motion.button whileTap={{ scale: 0.96 }} disabled={loading} onClick={() => markAnswer(true)}
                 style={{ flex: 1, padding: '13px 0', borderRadius: 10, border: 'none', background: '#22C55E', color: '#fff', fontWeight: 800, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -350,7 +374,7 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
                 <X size={18} /> {t('quiz.wrong')}
               </motion.button>
             </div>
-          )}
+          ) : null}
 
           {/* Steal phase */}
           {isTeacher && phase === 'wrong' && (

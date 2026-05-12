@@ -566,6 +566,18 @@
     "err_too_few_title": "Not enough questions to start",
     "err_too_few_sub": "You need at least {{teams}} question(s) — one per team. Add more questions first.",
     "warn_few_title": "Game may end quickly",
-    "warn_few_sub": "For a full game, {{recommended}} questions is recommended (3 per team). You can still start."
+    "warn_few_sub": "For a full game, {{recommended}} questions is recommended (3 per team). You can still start.",
+    "delete_topic": "Delete topic",
+    "delete_topic_title": "Delete topic?",
+    "delete_topic_body": "This will permanently delete {{count}} question(s) and cannot be undone.",
+    "delete_topic_btn": "Delete topic",
+    "partial_score_label": "How correct was the answer?",
+    "duplicate_game": "Duplicate game",
+    "toast_game_copied": "Game duplicated!",
+    "toast_game_copy_fail": "Failed to duplicate game.",
+    "err_overflow": "Some inputs exceed available question counts. Please fix them.",
+    "none_available": "No questions of this difficulty",
+    "you": "you",
+    "no_banks": "No question banks available."
   }
 }

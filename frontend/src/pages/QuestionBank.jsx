@@ -29,11 +29,12 @@ export default function QuestionBank() {
   const [selDiff,   setSelDiff]   = useState('')
   const [loading,   setLoading]   = useState(true)
 
-  const [page,         setPage]         = useState(1)
-  const [showQModal,   setShowQModal]   = useState(false)
-  const [editingQ,     setEditingQ]     = useState(null)
-  const [newTopicName, setNewTopicName] = useState('')
-  const [addingTopic,  setAddingTopic]  = useState(false)
+  const [page,           setPage]           = useState(1)
+  const [showQModal,     setShowQModal]     = useState(false)
+  const [editingQ,       setEditingQ]       = useState(null)
+  const [newTopicName,   setNewTopicName]   = useState('')
+  const [addingTopic,    setAddingTopic]    = useState(false)
+  const [deletingTopic,  setDeletingTopic]  = useState(null)  // topic object
 
   useEffect(() => {
     getQuestionBanks().then(res => setBanks(res.data)).catch(() => {})
@@ -65,11 +66,13 @@ export default function QuestionBank() {
     } catch { show(t('quiz.toast_topic_fail'), 'error') }
   }
 
-  const handleDeleteTopic = async (id) => {
+  const handleDeleteTopic = async () => {
+    if (!deletingTopic) return
     try {
-      await deleteTopic(id)
-      setTopics(ts => ts.filter(t => t.id !== id))
-      if (selTopic === id) setSelTopic(null)
+      await deleteTopic(deletingTopic.id)
+      setTopics(ts => ts.filter(t => t.id !== deletingTopic.id))
+      if (selTopic === deletingTopic.id) setSelTopic(null)
+      setDeletingTopic(null)
     } catch { show(t('quiz.toast_topic_delete_fail'), 'error') }
   }
 
@@ -131,16 +134,39 @@ export default function QuestionBank() {
         </button>
 
         {topics.map(tp => (
-          <div key={tp.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <button onClick={() => setSelTopic(tp.id)}
-              style={{ ...topicBtn, flex: 1, background: selTopic === tp.id ? 'var(--accent-bg)' : 'transparent', color: selTopic === tp.id ? 'var(--accent)' : 'var(--text)' }}>
-              {tp.name}
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>{tp.question_count}</span>
-            </button>
-            {tp.created_by_id === user?.id && (
-              <button onClick={() => handleDeleteTopic(tp.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)', display: 'flex' }}>
-                <Trash2 size={12} />
+          <div key={tp.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button onClick={() => setSelTopic(tp.id)}
+                style={{ ...topicBtn, flex: 1, background: selTopic === tp.id ? 'var(--accent-bg)' : 'transparent', color: selTopic === tp.id ? 'var(--accent)' : 'var(--text)' }}>
+                {tp.name}
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>{tp.question_count}</span>
               </button>
+              {tp.created_by_id === user?.id && (
+                <button onClick={() => setDeletingTopic(tp)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)', display: 'flex', borderRadius: 4, transition: 'color 0.15s' }}
+                  title={t('quiz.delete_topic')}>
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
+            {/* Difficulty chips */}
+            {(tp.easy_count > 0 || tp.medium_count > 0 || tp.hard_count > 0) && (
+              <div style={{ display: 'flex', gap: 3, paddingLeft: 8 }}>
+                {tp.easy_count > 0 && (
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#22C55E', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 3, padding: '1px 4px' }}>
+                    {tp.easy_count}E
+                  </span>
+                )}
+                {tp.medium_count > 0 && (
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 3, padding: '1px 4px' }}>
+                    {tp.medium_count}M
+                  </span>
+                )}
+                {tp.hard_count > 0 && (
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#EF4444', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 3, padding: '1px 4px' }}>
+                    {tp.hard_count}H
+                  </span>
+                )}
+              </div>
             )}
           </div>
         ))}
@@ -260,6 +286,52 @@ export default function QuestionBank() {
 
       <QuestionModal open={showQModal} onClose={() => { setShowQModal(false); setEditingQ(null) }}
         editing={editingQ} topics={topics} onSave={handleSaveQuestion} />
+
+      {/* Delete topic confirmation modal */}
+      <Modal open={!!deletingTopic} onClose={() => setDeletingTopic(null)} title={t('quiz.delete_topic_title')}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Trash2 size={20} color="var(--danger)" />
+          </div>
+          <div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+              "{deletingTopic?.name}"
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              {t('quiz.delete_topic_body', { count: deletingTopic?.question_count ?? 0 })}
+            </p>
+            {deletingTopic?.question_count > 0 && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                {deletingTopic.easy_count > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#22C55E', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 5, padding: '2px 8px' }}>
+                    {deletingTopic.easy_count} {t('quiz.easy')}
+                  </span>
+                )}
+                {deletingTopic.medium_count > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 5, padding: '2px 8px' }}>
+                    {deletingTopic.medium_count} {t('quiz.medium')}
+                  </span>
+                )}
+                {deletingTopic.hard_count > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#EF4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 5, padding: '2px 8px' }}>
+                    {deletingTopic.hard_count} {t('quiz.hard')}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={() => setDeletingTopic(null)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
+            {t('quiz.cancel')}
+          </button>
+          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleDeleteTopic}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 7, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <Trash2 size={14} /> {t('quiz.delete_topic_btn')}
+          </motion.button>
+        </div>
+      </Modal>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

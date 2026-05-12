@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRight, Trash2, Pencil, Star, Coins, Crown } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
 } from '../api/groups'
-import { getGames, createGame, deleteGame, getQuestions, getTopics, getQuestionBanks } from '../api/quiz'
+import { getGames, createGame, deleteGame, getTopics, getQuestionBanks, duplicateGame } from '../api/quiz'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
@@ -299,7 +299,8 @@ export default function GroupDetail() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {games.map((g, i) => <GameRow key={g.id} game={g} groupId={id} index={i} isTeacher={isTeacher}
-                onDelete={async () => { try { await deleteGame(id, g.id); setGames(gs => gs.filter(x => x.id !== g.id)) } catch {} }} />)}
+                onDelete={async () => { try { await deleteGame(id, g.id); setGames(gs => gs.filter(x => x.id !== g.id)) } catch {} }}
+                onDuplicated={copy => setGames(gs => [copy, ...gs])} />)}
             </div>
           )}
         </div>
@@ -625,10 +626,23 @@ function EditJoinDateModal({ open, onClose, onUpdated, membership, groupId }) {
 
 const STATUS_COLOR = { waiting: 'var(--text-muted)', active: 'var(--success)', final: 'var(--warning)', finished: 'var(--accent)' }
 
-function GameRow({ game, groupId, index, isTeacher, onDelete }) {
-  const { t } = useTranslation()
-  const [confirm, setConfirm] = useState(false)
+function GameRow({ game, groupId, index, isTeacher, onDelete, onDuplicated }) {
+  const { t, i18n } = useTranslation()
+  const { show } = useToast()
+  const [confirm,    setConfirm]    = useState(false)
+  const [copying,    setCopying]    = useState(false)
   const statusKey = `quiz.status_${game.status}`
+
+  const handleDuplicate = async () => {
+    setCopying(true)
+    try {
+      const { data } = await duplicateGame(groupId, game.id)
+      onDuplicated(data)
+      show(t('quiz.toast_game_copied'), 'success')
+    } catch { show(t('quiz.toast_game_copy_fail'), 'error') }
+    finally { setCopying(false) }
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
       style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
@@ -637,21 +651,32 @@ function GameRow({ game, groupId, index, isTeacher, onDelete }) {
       </div>
       <div style={{ flex: 1 }}>
         <p style={{ fontWeight: 600, fontSize: 14 }}>{game.name}</p>
-        <p style={{ fontSize: 12, color: STATUS_COLOR[game.status] || 'var(--text-muted)', marginTop: 2 }}>{t(statusKey)} · {game.team_count} {t('quiz.teams')}</p>
+        <p style={{ fontSize: 12, color: STATUS_COLOR[game.status] || 'var(--text-muted)', marginTop: 2 }}>
+          {t(statusKey)} · {game.team_count} {t('quiz.teams')}
+          {game.question_count > 0 && (
+            <span style={{ color: 'var(--text-muted)' }}> · {game.question_count} {t('quiz.questions_in_game').toLowerCase()}</span>
+          )}
+        </p>
       </div>
       <Link to={`/groups/${groupId}/games/${game.id}`}
         style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--accent)', fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
         {t('quiz.open_game')} <ChevronRight size={14} />
       </Link>
       {isTeacher && (
-        confirm ? (
-          <div style={{ display: 'flex', gap: 4 }}>
-            <button onClick={onDelete} style={{ ...dangerBtn, padding: '4px 10px', fontSize: 12 }}>{t('group_detail.delete')}</button>
-            <button onClick={() => setConfirm(false)} style={{ ...ghostBtn, padding: '4px 10px', fontSize: 12 }}>{t('group_detail.cancel')}</button>
-          </div>
-        ) : (
-          <button onClick={() => setConfirm(true)} style={iconActionBtn}><Trash2 size={14} color="var(--text-muted)" /></button>
-        )
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={handleDuplicate} disabled={copying} title={t('quiz.duplicate_game')}
+            style={{ ...iconActionBtn, opacity: copying ? 0.5 : 1 }}>
+            {copying ? <Loader2 size={14} color="var(--text-muted)" style={{ animation: 'spin 0.7s linear infinite' }} /> : <CopyPlus size={14} color="var(--text-muted)" />}
+          </motion.button>
+          {confirm ? (
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={onDelete} style={{ ...dangerBtn, padding: '4px 10px', fontSize: 12 }}>{t('group_detail.delete')}</button>
+              <button onClick={() => setConfirm(false)} style={{ ...ghostBtn, padding: '4px 10px', fontSize: 12 }}>{t('group_detail.cancel')}</button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirm(true)} style={iconActionBtn}><Trash2 size={14} color="var(--text-muted)" /></button>
+          )}
+        </div>
       )}
     </motion.div>
   )
@@ -659,61 +684,119 @@ function GameRow({ game, groupId, index, isTeacher, onDelete }) {
 
 // ── New Game Modal ────────────────────────────────────────────────────────────
 
+const DIFF_ORDER = ['easy', 'medium', 'hard']
+const DIFF_COLOR_MAP = { easy: '#22C55E', medium: '#F59E0B', hard: '#EF4444' }
+
+function DiffInput({ diff, available, value, onChange, t }) {
+  const val = Number(value) || 0
+  const over = val > available
+  const color = DIFF_COLOR_MAP[diff]
+  const diffKey = `quiz.${diff}`
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {t(diffKey)}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{available}</span>
+      </div>
+      <input
+        type="number" min={0} max={available}
+        value={value}
+        onChange={e => onChange(Math.max(0, Number(e.target.value)))}
+        style={{
+          width: '100%', padding: '5px 6px', borderRadius: 6, textAlign: 'center',
+          border: `1.5px solid ${over ? 'var(--danger)' : val > 0 ? color : 'var(--border)'}`,
+          background: over ? 'rgba(239,68,68,0.06)' : val > 0 ? `${color}12` : 'var(--surface)',
+          color: over ? 'var(--danger)' : 'var(--text)', fontSize: 13, fontWeight: 700, outline: 'none',
+          transition: 'border-color 0.15s, background 0.15s',
+        }}
+        disabled={available === 0}
+        title={available === 0 ? t('quiz.none_available') : undefined}
+      />
+      {over && (
+        <span style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600 }}>
+          max {available}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function NewGameModal({ open, onClose, groupId, onCreated }) {
   const { show } = useToast(); const { t } = useTranslation()
   const [loading,       setLoading]       = useState(false)
   const [banks,         setBanks]         = useState([])
   const [selectedBank,  setSelectedBank]  = useState(null)
   const [topics,        setTopics]        = useState([])
-  const [topicCounts,   setTopicCounts]   = useState({})
+  const [diffCounts,    setDiffCounts]    = useState({})  // {topic_id: {easy: N, medium: N, hard: N}}
   const [topicsLoading, setTopicsLoading] = useState(false)
   const [form, setForm] = useState({ name: '', timer_seconds: 30, team_count: 2 })
   const [formError, setFormError] = useState('')
+
+  const reset = () => {
+    setForm({ name: '', timer_seconds: 30, team_count: 2 })
+    setTopics([]); setDiffCounts({}); setBanks([]); setSelectedBank(null); setFormError('')
+  }
 
   useEffect(() => {
     if (open) {
       getQuestionBanks().then(res => {
         setBanks(res.data)
         const me = res.data.find(b => b.is_me)
-        const initial = me ? me.id : (res.data[0]?.id ?? null)
-        setSelectedBank(initial)
+        setSelectedBank(me ? me.id : (res.data[0]?.id ?? null))
       }).catch(() => {})
     }
-    if (!open) {
-      setForm({ name: '', timer_seconds: 30, team_count: 2 })
-      setTopics([])
-      setTopicCounts({})
-      setBanks([])
-      setSelectedBank(null)
-      setFormError('')
-    }
+    if (!open) reset()
   }, [open])
 
   useEffect(() => {
-    if (!selectedBank) { setTopics([]); setTopicCounts({}); return }
+    if (!selectedBank) { setTopics([]); setDiffCounts({}); return }
     setTopicsLoading(true)
     getTopics({ owner: selectedBank }).then(res => {
       setTopics(res.data)
       const init = {}
-      res.data.forEach(tp => { init[tp.id] = 0 })
-      setTopicCounts(init)
+      res.data.forEach(tp => { init[tp.id] = { easy: 0, medium: 0, hard: 0 } })
+      setDiffCounts(init)
     }).catch(() => {}).finally(() => setTopicsLoading(false))
   }, [selectedBank])
 
-  const totalQ = Object.values(topicCounts).reduce((a, b) => a + (Number(b) || 0), 0)
+  const setCount = (topicId, diff, val) => {
+    setDiffCounts(c => ({ ...c, [topicId]: { ...c[topicId], [diff]: val } }))
+    setFormError('')
+  }
+
+  const totalQ = Object.values(diffCounts).reduce((sum, dc) =>
+    sum + DIFF_ORDER.reduce((s, d) => s + (Number(dc[d]) || 0), 0), 0)
+
+  const hasOverflow = topics.some(tp => {
+    const dc = diffCounts[tp.id] || {}
+    return (Number(dc.easy) || 0) > tp.easy_count
+        || (Number(dc.medium) || 0) > tp.medium_count
+        || (Number(dc.hard) || 0) > tp.hard_count
+  })
+
+  const topicSelected = id => {
+    const dc = diffCounts[id] || {}
+    return DIFF_ORDER.some(d => (Number(dc[d]) || 0) > 0)
+  }
 
   const submit = async e => {
     e.preventDefault()
     if (!form.name.trim()) { setFormError(t('quiz.err_game_name')); return }
-    if (totalQ === 0) { setFormError(t('quiz.err_no_questions')); return }
+    if (totalQ === 0)       { setFormError(t('quiz.err_no_questions')); return }
+    if (hasOverflow)        { setFormError(t('quiz.err_overflow')); return }
     setFormError('')
     setLoading(true)
     try {
-      const { data } = await createGame(groupId, { ...form, topic_counts: topicCounts, source_teacher_id: selectedBank })
+      const { data } = await createGame(groupId, {
+        ...form,
+        topic_difficulty_counts: diffCounts,
+        source_teacher_id: selectedBank,
+      })
       onCreated(data)
     } catch (err) {
-      const msg = err?.response?.data?.detail || t('quiz.toast_game_fail')
-      show(msg, 'error')
+      show(err?.response?.data?.detail || t('quiz.toast_game_fail'), 'error')
     } finally { setLoading(false) }
   }
 
@@ -741,15 +824,15 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
 
         {/* Question bank selector */}
         <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Question Bank</label>
+          <label style={labelStyle}>{t('quiz.question_bank')}</label>
           {banks.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>No question banks available.</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>{t('quiz.no_banks')}</p>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
               {banks.map(b => (
                 <button key={b.id} type="button" onClick={() => setSelectedBank(b.id)}
                   style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${selectedBank === b.id ? 'var(--accent)' : 'var(--border)'}`, background: selectedBank === b.id ? 'var(--accent-bg)' : 'var(--bg)', color: selectedBank === b.id ? 'var(--accent)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-                  {b.name} {b.is_me && '(you)'}
+                  {b.name}{b.is_me ? ` (${t('quiz.you')})` : ''}
                   <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{b.question_count}q</span>
                 </button>
               ))}
@@ -757,45 +840,68 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
           )}
         </div>
 
+        {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {t('quiz.questions_per_topic')}
+            {t('quiz.select_questions')}
           </p>
-          <span style={{ fontSize: 11, fontWeight: 700, color: totalQ > 0 ? 'var(--accent)' : 'var(--text-muted)', background: totalQ > 0 ? 'var(--accent-bg)' : 'var(--bg)', border: `1px solid ${totalQ > 0 ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 99, padding: '2px 8px' }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, borderRadius: 99, padding: '2px 8px',
+            color: totalQ > 0 ? 'var(--accent)' : 'var(--text-muted)',
+            background: totalQ > 0 ? 'var(--accent-bg)' : 'var(--bg)',
+            border: `1px solid ${totalQ > 0 ? 'var(--accent)' : 'var(--border)'}`,
+          }}>
             {totalQ} {t('quiz.questions_selected')}
           </span>
         </div>
 
-        <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20, paddingRight: 2 }}>
+        {/* Topics list with per-difficulty inputs */}
+        <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20, paddingRight: 2 }}>
           {topicsLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
               <Loader2 size={20} color="var(--accent)" style={{ animation: 'spin 0.7s linear infinite' }} />
             </div>
           ) : topics.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '12px 0' }}>{t('quiz.no_topics_hint')}</p>
-          ) : (
-            topics.map(tp => (
-              <div key={tp.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: (topicCounts[tp.id] || 0) > 0 ? 'var(--accent-bg)' : 'var(--bg)', border: `1px solid ${(topicCounts[tp.id] || 0) > 0 ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '8px 12px', transition: 'all 0.15s' }}>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{tp.name}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tp.question_count} {t('quiz.available')}</span>
-                <input type="number" min={0} max={tp.question_count}
-                  value={topicCounts[tp.id] ?? 0}
-                  onChange={e => setTopicCounts(c => ({ ...c, [tp.id]: Math.min(Number(e.target.value), tp.question_count) }))}
-                  style={{ width: 52, padding: '4px 8px', borderRadius: 6, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+          ) : topics.map(tp => {
+            const dc = diffCounts[tp.id] || { easy: 0, medium: 0, hard: 0 }
+            const sel = topicSelected(tp.id)
+            return (
+              <div key={tp.id} style={{
+                background: sel ? 'var(--accent-bg)' : 'var(--bg)',
+                border: `1px solid ${sel ? 'var(--accent)' : 'var(--border)'}`,
+                borderRadius: 10, padding: '10px 12px', transition: 'all 0.15s',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{tp.name}</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {[['easy', tp.easy_count, '#22C55E'], ['medium', tp.medium_count, '#F59E0B'], ['hard', tp.hard_count, '#EF4444']].map(([d, cnt, col]) => (
+                      <span key={d} style={{ fontSize: 10, fontWeight: 700, color: cnt > 0 ? col : 'var(--text-muted)', background: cnt > 0 ? `${col}18` : 'transparent', border: `1px solid ${cnt > 0 ? `${col}40` : 'var(--border)'}`, borderRadius: 4, padding: '1px 5px' }}>
+                        {cnt}{d[0].toUpperCase()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {DIFF_ORDER.map(d => (
+                    <DiffInput key={d} diff={d} available={tp[`${d}_count`]} value={dc[d]} onChange={v => setCount(tp.id, d, v)} t={t} />
+                  ))}
+                </div>
               </div>
-            ))
-          )}
+            )
+          })}
         </div>
 
         {formError && (
-          <p style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 7, padding: '8px 12px', marginBottom: 4 }}>
+          <p style={{ fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 7, padding: '8px 12px', marginBottom: 12 }}>
             ⚠ {formError}
           </p>
         )}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={ghostBtn}>{t('group_detail.cancel')}</button>
-          <motion.button type="submit" disabled={loading} whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} style={{ ...primaryBtn, opacity: loading ? 0.7 : 1 }}>
+          <motion.button type="submit" disabled={loading || hasOverflow} whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }}
+            style={{ ...primaryBtn, opacity: loading || hasOverflow ? 0.6 : 1, cursor: hasOverflow ? 'not-allowed' : 'pointer' }}>
             {loading && <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />}
             {loading ? t('quiz.saving') : t('quiz.new_game')}
           </motion.button>

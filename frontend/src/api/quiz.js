@@ -23,3 +23,4 @@ export const placeBet           = (gid, gameId, data) => api.post(`/groups/${gid
 export const answerFinal        = (gid, gameId, data) => api.post(`/groups/${gid}/games/${gameId}/final-answer/`, data)
 export const finishGame         = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/finish/`)
 export const resetGame          = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/reset/`)
+export const duplicateGame      = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/copy/`)

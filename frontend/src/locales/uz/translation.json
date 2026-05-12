@@ -566,6 +566,18 @@
     "err_too_few_title": "O'yinni boshlash uchun savollar yetarli emas",
     "err_too_few_sub": "Kamida {{teams}} ta savol kerak — har jamoa uchun bittadan. Avval savol qo'shing.",
     "warn_few_title": "O'yin tez tugashi mumkin",
-    "warn_few_sub": "To'liq o'yin uchun {{recommended}} ta savol tavsiya etiladi (har jamoa uchun 3 ta). Shunga qaramay boshlay olasiz."
+    "warn_few_sub": "To'liq o'yin uchun {{recommended}} ta savol tavsiya etiladi (har jamoa uchun 3 ta). Shunga qaramay boshlay olasiz.",
+    "delete_topic": "Mavzuni o'chirish",
+    "delete_topic_title": "Mavzuni o'chirish?",
+    "delete_topic_body": "Bu {{count}} ta savolni butunlay o'chirib tashlaydi.",
+    "delete_topic_btn": "Mavzuni o'chirish",
+    "partial_score_label": "Javob qanchalik to'g'ri?",
+    "duplicate_game": "O'yinni nusxalash",
+    "toast_game_copied": "O'yin nusxalandi!",
+    "toast_game_copy_fail": "O'yinni nusxalab bo'lmadi.",
+    "err_overflow": "Ba'zi qiymatlar mavjud savollar sonidan oshib ketdi.",
+    "none_available": "Bu darajada savollar yo'q",
+    "you": "siz",
+    "no_banks": "Savollar banki mavjud emas."
   }
 }

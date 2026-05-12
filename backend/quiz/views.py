@@ -112,26 +112,21 @@ def game_response(game):
     return GameSerializer(game).data
 
 
-def pick_topic_questions(teacher, topic_id, count):
-    """Pick `count` questions from a topic, guaranteeing at least 1 from each difficulty."""
-    by_diff = {'easy': [], 'medium': [], 'hard': []}
-    for q in Question.objects.filter(created_by=teacher, topic_id=topic_id):
-        by_diff[q.difficulty].append(q)
-    for pool in by_diff.values():
-        random.shuffle(pool)
-
+def pick_questions_by_difficulty(teacher, topic_id, diff_counts):
+    """
+    Pick exactly diff_counts['easy'/'medium'/'hard'] questions per difficulty.
+    Raises ValueError if not enough questions are available.
+    """
     chosen = []
-    # Guarantee at least 1 from each difficulty that has questions
-    for diff in ['easy', 'medium', 'hard']:
-        if len(chosen) < count and by_diff[diff]:
-            chosen.append(by_diff[diff].pop(0))
-
-    # Fill remaining slots from whatever is left
-    if len(chosen) < count:
-        remaining = [q for pool in by_diff.values() for q in pool]
-        random.shuffle(remaining)
-        chosen.extend(remaining[:count - len(chosen)])
-
+    for diff in ('easy', 'medium', 'hard'):
+        count = max(0, int(diff_counts.get(diff) or 0))
+        if count == 0:
+            continue
+        pool = list(Question.objects.filter(created_by=teacher, topic_id=topic_id, difficulty=diff))
+        if len(pool) < count:
+            raise ValueError(f'{diff}:{topic_id}:{count}:{len(pool)}')
+        random.shuffle(pool)
+        chosen.extend(pool[:count])
     random.shuffle(chosen)
     return chosen
 
@@ -157,12 +152,21 @@ class GameListCreateView(APIView):
         source_id = request.data.get('source_teacher_id')
         source_teacher = get_object_or_404(User, pk=source_id) if source_id else request.user
 
-        topic_counts = request.data.get('topic_counts', {})
+        topic_difficulty_counts = request.data.get('topic_difficulty_counts', {})
         chosen = []
-        for topic_id, count in topic_counts.items():
-            count = max(0, int(count))
-            if count > 0:
-                chosen.extend(pick_topic_questions(source_teacher, topic_id, count))
+        try:
+            for topic_id, diff_counts in topic_difficulty_counts.items():
+                if isinstance(diff_counts, dict):
+                    chosen.extend(pick_questions_by_difficulty(source_teacher, topic_id, diff_counts))
+        except ValueError as e:
+            game.delete()
+            parts = str(e).split(':')
+            diff, topic_id, requested, available = parts[0], parts[1], parts[2], parts[3]
+            return Response({
+                'detail': f'Not enough {diff} questions for topic {topic_id}: '
+                          f'requested {requested}, available {available}.'
+            }, status=400)
+
         if chosen:
             game.questions.set(chosen)
 
@@ -255,6 +259,7 @@ class GameAnswerView(APIView):
 
         correct       = request.data.get('correct', False)
         steal_team_id = request.data.get('steal_team_id')
+        partial_pct   = request.data.get('partial_pct')   # 25 | 50 | 75 | 100 | None
         is_double     = game.double_question_id == question.id
         base_points   = question.points * (2 if is_double else 1)
 
@@ -266,6 +271,13 @@ class GameAnswerView(APIView):
             GameRound.objects.create(game=game, question=question, picked_by=team,
                 stolen_by=steal_team, is_correct=True, is_stolen=True,
                 points_awarded=pts, is_double=is_double)
+        elif partial_pct is not None:
+            pct = max(0, min(100, int(partial_pct)))
+            pts = int(base_points * pct / 100)
+            team.score += pts
+            team.save()
+            GameRound.objects.create(game=game, question=question, picked_by=team,
+                is_correct=pct > 0, points_awarded=pts, is_double=is_double)
         elif correct:
             team.score += base_points
             team.save()
@@ -314,3 +326,23 @@ class GameResetView(APIView):
         game.current_team     = None
         game.save()
         return Response(game_response(game))
+
+
+class GameCopyView(APIView):
+    permission_classes = [IsTeacher]
+
+    def post(self, request, group_pk, game_pk):
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        if not is_teacher:
+            return Response({'detail': 'Not allowed.'}, status=403)
+        original = get_object_or_404(Game, pk=game_pk, group=group)
+        copy = Game.objects.create(
+            group=group,
+            name=f'Copy of {original.name}',
+            timer_seconds=original.timer_seconds,
+            team_count=original.team_count,
+            students_per_team=original.students_per_team,
+            created_by=request.user,
+        )
+        copy.questions.set(original.questions.all())
+        return Response(GameListSerializer(copy).data, status=201)

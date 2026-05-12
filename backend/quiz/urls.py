@@ -4,7 +4,7 @@ from .views import (
     QuestionListCreateView, QuestionDetailView,
     QuestionBankListView,
     GameListCreateView, GameDetailView, GameStartView,
-    GamePickView, GameAnswerView, GameFinishView, GameResetView,
+    GamePickView, GameAnswerView, GameFinishView, GameResetView, GameCopyView,
 )
 
 urlpatterns = [
@@ -20,4 +20,5 @@ urlpatterns = [
     path('groups/<int:group_pk>/games/<int:game_pk>/answer/',  GameAnswerView.as_view()),
     path('groups/<int:group_pk>/games/<int:game_pk>/finish/',  GameFinishView.as_view()),
     path('groups/<int:group_pk>/games/<int:game_pk>/reset/',   GameResetView.as_view()),
+    path('groups/<int:group_pk>/games/<int:game_pk>/copy/',    GameCopyView.as_view()),
 ]
