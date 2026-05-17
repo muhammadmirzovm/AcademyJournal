@@ -119,8 +119,7 @@
     "min_password": "Kamida 6 ta belgi",
     "repeat_password": "Parolni takrorlang",
     "your_password": "Parolingiz",
-    "or": "yoki",
-    "telegram_hint": "Parolni unutdingizmi? Telegram orqali kiring."
+    "or": "yoki"
   },
   "dashboard": {
     "welcome": "Xush kelibsiz, {{name}}",
@@ -442,9 +441,7 @@
     "err_required": "Majburiy",
     "err_generic": "Nimadir xato ketdi. Qayta urinib ko'ring.",
     "err_accept": "Taklifni qabul qilib bo'lmadi.",
-    "welcome": "{{name}}ga xush kelibsiz!",
-    "telegram_option": "Telegram orqali kirish",
-    "telegram_option_sub": "Bir bosish, parol kerak emas"
+    "welcome": "{{name}}ga xush kelibsiz!"
   },
   "register": {
     "title": "Faqat taklif orqali",

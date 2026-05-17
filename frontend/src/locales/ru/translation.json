@@ -119,8 +119,7 @@
     "min_password": "Мин. 6 символов",
     "repeat_password": "Повторите пароль",
     "your_password": "Ваш пароль",
-    "or": "или",
-    "telegram_hint": "Забыли пароль? Войдите через Telegram."
+    "or": "или"
   },
   "dashboard": {
     "welcome": "С возвращением, {{name}}",
@@ -442,9 +441,7 @@
     "err_required": "Обязательно",
     "err_generic": "Что-то пошло не так. Попробуйте снова.",
     "err_accept": "Не удалось принять приглашение.",
-    "welcome": "Добро пожаловать в {{name}}!",
-    "telegram_option": "Войти через Telegram",
-    "telegram_option_sub": "Один клик, пароль не нужен"
+    "welcome": "Добро пожаловать в {{name}}!"
   },
   "register": {
     "title": "Только по приглашению",

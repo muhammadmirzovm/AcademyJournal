@@ -17,7 +17,6 @@ class User(AbstractUser):
     role        = models.CharField(max_length=10, choices=ROLE_CHOICES, default=STUDENT)
     bio         = models.TextField(blank=True)
     last_seen   = models.DateTimeField(null=True, blank=True)
-    telegram_id = models.CharField(max_length=32, blank=True, null=True, unique=True)
     academy   = models.ForeignKey(
         'academies.Academy',
         on_delete=models.SET_NULL,

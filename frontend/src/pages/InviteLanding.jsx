@@ -4,10 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { GraduationCap, BookOpen, Users, Sparkles, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import api from '../api/axios'
-import { telegramAuth } from '../api/users'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import TelegramLoginButton from '../components/TelegramLoginButton'
 
 const ROLE_ICONS = { teacher: GraduationCap, student: BookOpen, admin: Users, parent: Users }
 
@@ -107,18 +105,6 @@ export default function InviteLanding() {
     } catch (err) {
       const detail = err.response?.data?.detail
       setErrors({ password: detail || t('auth.err_invalid') })
-    } finally { setLoading(false) }
-  }
-
-  const handleTelegram = async (tgUser) => {
-    setLoading(true)
-    try {
-      const { data } = await telegramAuth({ ...tgUser, invite_token: token })
-      login(data.tokens, data.user)
-      show(t('invite.welcome', { name: invite.academy.name }), 'success')
-      navigate('/dashboard')
-    } catch (err) {
-      show(err.response?.data?.detail || t('invite.err_generic'), 'error')
     } finally { setLoading(false) }
   }
 
@@ -265,19 +251,6 @@ export default function InviteLanding() {
                     <p style={{ textAlign: 'center', fontSize: 15, fontWeight: 600, color: '#1e293b', marginBottom: 4 }}>
                       {t('invite.how_join')}
                     </p>
-
-                    {/* Telegram option */}
-                    <div style={{ background: 'rgba(0,120,255,0.04)', border: '1.5px solid rgba(0,120,255,0.15)', borderRadius: 16, padding: '14px 20px' }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 4, textAlign: 'center' }}>{t('invite.telegram_option')}</p>
-                      <p style={{ fontSize: 11, color: 'rgba(30,41,59,0.5)', marginBottom: 12, textAlign: 'center' }}>{t('invite.telegram_option_sub')}</p>
-                      <TelegramLoginButton onAuth={handleTelegram} disabled={loading} />
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.08)' }} />
-                      <span style={{ fontSize: 11, color: 'rgba(30,41,59,0.35)', fontWeight: 500 }}>{t('auth.or')}</span>
-                      <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.08)' }} />
-                    </div>
 
                     <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                       onClick={() => setMode('register')}

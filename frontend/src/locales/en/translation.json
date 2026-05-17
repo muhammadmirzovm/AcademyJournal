@@ -119,8 +119,7 @@
     "min_password": "Min. 6 characters",
     "repeat_password": "Repeat your password",
     "your_password": "Your password",
-    "or": "or",
-    "telegram_hint": "Forgot password? Login with Telegram."
+    "or": "or"
   },
   "dashboard": {
     "welcome": "Welcome back, {{name}}",
@@ -442,9 +441,7 @@
     "err_required": "Required",
     "err_generic": "Something went wrong. Please try again.",
     "err_accept": "Could not accept invite.",
-    "welcome": "Welcome to {{name}}!",
-    "telegram_option": "Continue with Telegram",
-    "telegram_option_sub": "One click, no password needed"
+    "welcome": "Welcome to {{name}}!"
   },
   "register": {
     "title": "Invite Only",
