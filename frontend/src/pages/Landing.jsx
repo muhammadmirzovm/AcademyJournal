@@ -6,6 +6,7 @@ import {
   Code2, Users, BarChart2, BookOpen, GraduationCap, ArrowRight,
   CheckCircle, LayoutDashboard, Star, Zap, ChevronDown, Trophy,
   ClipboardList, TrendingUp, Key, Gamepad2, ShieldCheck,
+  Baby, Database, Link2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getOnlineCount, getPlatformStats } from '../api/users'
@@ -109,6 +110,73 @@ function DashboardMockup() {
   )
 }
 
+/* ── parent dashboard mockup ─────────────────────────────────────────── */
+function ParentMockup() {
+  const lessons = [
+    { name: 'Lesson 12', score: 5, present: true },
+    { name: 'Lesson 11', score: 4, present: true },
+    { name: 'Lesson 10', score: 3, present: false },
+    { name: 'Lesson 9',  score: 5, present: true },
+  ]
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.35)', userSelect: 'none' }}>
+      {/* Browser chrome */}
+      <div style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 5 }}>
+          {['#EF4444','#F59E0B','#22C55E'].map(c => <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />)}
+        </div>
+        <div style={{ flex: 1, background: 'var(--surface)', borderRadius: 5, padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, maxWidth: 220, margin: '0 auto' }}>
+          <ShieldCheck size={9} color="var(--accent)" /> academyjournal.vercel.app/dashboard
+        </div>
+      </div>
+
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Child card */}
+        <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#EC4899,#F97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>A</span>
+          </div>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Azizbek Toshmatov</p>
+            <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>Python Basics · Group A</p>
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent)' }}>4.5</p>
+              <p style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Avg</p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: '#22C55E' }}>88%</p>
+              <p style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Att.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Score bar chart */}
+        <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 12px', border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em' }}>Score trend</p>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 36 }}>
+            {[3, 4, 3.5, 5, 4, 4.5, 3, 5, 4, 4.5, 5, 4.5].map((v, i) => (
+              <div key={i} style={{ flex: 1, background: `rgba(236,72,153,${0.2 + (v / 5) * 0.65})`, borderRadius: '3px 3px 0 0', height: `${(v / 5) * 100}%` }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Recent lessons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {lessons.map(l => (
+            <div key={l.name} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg)', borderRadius: 8, padding: '7px 10px', border: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text)', flex: 1 }}>{l.name}</span>
+              <span style={{ fontSize: 10, color: l.present ? '#22C55E' : '#EF4444', fontWeight: 700 }}>{l.present ? '✓' : '✗'}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent)', background: 'var(--accent-bg)', padding: '2px 7px', borderRadius: 5 }}>{l.score}/5</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── FAQ item ────────────────────────────────────────────────────────── */
 function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false)
@@ -154,6 +222,9 @@ export default function Landing() {
     { icon: Code2,         title: t('landing.feat_charts'),       desc: t('landing.feat_charts_desc') },
     { icon: GraduationCap, title: t('landing.feat_profiles'),     desc: t('landing.feat_profiles_desc') },
     { icon: Star,          title: t('landing.feat_gamification'), desc: t('landing.feat_gamification_desc') },
+    { icon: Baby,          title: t('landing.feat_parent'),       desc: t('landing.feat_parent_desc') },
+    { icon: Database,      title: t('landing.feat_questions'),    desc: t('landing.feat_questions_desc') },
+    { icon: Link2,         title: t('landing.feat_invites'),      desc: t('landing.feat_invites_desc') },
   ]
 
   const steps = [
@@ -382,6 +453,43 @@ export default function Landing() {
             </motion.div>
           ))}
         </div>
+      </motion.div>
+
+      {/* ── PARENT CONTROL CALLOUT ───────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+        className="game-grid section-mb"
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center', marginBottom: 88, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: 'clamp(24px, 5vw, 52px)', overflow: 'hidden', position: 'relative' }}>
+
+        <div style={{ position: 'absolute', top: -60, left: -60, width: 300, height: 300, background: '#EC4899', opacity: 0.04, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
+
+        <div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(236,72,153,0.1)', border: '1px solid rgba(236,72,153,0.3)', borderRadius: 99, padding: '5px 14px', marginBottom: 18 }}>
+            <Baby size={13} color="#EC4899" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#EC4899' }}>{t('landing.parent_badge')}</span>
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 3.5vw, 34px)', fontWeight: 800, marginBottom: 14, letterSpacing: '-0.5px' }}>
+            {t('landing.parent_title')}
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.75, marginBottom: 28 }}>{t('landing.parent_sub')}</p>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
+            {[t('landing.parent_p1'), t('landing.parent_p2'), t('landing.parent_p3'), t('landing.parent_p4')].map(p => (
+              <li key={p} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14 }}>
+                <CheckCircle size={14} color="#EC4899" style={{ flexShrink: 0, marginTop: 2 }} /> {p}
+              </li>
+            ))}
+          </ul>
+          <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} style={{ display: 'inline-block' }}>
+            <Link to={user ? '/dashboard' : '/register'}
+              style={{ ...primaryBtn, background: 'linear-gradient(135deg,#EC4899,#F97316)', boxShadow: '0 4px 16px rgba(236,72,153,0.3)' }}
+              className="btn-primary">
+              {t('landing.parent_btn')} <ArrowRight size={14} />
+            </Link>
+          </motion.div>
+        </div>
+
+        <motion.div className="game-board-side" style={{ order: 1 }} animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 5, ease: 'easeInOut' }}>
+          <ParentMockup />
+        </motion.div>
       </motion.div>
 
       {/* ── FAQ ──────────────────────────────────────────────────────── */}
