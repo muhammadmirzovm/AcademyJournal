@@ -2,8 +2,10 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import dj_database_url
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 # ── Security ──────────────────────────────────────────────────────────────────
 SECRET_KEY          = os.environ.get('SECRET_KEY', 'django-insecure-eagy6i18qj6t37kgub_r=g+&i3s_fx$rywr@fk%oup_$s#ql_!')
