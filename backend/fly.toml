@@ -1,4 +1,4 @@
-app = 'codelearn-api'
+app = 'academyjournal'
 primary_region = 'iad'
 
 [build]
