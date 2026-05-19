@@ -529,16 +529,18 @@ class PasswordResetConfirmView(APIView):
         return Response({'detail': 'Password reset successfully. You can now log in.'})
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class TelegramWebhookView(View):
+class TelegramWebhookView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
     def post(self, request):
         secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
         expected = getattr(settings, 'TELEGRAM_WEBHOOK_SECRET', '')
         if expected and secret != expected:
-            return HttpResponse(status=403)
+            return Response(status=403)
 
         try:
-            data = json.loads(request.body)
+            data = request.data
             from users.telegram_bot import get_application
             from telegram import Update
             app = get_application()
@@ -547,4 +549,4 @@ class TelegramWebhookView(View):
         except Exception as e:
             logger.error('Telegram webhook error: %s', e, exc_info=True)
 
-        return JsonResponse({'ok': True})
+        return Response({'ok': True})
