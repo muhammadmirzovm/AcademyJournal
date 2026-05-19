@@ -2,9 +2,12 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = 'Run the Telegram bot for password reset and account linking'
+    help = 'Deprecated: bot now runs in webhook mode via /auth/telegram/webhook/'
 
     def handle(self, *args, **options):
-        from users.telegram_bot import run_bot
-        self.stdout.write('Starting Telegram bot...')
-        run_bot()
+        self.stdout.write(self.style.WARNING(
+            'The polling bot is no longer used.\n'
+            'The bot now runs in webhook mode — no separate process needed.\n'
+            'To register the webhook URL, run:\n'
+            '  python manage.py set_telegram_webhook https://<your-app>.fly.dev/auth/telegram/webhook/'
+        ))
