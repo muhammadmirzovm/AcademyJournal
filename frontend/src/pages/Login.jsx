@@ -150,6 +150,12 @@ export default function Login() {
                 : <>{t('auth.sign_in_btn')} <ArrowRight size={16} /></>
               }
             </motion.button>
+
+            <div style={{ textAlign: 'center', marginTop: 4 }}>
+              <Link to="/forgot-password" style={{ fontSize: 13, color: '#14B8A8', fontWeight: 600, textDecoration: 'none' }}>
+                {t('auth.forgot_password', 'Forgot password?')}
+              </Link>
+            </div>
           </form>
 
         </div>

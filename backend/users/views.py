@@ -6,9 +6,20 @@ from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.views import View
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.conf import settings
 from datetime import timedelta
+import json
+import logging
+import random
+import secrets
+from asgiref.sync import async_to_sync
 from .serializers import RegisterSerializer, UserSerializer
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
@@ -410,3 +421,130 @@ class ChangePasswordView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({'detail': 'Password changed successfully.'})
+
+
+class ConnectTelegramView(APIView):
+    """Generates a one-time deep-link token so a logged-in user can link their Telegram."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        from .models import TelegramConnectToken
+        import os
+
+        if request.user.telegram_id:
+            return Response({'detail': 'Telegram is already connected.'}, status=400)
+
+        token_str = secrets.token_urlsafe(16)
+        TelegramConnectToken.objects.filter(user=request.user).delete()
+        TelegramConnectToken.objects.create(user=request.user, token=token_str)
+
+        bot_username = os.environ.get('TELEGRAM_BOT_USERNAME', 'YourAcademyBot')
+        deep_link = f'https://t.me/{bot_username}?start={token_str}'
+        return Response({'link': deep_link})
+
+    def delete(self, request):
+        """Unlink Telegram from account."""
+        request.user.telegram_id = None
+        request.user.save(update_fields=['telegram_id'])
+        return Response({'detail': 'Telegram disconnected.'})
+
+
+class PasswordResetRequestView(APIView):
+    """Step 1 — user enters their username, OTP is sent to their Telegram."""
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        from .models import TelegramOTP
+
+        username = request.data.get('username', '').strip()
+        if not username:
+            return Response({'detail': 'Username is required.'}, status=400)
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            # Avoid username enumeration — return same response
+            return Response({'detail': 'If this account exists and has Telegram connected, an OTP has been sent.'})
+
+        if not user.telegram_id:
+            return Response(
+                {'detail': 'no_telegram',
+                 'message': 'This account has no Telegram connected. Contact your admin to reset your password.'},
+                status=400,
+            )
+
+        code = f'{random.randint(0, 999999):06d}'
+        expires_at = timezone.now() + timedelta(minutes=5)
+
+        # Invalidate any previous unused OTPs
+        TelegramOTP.objects.filter(user=user, used=False).delete()
+        TelegramOTP.objects.create(user=user, code=code, expires_at=expires_at)
+
+        try:
+            from asgiref.sync import async_to_sync
+            from .telegram_bot import send_otp
+            lang = user.telegram_lang or 'uz'
+            async_to_sync(send_otp)(user.telegram_id, code, lang)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f'OTP send failed: {e}')
+            return Response({'detail': 'Failed to send OTP. Please try again later.'}, status=500)
+
+        return Response({'detail': 'If this account exists and has Telegram connected, an OTP has been sent.'})
+
+
+class PasswordResetConfirmView(APIView):
+    """Step 2 — user submits username + OTP + new password."""
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        from .models import TelegramOTP
+
+        username     = request.data.get('username', '').strip()
+        code         = request.data.get('code', '').strip()
+        new_password = request.data.get('new_password', '').strip()
+
+        if not username or not code or not new_password:
+            return Response({'detail': 'username, code, and new_password are required.'}, status=400)
+
+        if len(new_password) < 6:
+            return Response({'detail': 'Password must be at least 6 characters.'}, status=400)
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'detail': 'Invalid code or username.'}, status=400)
+
+        otp = TelegramOTP.objects.filter(user=user, code=code, used=False).order_by('-expires_at').first()
+
+        if not otp or not otp.is_valid():
+            return Response({'detail': 'Invalid or expired code.'}, status=400)
+
+        otp.used = True
+        otp.save(update_fields=['used'])
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({'detail': 'Password reset successfully. You can now log in.'})
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TelegramWebhookView(View):
+    def post(self, request):
+        secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
+        expected = getattr(settings, 'TELEGRAM_WEBHOOK_SECRET', '')
+        if expected and secret != expected:
+            return HttpResponse(status=403)
+
+        try:
+            data = json.loads(request.body)
+            from users.telegram_bot import get_application
+            from telegram import Update
+            app = get_application()
+            update = Update.de_json(data, app.bot)
+            async_to_sync(app.process_update)(update)
+        except Exception as e:
+            logger.error('Telegram webhook error: %s', e, exc_info=True)
+
+        return JsonResponse({'ok': True})

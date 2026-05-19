@@ -4,7 +4,9 @@ from .views import (
     RegisterView, MeView, ProfileView, UserStatsView,
     OnlineCountView, PlatformStatsView,
     ParentChildrenView, AdminStatsView, UserChildrenView, UserGroupsView,
-    ChangePasswordView,
+    ChangePasswordView, ConnectTelegramView,
+    PasswordResetRequestView, PasswordResetConfirmView,
+    TelegramWebhookView,
 )
 
 urlpatterns = [
@@ -22,4 +24,8 @@ urlpatterns = [
     path('link-child/', ParentChildrenView.as_view(), name='link_child'),
     path('admin-stats/',     AdminStatsView.as_view(),    name='admin_stats'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),
+    path('connect-telegram/', ConnectTelegramView.as_view(), name='connect_telegram'),
+    path('password-reset/request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('telegram/webhook/', TelegramWebhookView.as_view(), name='telegram_webhook'),
 ]

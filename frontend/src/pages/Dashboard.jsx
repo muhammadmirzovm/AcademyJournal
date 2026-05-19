@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star } from 'lucide-react'
+import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star, MessageCircle } from 'lucide-react'
 import { getGroups, joinGroup } from '../api/groups'
 import { getAdminStats } from '../api/users'
 import api from '../api/axios'
@@ -43,6 +43,16 @@ export default function Dashboard() {
   const [joinErr,  setJoinErr]  = useState('')
   const [joining,  setJoining]  = useState(false)
 
+  const [nudgeDismissed, setNudgeDismissed] = useState(
+    () => localStorage.getItem('tg_nudge_dismissed') === '1'
+  )
+  const showNudge = !nudgeDismissed && user && !user.telegram_id
+
+  const dismissNudge = () => {
+    localStorage.setItem('tg_nudge_dismissed', '1')
+    setNudgeDismissed(true)
+  }
+
   useEffect(() => {
     if (isParent) {
       api.get('/auth/my-children/').then(r => setChildren(r.data)).finally(() => setLoading(false))
@@ -81,6 +91,51 @@ export default function Dashboard() {
           {t(ROLE_SUB[role] || ROLE_SUB.student)}
         </p>
       </div>
+
+      <AnimatePresence>
+        {showNudge && (
+          <motion.div
+            key="tg-nudge"
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{ overflow: 'hidden', marginBottom: 20 }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              padding: '14px 18px', borderRadius: 14,
+              background: 'linear-gradient(135deg, rgba(20,184,168,0.1), rgba(13,148,136,0.06))',
+              border: '1px solid rgba(20,184,168,0.25)',
+            }}>
+              <MessageCircle size={20} color="#0D9488" style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#0D9488' }}>
+                  {t('tg_nudge.title')}
+                </span>
+                {' — '}
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  {t('tg_nudge.desc')}
+                </span>
+              </div>
+              <Link to={`/profile/${user?.id}`} style={{
+                fontSize: 13, fontWeight: 700, color: '#fff', textDecoration: 'none',
+                background: 'linear-gradient(135deg, #14B8A8, #0D9488)',
+                padding: '6px 14px', borderRadius: 8, flexShrink: 0,
+                boxShadow: '0 4px 12px rgba(20,184,168,0.3)',
+              }}>
+                {t('tg_nudge.cta')}
+              </Link>
+              <button onClick={dismissNudge} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: 4, display: 'flex', flexShrink: 0,
+              }}>
+                <X size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="fade-up-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 32 }}>
         {role === 'admin' ? (

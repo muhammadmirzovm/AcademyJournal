@@ -4,9 +4,9 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
-  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock,
+  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink,
 } from 'lucide-react'
-import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword } from '../api/users'
+import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword, connectTelegram, disconnectTelegram } from '../api/users'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import ScoreLineChart from '../components/charts/ScoreLineChart'
@@ -33,6 +33,8 @@ export default function Profile() {
   const [pwForm, setPwForm]       = useState({ old_password: '', new_password: '', confirm: '' })
   const [pwErrors, setPwErrors]   = useState({})
   const [pwSaving, setPwSaving]   = useState(false)
+  const [tgLoading, setTgLoading] = useState(false)
+  const [tgLink, setTgLink]       = useState(null)
 
   useEffect(() => {
     setLoading(true)
@@ -105,6 +107,29 @@ export default function Profile() {
       const msg = err.response?.data?.detail
       setPwErrors({ old_password: msg || t('auth.err_invalid') })
     } finally { setPwSaving(false) }
+  }
+
+  const handleConnectTelegram = async () => {
+    setTgLoading(true)
+    try {
+      const { data } = await connectTelegram()
+      setTgLink(data.link)
+    } catch (err) {
+      show(err.response?.data?.detail || 'Failed to generate link.', 'error')
+    } finally { setTgLoading(false) }
+  }
+
+  const handleDisconnectTelegram = async () => {
+    setTgLoading(true)
+    try {
+      await disconnectTelegram()
+      setProfile(p => ({ ...p, telegram_id: null }))
+      setUser(u => ({ ...u, telegram_id: null }))
+      setTgLink(null)
+      show('Telegram disconnected.', 'success')
+    } catch {
+      show('Failed to disconnect.', 'error')
+    } finally { setTgLoading(false) }
   }
 
   if (loading) return <ProfileSkeleton />
@@ -340,6 +365,60 @@ export default function Profile() {
               {pwSaving ? t('profile.saving') : (me?.has_password ? t('profile.change_password') : t('profile.set_password'))}
             </motion.button>
           </form>
+        </motion.div>
+      )}
+
+      {/* Telegram — own profile only */}
+      {isOwn && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginTop: 24, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <div style={{ ...chartIconWrap, background: 'rgba(0,136,204,0.1)' }}>
+              <MessageCircle size={16} color="#0088CC" />
+            </div>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 14 }}>{t('telegram.section_title')}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
+                {profile.telegram_id ? t('telegram.connected_desc') : t('telegram.disconnected_desc')}
+              </p>
+            </div>
+          </div>
+
+          {profile.telegram_id ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#0088CC', background: 'rgba(0,136,204,0.08)', border: '1px solid rgba(0,136,204,0.2)', borderRadius: 8, padding: '6px 12px' }}>
+                {t('telegram.connected_badge')}
+              </span>
+              <button onClick={handleDisconnectTelegram} disabled={tgLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#EF4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '6px 12px', cursor: tgLoading ? 'not-allowed' : 'pointer', opacity: tgLoading ? 0.6 : 1 }}>
+                {tgLoading ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Unlink size={13} />}
+                {t('telegram.disconnect')}
+              </button>
+            </div>
+          ) : tgLink ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 400 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                {t('telegram.bot_instructions')}
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a href={tgLink} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, background: '#0088CC', color: '#fff', fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+                  <ExternalLink size={14} /> {t('telegram.open_bot')}
+                </a>
+                <button onClick={() => setTgLink(null)}
+                  style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
+                  {t('telegram.cancel')}
+                </button>
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('telegram.link_expires')}</p>
+            </div>
+          ) : (
+            <button onClick={handleConnectTelegram} disabled={tgLoading}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, background: '#0088CC', color: '#fff', fontWeight: 700, fontSize: 14, border: 'none', cursor: tgLoading ? 'not-allowed' : 'pointer', opacity: tgLoading ? 0.6 : 1 }}>
+              {tgLoading ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <MessageCircle size={14} />}
+              {t('telegram.connect')}
+            </button>
+          )}
         </motion.div>
       )}
 

@@ -2,13 +2,18 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import dj_database_url
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ── Security ──────────────────────────────────────────────────────────────────
-SECRET_KEY          = os.environ.get('SECRET_KEY', 'django-insecure-eagy6i18qj6t37kgub_r=g+&i3s_fx$rywr@fk%oup_$s#ql_!')
-DEBUG               = os.environ.get('DEBUG', 'true').lower() == 'true'
-ALLOWED_HOSTS       = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+SECRET_KEY               = os.environ.get('SECRET_KEY', 'django-insecure-eagy6i18qj6t37kgub_r=g+&i3s_fx$rywr@fk%oup_$s#ql_!')
+DEBUG                    = os.environ.get('DEBUG', 'true').lower() == 'true'
+ALLOWED_HOSTS            = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+TELEGRAM_BOT_TOKEN       = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_WEBHOOK_SECRET  = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')
 
 # Trust Fly.io / reverse-proxy HTTPS headers so build_absolute_uri returns https://
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
