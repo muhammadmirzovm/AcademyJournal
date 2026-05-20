@@ -431,6 +431,8 @@ NOTIF_MSG = {
         'parent_absent_scored':    "⚠️ *{name}* *{lesson}* darsiga kelmadi.\n⭐ Ball: *{score}/5* | {group}",
         'parent_absent_unscored':  "⚠️ *{name}* *{lesson}* darsiga kelmadi. | {group}",
         'hw_notification':         "📝 *{lesson}* darsi uchun uy vazifasi ({group}):\n\n{homework}",
+        'direct_message':          "📢 *{sender}* sizga xabar yubordi:\n\n{message}",
+        'direct_message_parent':   "📢 *{sender}* ({student} haqida) xabar yubordi:\n\n{message}",
     },
     'ru': {
         'score':                   "📊 Вы получили *{score}/5* в уроке «{lesson}» ({group})",
@@ -446,6 +448,8 @@ NOTIF_MSG = {
         'parent_absent_scored':    "⚠️ *{name}* пропустил(а) урок *{lesson}*.\n⭐ Оценка: *{score}/5* | {group}",
         'parent_absent_unscored':  "⚠️ *{name}* пропустил(а) урок *{lesson}*. | {group}",
         'hw_notification':         "📝 Домашнее задание по уроку *{lesson}* ({group}):\n\n{homework}",
+        'direct_message':          "📢 *{sender}* отправил(а) вам сообщение:\n\n{message}",
+        'direct_message_parent':   "📢 *{sender}* (о {student}) отправил(а) сообщение:\n\n{message}",
     },
 }
 

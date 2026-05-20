@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
-  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink,
+  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle,
 } from 'lucide-react'
-import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword, connectTelegram, disconnectTelegram } from '../api/users'
+import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword, connectTelegram, disconnectTelegram, getNotifyInfo, sendDirectNotification } from '../api/users'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import ScoreLineChart from '../components/charts/ScoreLineChart'
@@ -35,6 +35,7 @@ export default function Profile() {
   const [pwSaving, setPwSaving]   = useState(false)
   const [tgLoading, setTgLoading] = useState(false)
   const [tgLink, setTgLink]       = useState(null)
+  const [notifyOpen, setNotifyOpen] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -176,22 +177,26 @@ export default function Profile() {
               </div>
             </div>
 
-            {isOwn && (
-              <div style={{ display: 'flex', gap: 8 }}>
-                {editing ? (
-                  <>
-                    <motion.button whileTap={{ scale: 0.96 }} onClick={saveProfile} disabled={saving}
-                      style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
-                      {saving ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={13} />}
-                      {saving ? t('profile.saving') : t('profile.save')}
-                    </motion.button>
-                    <button onClick={cancelEdit} style={ghostBtn}><X size={13} /> {t('profile.cancel')}</button>
-                  </>
-                ) : (
-                  <button onClick={() => setEditing(true)} style={ghostBtn}><Edit2 size={13} /> {t('profile.edit')}</button>
-                )}
-              </div>
-            )}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {isOwn && (editing ? (
+                <>
+                  <motion.button whileTap={{ scale: 0.96 }} onClick={saveProfile} disabled={saving}
+                    style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
+                    {saving ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={13} />}
+                    {saving ? t('profile.saving') : t('profile.save')}
+                  </motion.button>
+                  <button onClick={cancelEdit} style={ghostBtn}><X size={13} /> {t('profile.cancel')}</button>
+                </>
+              ) : (
+                <button onClick={() => setEditing(true)} style={ghostBtn}><Edit2 size={13} /> {t('profile.edit')}</button>
+              ))}
+              {!isOwn && (me?.role === 'teacher' || me?.role === 'admin') && profile.role === 'student' && (
+                <motion.button whileTap={{ scale: 0.96 }} onClick={() => setNotifyOpen(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                  <Bell size={13} /> {t('profile.send_notification')}
+                </motion.button>
+              )}
+            </div>
           </div>
 
           {/* Bio */}
@@ -423,6 +428,16 @@ export default function Profile() {
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {notifyOpen && (
+        <SendNotificationModal
+          studentId={id}
+          studentName={profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : profile.username}
+          onClose={() => setNotifyOpen(false)}
+          t={t}
+          show={show}
+        />
+      )}
     </div>
   )
 }
@@ -488,6 +503,150 @@ function ProfileStatCard({ icon: Icon, label, value, color }) {
     </div>
   )
 }
+
+function SendNotificationModal({ studentId, studentName, onClose, t, show }) {
+  const [info, setInfo]         = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [selected, setSelected] = useState([])
+  const [message, setMessage]   = useState('')
+  const [sending, setSending]   = useState(false)
+
+  useEffect(() => {
+    getNotifyInfo(studentId).then(r => {
+      setInfo(r.data)
+      const defaults = []
+      if (r.data.student.telegram_connected) defaults.push('student')
+      r.data.parents.forEach(p => { if (p.telegram_connected) defaults.push(p.id) })
+      setSelected(defaults.length ? defaults : ['student'])
+    }).catch(() => {
+      show(t('profile.notify_toast_fail'), 'error')
+      onClose()
+    }).finally(() => setLoading(false))
+  }, [studentId])
+
+  const toggle = key => setSelected(prev =>
+    prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+  )
+
+  const handleSend = async () => {
+    if (!selected.length) { show(t('profile.notify_err_no_recipients'), 'error'); return }
+    if (!message.trim())  { show(t('profile.notify_err_empty'), 'error'); return }
+    setSending(true)
+    try {
+      await sendDirectNotification(studentId, { recipients: selected, message: message.trim() })
+      show(t('profile.notify_toast_sent'), 'success')
+      onClose()
+    } catch { show(t('profile.notify_toast_fail'), 'error') }
+    finally  { setSending(false) }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+        onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell size={17} color="var(--accent)" />
+            </div>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 16 }}>{t('profile.notify_modal_title')}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{studentName}</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+            <Loader2 size={24} style={{ animation: 'spin 0.7s linear infinite', color: 'var(--accent)' }} />
+          </div>
+        ) : (
+          <>
+            <p style={sectionLabel}>{t('profile.notify_recipients')}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+              <RecipientRow
+                id="student"
+                label={`${info.student.name} (${t('profile.notify_student')})`}
+                telegram={info.student.telegram_connected}
+                checked={selected.includes('student')}
+                onToggle={() => toggle('student')}
+                t={t}
+              />
+              {info.parents.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: 4 }}>{t('profile.notify_no_parents')}</p>
+              ) : info.parents.map(p => (
+                <RecipientRow key={p.id}
+                  id={p.id}
+                  label={`${p.name} (${t('profile.notify_parent')})`}
+                  telegram={p.telegram_connected}
+                  checked={selected.includes(p.id)}
+                  onToggle={() => toggle(p.id)}
+                  t={t}
+                />
+              ))}
+            </div>
+
+            <p style={sectionLabel}>{t('profile.notify_message')}</p>
+            <div style={{ marginBottom: 6 }}>
+              <textarea
+                value={message}
+                onChange={e => setMessage(e.target.value.slice(0, 300))}
+                placeholder={t('profile.notify_placeholder')}
+                rows={4}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 9, border: `1.5px solid ${message.length > 280 ? '#F59E0B' : 'var(--border)'}`, background: 'var(--bg)', color: 'var(--text)', fontSize: 14, lineHeight: 1.6, resize: 'vertical', outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }}
+              />
+              <p style={{ textAlign: 'right', fontSize: 11, color: message.length > 280 ? '#F59E0B' : 'var(--text-muted)', marginTop: 3 }}>
+                {t('profile.notify_char_count', { count: message.length })}
+              </p>
+            </div>
+
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.5 }}>
+              {t('profile.notify_modal_sub')}
+            </p>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={onClose} style={ghostBtn}>{t('profile.cancel')}</button>
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleSend} disabled={sending}
+                style={{ ...primaryBtn, opacity: sending ? 0.7 : 1 }}>
+                {sending ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Send size={13} />}
+                {sending ? t('profile.notify_sending') : t('profile.notify_send')}
+              </motion.button>
+            </div>
+          </>
+        )}
+      </motion.div>
+    </motion.div>
+  )
+}
+
+function RecipientRow({ label, telegram, checked, onToggle, t }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 9, border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, background: checked ? 'var(--accent-bg)' : 'var(--bg)', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s' }}>
+      <input type="checkbox" checked={checked} onChange={onToggle}
+        style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }} />
+      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
+      {telegram ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#0088CC', background: 'rgba(0,136,204,0.08)', border: '1px solid rgba(0,136,204,0.2)', borderRadius: 99, padding: '2px 8px', flexShrink: 0 }}>
+          <CheckCircle2 size={11} /> {t('profile.notify_tg_connected')}
+        </span>
+      ) : (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#F59E0B', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 99, padding: '2px 8px', flexShrink: 0 }}>
+          <AlertCircle size={11} /> {t('profile.notify_tg_not_connected')}
+        </span>
+      )}
+    </label>
+  )
+}
+
+const sectionLabel = { display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }
 
 const labelStyle  = { display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }
 const pwInputStyle = (hasErr) => ({ width: '100%', padding: '11px 14px', borderRadius: 9, border: `1.5px solid ${hasErr ? 'var(--danger)' : 'var(--border)'}`, background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' })

@@ -643,3 +643,96 @@ class TelegramWebhookView(APIView):
             logger.error('Telegram webhook error: %s', e, exc_info=True)
 
         return Response({'ok': True})
+
+
+# ── Individual Notification ───────────────────────────────────────────────────
+
+class UserNotifyView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def _check_permission(self, request):
+        return request.user.role in ('teacher', 'admin')
+
+    def get(self, request, pk):
+        if not self._check_permission(request):
+            return Response(status=403)
+        student = get_object_or_404(User, pk=pk, role='student')
+        parents = []
+        for ps in student.parents.select_related('parent').all():
+            p = ps.parent
+            parents.append({
+                'id':                 p.id,
+                'name':               f'{p.first_name} {p.last_name}'.strip() or p.username,
+                'telegram_connected': bool(p.telegram_id),
+            })
+        return Response({
+            'student': {
+                'id':                 student.id,
+                'name':               f'{student.first_name} {student.last_name}'.strip() or student.username,
+                'telegram_connected': bool(student.telegram_id),
+            },
+            'parents': parents,
+        })
+
+    def post(self, request, pk):
+        if not self._check_permission(request):
+            return Response(status=403)
+        student = get_object_or_404(User, pk=pk, role='student')
+
+        message    = request.data.get('message', '').strip()
+        recipients = request.data.get('recipients', [])
+
+        if not message:
+            return Response({'detail': 'Message is required.'}, status=400)
+        if len(message) > 300:
+            return Response({'detail': 'Message too long (max 300 chars).'}, status=400)
+        if not recipients:
+            return Response({'detail': 'Select at least one recipient.'}, status=400)
+
+        from .models import Notification
+        from users.telegram_bot import send_notification
+
+        sender_name   = f'{request.user.first_name} {request.user.last_name}'.strip() or request.user.username
+        student_name  = f'{student.first_name} {student.last_name}'.strip() or student.username
+        sent = 0
+
+        if 'student' in recipients:
+            Notification.objects.create(
+                user=student, type='lesson',
+                title=f'📢 {sender_name}',
+                body=message,
+            )
+            if student.telegram_id:
+                try:
+                    async_to_sync(send_notification)(
+                        student.telegram_id, 'direct_message',
+                        student.telegram_lang or 'uz',
+                        sender=sender_name, message=message,
+                    )
+                except Exception:
+                    pass
+            sent += 1
+
+        parent_ids = [r for r in recipients if isinstance(r, int)]
+        for parent_id in parent_ids:
+            try:
+                parent = User.objects.get(pk=parent_id, role='parent')
+            except User.DoesNotExist:
+                continue
+            Notification.objects.create(
+                user=parent, type='lesson',
+                title=f'📢 {sender_name}',
+                body=f'{student_name}: {message}',
+            )
+            if parent.telegram_id:
+                try:
+                    async_to_sync(send_notification)(
+                        parent.telegram_id, 'direct_message_parent',
+                        parent.telegram_lang or 'uz',
+                        sender=sender_name, student=student_name, message=message,
+                    )
+                except Exception:
+                    pass
+            sent += 1
+
+        return Response({'ok': True, 'sent': sent})

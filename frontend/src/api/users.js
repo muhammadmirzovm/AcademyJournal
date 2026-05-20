@@ -15,3 +15,6 @@ export const connectTelegram        = ()     => api.post('/auth/connect-telegram
 export const disconnectTelegram     = ()     => api.delete('/auth/connect-telegram/')
 export const passwordResetRequest   = (data) => api.post('/auth/password-reset/request/', data)
 export const passwordResetConfirm   = (data) => api.post('/auth/password-reset/confirm/', data)
+
+export const getNotifyInfo          = (id)   => api.get(`/auth/users/${id}/notify/`)
+export const sendDirectNotification = (id, data) => api.post(`/auth/users/${id}/notify/`, data)
