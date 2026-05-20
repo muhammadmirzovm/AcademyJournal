@@ -386,26 +386,33 @@ class EndLessonView(APIView):
             present = attendances.get(student.id, False)
             score   = scores.get(student.id)
             name    = f'{student.first_name} {student.last_name}'.strip() or student.username
+            scored  = score is not None
+            ntype   = 'score' if scored else 'absent'
 
-            attendance_str = 'Keldi' if present else 'Kelmadi'
-            score_str      = f'{score}/5' if score is not None else '—'
+            # Pick message key variant
+            attendance_key = 'present' if present else 'absent'
+            score_key      = 'scored'  if scored  else 'unscored'
+            student_key    = f'student_{attendance_key}_{score_key}'
+            parent_key     = f'parent_{attendance_key}_{score_key}'
 
-            # Student notification
-            title = f'{lesson.title}'
-            body  = f'Davomat: {attendance_str} | Ball: {score_str} | {group.name}'
+            # Student in-app notification body
+            if present:
+                s_body = f'{"Qatnashdingiz" if not scored else f"Qatnashdingiz · Ball: {score}/5"} — {group.name}'
+            else:
+                s_body = f'{"Kelmadingiz" if not scored else f"Kelmadingiz · Ball: {score}/5"} — {group.name}'
+
             Notification.objects.create(
-                user=student,
-                type='score' if score is not None else 'absent',
-                title=title,
-                body=body,
+                user=student, type=ntype,
+                title=lesson.title, body=s_body,
             )
 
             if student.telegram_id:
                 try:
+                    kwargs = dict(lesson=lesson.title, group=group.name)
+                    if scored:
+                        kwargs['score'] = score
                     async_to_sync(send_notification)(
-                        student.telegram_id, 'lesson_end', student.telegram_lang or 'uz',
-                        lesson=lesson.title, group=group.name,
-                        attendance=attendance_str, score=score_str,
+                        student.telegram_id, student_key, student.telegram_lang or 'uz', **kwargs,
                     )
                 except Exception:
                     pass
@@ -413,19 +420,22 @@ class EndLessonView(APIView):
             # Parent notifications
             for ps in student.parents.select_related('parent').all():
                 parent = ps.parent
-                p_body = f'{name} | Davomat: {attendance_str} | Ball: {score_str} | {group.name}'
+                if present:
+                    p_body = f'{name} · {"Qatnashdi" if not scored else f"Qatnashdi · Ball: {score}/5"} — {group.name}'
+                else:
+                    p_body = f'{name} · {"Kelmadi" if not scored else f"Kelmadi · Ball: {score}/5"} — {group.name}'
+
                 Notification.objects.create(
-                    user=parent,
-                    type='score' if score is not None else 'absent',
-                    title=lesson.title,
-                    body=p_body,
+                    user=parent, type=ntype,
+                    title=lesson.title, body=p_body,
                 )
                 if parent.telegram_id:
                     try:
+                        kwargs = dict(name=name, lesson=lesson.title, group=group.name)
+                        if scored:
+                            kwargs['score'] = score
                         async_to_sync(send_notification)(
-                            parent.telegram_id, 'lesson_end_parent', parent.telegram_lang or 'uz',
-                            name=name, lesson=lesson.title, group=group.name,
-                            attendance=attendance_str, score=score_str,
+                            parent.telegram_id, parent_key, parent.telegram_lang or 'uz', **kwargs,
                         )
                     except Exception:
                         pass
