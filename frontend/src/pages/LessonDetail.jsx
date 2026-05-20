@@ -80,8 +80,8 @@ export default function LessonDetail() {
         <span>{lesson?.title || 'Lesson'}</span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700 }}>{lesson?.title}</h2>
+      <div className="lesson-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
+        <h2 className="page-title" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700 }}>{lesson?.title}</h2>
         {isTeacher && (
           <motion.button
             whileHover={{ translateY: -1 }}
@@ -297,6 +297,7 @@ function ScoresTab({ members, scores, groupId, lessonId, isTeacher, onSaved }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {[0,1,2,3,4,5].map(n => (
                       <motion.button key={n} whileTap={{ scale: 0.85 }} onClick={() => set(m.id, score === n ? '' : n)}
+                        className="score-btn"
                         style={{ width: 36, height: 36, borderRadius: 7, border: `1.5px solid ${score === n ? 'var(--accent)' : 'var(--border)'}`, background: score === n ? 'var(--accent-bg)' : 'transparent', cursor: 'pointer', fontWeight: 700, fontSize: 14, color: score === n ? 'var(--accent)' : 'var(--text-muted)', transition: 'all 0.15s', flexShrink: 0 }}>
                         {n}
                       </motion.button>

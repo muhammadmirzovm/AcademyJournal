@@ -114,8 +114,14 @@ a { transition: color 0.15s, opacity 0.15s; }
   .stack-mobile { flex-direction: column !important; }
   .full-mobile  { width: 100% !important; }
 
+  /* Page content padding */
+  .page-main { padding: 16px 14px !important; }
+
+  /* Headings scale down */
+  .page-title { font-size: 22px !important; }
+
   /* Tab rows: smaller padding so they don't overflow */
-  .tab-btn { padding: 8px 12px !important; font-size: 12px !important; }
+  .tab-btn { padding: 8px 10px !important; font-size: 11px !important; }
 
   /* Stats row wraps below save button */
   .stats-row { flex-wrap: wrap !important; row-gap: 8px !important; }
@@ -128,4 +134,27 @@ a { transition: color 0.15s, opacity 0.15s; }
 
   /* Lesson row: allow text truncation */
   .lesson-title { font-size: 13px !important; }
+
+  /* Lesson header: title + End Lesson button stack vertically */
+  .lesson-header { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+  .lesson-header button { width: 100% !important; justify-content: center !important; }
+
+  /* Dashboard podium: tighter */
+  .podium-wrap { gap: 6px !important; }
+  .podium-name { font-size: 11px !important; max-width: 80px !important; }
+
+  /* Leaderboard row: hide group names on very small screens */
+  .lb-group { display: none !important; }
+
+  /* Card grids: single column on mobile */
+  .mobile-single { grid-template-columns: 1fr !important; }
+
+  /* Nudge banner: stack on mobile */
+  .nudge-banner { flex-wrap: wrap !important; gap: 10px !important; }
+
+  /* Member/score rows: shrink avatar */
+  .member-avatar { width: 30px !important; height: 30px !important; font-size: 11px !important; }
+
+  /* Score buttons: smaller */
+  .score-btn { width: 30px !important; height: 30px !important; font-size: 12px !important; }
 }

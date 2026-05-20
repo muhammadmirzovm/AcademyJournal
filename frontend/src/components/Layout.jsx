@@ -18,6 +18,7 @@ export default function Layout({ children }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, ease: 'easeOut' }}
+        className={isFullWidth ? '' : 'page-main'}
         style={
           isFullWidth
             ? { flex: 1, width: '100%' }

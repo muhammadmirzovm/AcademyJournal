@@ -203,6 +203,13 @@ export default function Navbar() {
                 </div>
               )}
 
+              {/* Notifications */}
+              {user && (
+                <div style={{ padding: '8px 4px 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <NotificationBell />
+                </div>
+              )}
+
               {/* Nav links */}
               {navLinks.map(link => (
                 <DrawerLink key={link.to} to={link.to} icon={link.icon} active={isActive(link.to)}>

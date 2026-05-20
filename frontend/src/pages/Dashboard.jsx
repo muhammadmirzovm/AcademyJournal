@@ -91,7 +91,7 @@ export default function Dashboard() {
   return (
     <div>
       <div className="fade-up" style={{ marginBottom: 32 }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginBottom: 6 }}>
+        <h2 className="page-title" style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginBottom: 6 }}>
           {t('dashboard.welcome', { name: user?.first_name || user?.username })}
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
@@ -109,7 +109,7 @@ export default function Dashboard() {
             transition={{ duration: 0.25 }}
             style={{ overflow: 'hidden', marginBottom: 20 }}
           >
-            <div style={{
+            <div className="nudge-banner" style={{
               display: 'flex', alignItems: 'center', gap: 14,
               padding: '14px 18px', borderRadius: 14,
               background: 'linear-gradient(135deg, rgba(20,184,168,0.1), rgba(13,148,136,0.06))',
@@ -170,7 +170,7 @@ export default function Dashboard() {
               <CardSkeleton /><CardSkeleton />
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+            <div className="mobile-single" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
 
               {/* Top Groups */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }}>
@@ -309,7 +309,7 @@ export default function Dashboard() {
             return (
               <div style={{ marginBottom: 32 }}>
                 <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 20 }}>{t('dashboard.leaderboard')}</h3>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 12, marginBottom: 24 }}>
+                <div className="podium-wrap" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 12, marginBottom: 24 }}>
                   {order.map((s, i) => {
                     const medal = heights[i]
                     const rank = i === 1 ? 0 : i === 0 ? 1 : 2
@@ -320,7 +320,7 @@ export default function Dashboard() {
                           <div style={{ width: 48, height: 48, borderRadius: '50%', background: medal.bg, border: `2px solid ${medal.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: 20 }}>
                             {MEDALS[rank].label}
                           </div>
-                          <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{s.display_name}</p>
+                          <p className="podium-name" style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{s.display_name}</p>
                           <p style={{ fontSize: 12, color: medal.color, fontWeight: 800 }}>{s.avg_score ?? '—'}%</p>
                         </Link>
                         <div style={{ width: '100%', background: medal.bg, border: `1px solid ${medal.color}40`, borderRadius: '8px 8px 0 0', height: medal.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -341,7 +341,7 @@ export default function Dashboard() {
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Link to={`/profile/${s.id}`} style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display_name}</Link>
-                        <p style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.groups?.join(', ')}</p>
+                        <p className="lb-group" style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.groups?.join(', ')}</p>
                       </div>
                       {s.attendance != null && (
                         <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
