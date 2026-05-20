@@ -101,12 +101,12 @@ export default function NotificationBell() {
             transition={{ duration: 0.15 }}
             style={{
               position: 'absolute', right: 0, top: 46, width: 320,
-              background: 'var(--nav-bg)', border: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: 14, overflow: 'hidden',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.4)', zIndex: 300,
+              boxShadow: 'var(--shadow-lg)', zIndex: 300,
             }}
           >
-            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{t('notif.title')}</p>
               {notifs.some(n => !n.is_read) && (
                 <button onClick={() => { markAllRead(); setUnread(0); setNotifs(ns => ns.map(n => ({ ...n, is_read: true }))) }}
@@ -126,18 +126,18 @@ export default function NotificationBell() {
                   <div key={n.id} onClick={() => !n.is_read && handleOne(n.id)}
                     style={{
                       display: 'flex', gap: 10, padding: '12px 16px',
-                      borderBottom: '1px solid rgba(255,255,255,0.04)',
-                      background: n.is_read ? 'transparent' : 'rgba(20,184,168,0.04)',
+                      borderBottom: '1px solid var(--border)',
+                      background: n.is_read ? 'transparent' : 'var(--accent-bg)',
                       cursor: n.is_read ? 'default' : 'pointer',
                     }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 8, background: TYPE_COLOR[n.type] || 'rgba(148,163,184,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 8, background: TYPE_COLOR[n.type] || 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
                       {TYPE_ICON[n.type]}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: n.is_read ? 500 : 700, color: TYPE_TEXT_COLOR[n.type] || 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ fontSize: 13, fontWeight: n.is_read ? 500 : 700, color: n.is_read ? 'var(--text-muted)' : (TYPE_TEXT_COLOR[n.type] || 'var(--text)'), marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {n.title}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text)' }}>{n.body}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4 }}>{n.body}</p>
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(n.created_at)}</span>
                   </div>
