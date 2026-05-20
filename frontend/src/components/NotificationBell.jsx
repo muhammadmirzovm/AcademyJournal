@@ -16,6 +16,12 @@ const TYPE_COLOR = {
   lesson: 'rgba(20,184,168,0.1)',
 }
 
+const TYPE_TEXT_COLOR = {
+  score:  '#F59E0B',
+  absent: '#EF4444',
+  lesson: '#14B8A6',
+}
+
 function timeAgo(iso) {
   const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
   if (diff < 60)  return `${diff}s`
@@ -128,10 +134,10 @@ export default function NotificationBell() {
                       {TYPE_ICON[n.type]}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: n.is_read ? 500 : 700, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ fontSize: 13, fontWeight: n.is_read ? 500 : 700, color: TYPE_TEXT_COLOR[n.type] || 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {n.title}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{n.body}</p>
+                      <p style={{ fontSize: 11, color: 'var(--text)' }}>{n.body}</p>
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(n.created_at)}</span>
                   </div>
