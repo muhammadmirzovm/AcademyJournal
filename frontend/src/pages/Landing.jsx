@@ -6,7 +6,7 @@ import {
   Code2, Users, BarChart2, BookOpen, GraduationCap, ArrowRight,
   CheckCircle, LayoutDashboard, Star, Zap, ChevronDown, Trophy,
   ClipboardList, TrendingUp, Key, Gamepad2, ShieldCheck,
-  Baby, Database, Link2,
+  Baby, Database, Link2, MessageCircle, Send, Minus,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getOnlineCount, getPlatformStats } from '../api/users'
@@ -174,6 +174,86 @@ function ParentMockup() {
         </div>
       </div>
     </div>
+  )
+}
+
+/* ── telegram chat mockup ────────────────────────────────────────────── */
+function BotMsg({ lines }) {
+  return (
+    <div style={{ background: '#232E3C', borderRadius: '4px 12px 12px 12px', padding: '8px 11px', maxWidth: '88%' }}>
+      {lines.map((l, i) => <p key={i} style={{ fontSize: 11, color: '#E4E6EB', lineHeight: 1.6, margin: 0 }}>{l}</p>)}
+    </div>
+  )
+}
+function UserMsg({ text }) {
+  return (
+    <div style={{ background: '#2B5278', borderRadius: '12px 4px 12px 12px', padding: '8px 11px', maxWidth: '58%', alignSelf: 'flex-end' }}>
+      <p style={{ fontSize: 11, color: '#fff', margin: 0, fontFamily: 'var(--font-mono)' }}>{text}</p>
+    </div>
+  )
+}
+function TelegramMockup() {
+  return (
+    <div style={{ background: '#17212B', borderRadius: 16, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', userSelect: 'none', maxWidth: 300, margin: '0 auto' }}>
+      <div style={{ background: '#232E3C', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#0088CC,#00AAFF)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <MessageCircle size={15} color="#fff" />
+        </div>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>AcademyJournal Bot</p>
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>@academyjournal_bot · online</p>
+        </div>
+      </div>
+      <div style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <BotMsg lines={['📢 Lesson 12 ended!', '✓ Present · Score: 5/5 ⭐']} />
+        <UserMsg text="/mystats" />
+        <BotMsg lines={['📊 Python Basics', 'Score: 4.2/5 · Attendance: 88%']} />
+        <UserMsg text="/homework" />
+        <BotMsg lines={['📚 Homework:', 'Complete exercises 1–10 from Ch. 3']} />
+      </div>
+    </div>
+  )
+}
+
+/* ── role card ───────────────────────────────────────────────────────── */
+function RoleCard({ icon: Icon, title, color, features, highlight }) {
+  return (
+    <div style={{ background: 'var(--surface)', border: `1.5px solid ${highlight ? color + '50' : 'var(--border)'}`, borderRadius: 16, overflow: 'hidden', boxShadow: highlight ? `0 0 0 1px ${color}20, 0 8px 32px ${color}18` : 'var(--shadow-sm)', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      {highlight && <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 50% 0%, ${color}08 0%, transparent 65%)`, pointerEvents: 'none' }} />}
+      <div style={{ padding: '24px 22px 18px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+          <Icon size={21} color={color} />
+        </div>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>{title}</h3>
+      </div>
+      <ul style={{ listStyle: 'none', padding: '16px 22px 24px', display: 'flex', flexDirection: 'column', gap: 11, flex: 1 }}>
+        {features.map((f, i) => (
+          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13, color: 'var(--text)' }}>
+            <CheckCircle size={14} color={color} style={{ flexShrink: 0, marginTop: 1 }} /> {f}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/* ── testimonial card ────────────────────────────────────────────────── */
+function TestimonialCard({ quote, name, role, color, delay }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay }}
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 22px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <span style={{ fontSize: 40, lineHeight: 1, color: color, fontFamily: 'Georgia, serif', opacity: 0.7 }}>"</span>
+      <p style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.75, marginTop: -20, flex: 1 }}>{quote}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${color}20`, border: `2px solid ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color }}>{name[0]}</span>
+        </div>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{name}</p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{role}</p>
+        </div>
+      </div>
+    </motion.div>
   )
 }
 
@@ -455,6 +535,26 @@ export default function Landing() {
         </div>
       </motion.div>
 
+      {/* ── ROLE COMPARISON ──────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+        className="section-mb" style={{ marginBottom: 88 }}>
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.1em' }}>{t('landing.roles_badge')}</span>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800, marginTop: 10, marginBottom: 12, letterSpacing: '-0.5px' }}>
+            {t('landing.roles_title')}
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>{t('landing.roles_sub')}</p>
+        </div>
+        <div className="roles-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          <RoleCard icon={GraduationCap} title={t('landing.roles_teacher')} color="#8B5CF6"
+            features={[t('landing.roles_f1'), t('landing.roles_f2'), t('landing.roles_f3'), t('landing.roles_f4'), t('landing.roles_f5'), t('landing.roles_f12')]} />
+          <RoleCard icon={BookOpen} title={t('landing.roles_student')} color="var(--accent)" highlight
+            features={[t('landing.roles_f2'), t('landing.roles_f6'), t('landing.roles_f7'), t('landing.roles_f8'), t('landing.roles_f9'), t('landing.roles_f12')]} />
+          <RoleCard icon={Baby} title={t('landing.roles_parent')} color="#EC4899"
+            features={[t('landing.roles_f10'), t('landing.roles_f2'), t('landing.roles_f11'), t('landing.roles_f6'), t('landing.roles_f12')]} />
+        </div>
+      </motion.div>
+
       {/* ── PARENT CONTROL CALLOUT ───────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
         className="game-grid section-mb"
@@ -492,6 +592,59 @@ export default function Landing() {
         </motion.div>
       </motion.div>
 
+      {/* ── TELEGRAM BOT CALLOUT ─────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+        className="game-grid section-mb"
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center', marginBottom: 88, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: 'clamp(24px, 5vw, 52px)', overflow: 'hidden', position: 'relative' }}>
+
+        <div style={{ position: 'absolute', top: -40, right: -40, width: 260, height: 260, background: '#0088CC', opacity: 0.04, borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none' }} />
+
+        <div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,136,204,0.1)', border: '1px solid rgba(0,136,204,0.3)', borderRadius: 99, padding: '5px 14px', marginBottom: 18 }}>
+            <MessageCircle size={13} color="#0088CC" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#0088CC' }}>{t('landing.tg_badge')}</span>
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 3.5vw, 34px)', fontWeight: 800, marginBottom: 14, letterSpacing: '-0.5px' }}>
+            {t('landing.tg_title')}
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.75, marginBottom: 28 }}>{t('landing.tg_sub')}</p>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
+            {[t('landing.tg_p1'), t('landing.tg_p2'), t('landing.tg_p3'), t('landing.tg_p4')].map(p => (
+              <li key={p} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14 }}>
+                <Send size={13} color="#0088CC" style={{ flexShrink: 0, marginTop: 2 }} /> {p}
+              </li>
+            ))}
+          </ul>
+          <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} style={{ display: 'inline-block' }}>
+            <Link to={user ? '/profile/' + user.id : '/register'}
+              style={{ ...primaryBtn, background: '#0088CC', boxShadow: '0 4px 16px rgba(0,136,204,0.3)' }}
+              className="btn-primary">
+              <MessageCircle size={15} /> {t('landing.tg_btn')} <ArrowRight size={14} />
+            </Link>
+          </motion.div>
+        </div>
+
+        <motion.div className="game-board-side" style={{ order: 1 }} animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 5, ease: 'easeInOut' }}>
+          <TelegramMockup />
+        </motion.div>
+      </motion.div>
+
+      {/* ── TESTIMONIALS ─────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+        className="section-mb" style={{ marginBottom: 88 }}>
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.1em' }}>{t('landing.testimonials_badge')}</span>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800, marginTop: 10, letterSpacing: '-0.5px' }}>
+            {t('landing.testimonials_title')}
+          </h2>
+        </div>
+        <div className="testimonials-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          <TestimonialCard quote={t('landing.t1_quote')} name={t('landing.t1_name')} role={t('landing.t1_role')} color="#8B5CF6" delay={0} />
+          <TestimonialCard quote={t('landing.t2_quote')} name={t('landing.t2_name')} role={t('landing.t2_role')} color="var(--accent)" delay={0.1} />
+          <TestimonialCard quote={t('landing.t3_quote')} name={t('landing.t3_name')} role={t('landing.t3_role')} color="#EC4899" delay={0.2} />
+        </div>
+      </motion.div>
+
       {/* ── FAQ ──────────────────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
         className="section-mb" style={{ maxWidth: 700, margin: '0 auto 88px' }}>
@@ -503,6 +656,26 @@ export default function Landing() {
         </div>
         <div className="faq-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '0 28px' }}>
           {faqs.map(([q, a]) => <FaqItem key={q} q={q} a={a} />)}
+        </div>
+      </motion.div>
+
+      {/* ── TECH TRUST STRIP ─────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+        style={{ textAlign: 'center', marginBottom: 88, padding: '0 16px' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 20 }}>{t('landing.tech_label')}</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+          {[
+            { name: 'React',       color: '#61DAFB', bg: 'rgba(97,218,251,0.08)',  border: 'rgba(97,218,251,0.25)' },
+            { name: 'Django',      color: '#44B78B', bg: 'rgba(68,183,139,0.08)',  border: 'rgba(68,183,139,0.25)' },
+            { name: 'PostgreSQL',  color: '#336791', bg: 'rgba(51,103,145,0.08)',  border: 'rgba(51,103,145,0.25)' },
+            { name: 'Telegram Bot',color: '#0088CC', bg: 'rgba(0,136,204,0.08)',   border: 'rgba(0,136,204,0.25)' },
+            { name: 'Fly.io',      color: '#7C3AED', bg: 'rgba(124,58,237,0.08)',  border: 'rgba(124,58,237,0.25)' },
+            { name: 'REST API',    color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.25)' },
+          ].map(tech => (
+            <span key={tech.name} style={{ fontSize: 12, fontWeight: 700, color: tech.color, background: tech.bg, border: `1px solid ${tech.border}`, borderRadius: 99, padding: '6px 16px', letterSpacing: '.02em' }}>
+              {tech.name}
+            </span>
+          ))}
         </div>
       </motion.div>
 
@@ -547,6 +720,8 @@ export default function Landing() {
           .game-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
           .game-board-side { order: -1; }
           .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .roles-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .testimonials-grid { grid-template-columns: 1fr 1fr !important; }
           .section-mb { margin-bottom: 60px !important; }
         }
 
@@ -573,6 +748,8 @@ export default function Landing() {
           .step-card { padding: 20px 18px !important; }
           .stat-cell { padding: 20px 12px !important; }
           .features-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .roles-grid { grid-template-columns: 1fr !important; }
+          .testimonials-grid { grid-template-columns: 1fr !important; }
           .faq-card { padding: 0 16px !important; }
           .cta-btn-wrap { display: block; width: 100%; }
           .cta-btn { width: 100%; padding: 16px 20px !important; font-size: 16px !important; min-height: 54px; }
