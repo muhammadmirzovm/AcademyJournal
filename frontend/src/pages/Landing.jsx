@@ -659,26 +659,6 @@ export default function Landing() {
         </div>
       </motion.div>
 
-      {/* ── TECH TRUST STRIP ─────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
-        style={{ textAlign: 'center', marginBottom: 88, padding: '0 16px' }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 20 }}>{t('landing.tech_label')}</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-          {[
-            { name: 'React',       color: '#61DAFB', bg: 'rgba(97,218,251,0.08)',  border: 'rgba(97,218,251,0.25)' },
-            { name: 'Django',      color: '#44B78B', bg: 'rgba(68,183,139,0.08)',  border: 'rgba(68,183,139,0.25)' },
-            { name: 'PostgreSQL',  color: '#336791', bg: 'rgba(51,103,145,0.08)',  border: 'rgba(51,103,145,0.25)' },
-            { name: 'Telegram Bot',color: '#0088CC', bg: 'rgba(0,136,204,0.08)',   border: 'rgba(0,136,204,0.25)' },
-            { name: 'Fly.io',      color: '#7C3AED', bg: 'rgba(124,58,237,0.08)',  border: 'rgba(124,58,237,0.25)' },
-            { name: 'REST API',    color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.25)' },
-          ].map(tech => (
-            <span key={tech.name} style={{ fontSize: 12, fontWeight: 700, color: tech.color, background: tech.bg, border: `1px solid ${tech.border}`, borderRadius: 99, padding: '6px 16px', letterSpacing: '.02em' }}>
-              {tech.name}
-            </span>
-          ))}
-        </div>
-      </motion.div>
-
       {/* ── CTA ──────────────────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
         style={{ background: 'linear-gradient(135deg, #0f766e 0%, var(--accent) 50%, #6366F1 100%)', borderRadius: 20, padding: 'clamp(36px, 6vw, 64px) clamp(20px, 5vw, 64px)', textAlign: 'center', marginBottom: 56, position: 'relative', overflow: 'hidden' }}>
