@@ -348,7 +348,11 @@
     "toast_homework_saved": "Uy vazifasi saqlandi!",
     "toast_homework_submitted": "Uy vazifasi yuborildi!",
     "toast_fail_homework": "Uy vazifasini saqlashda xatolik.",
-    "err_homework_empty": "Javob bo'sh bo'lishi mumkin emas."
+    "err_homework_empty": "Javob bo'sh bo'lishi mumkin emas.",
+    "end_lesson": "Darsni yakunlash",
+    "ending": "Xabar yuborilmoqda…",
+    "toast_ended": "Dars yakunlandi — {{count}} ta o'quvchi xabardor qilindi!",
+    "toast_fail_end": "Xabar yuborishda xatolik."
   },
   "profile": {
     "edit": "Profilni tahrirlash",

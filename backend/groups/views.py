@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum, Count
+from asgiref.sync import async_to_sync
 from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission
 from .serializers import (
     GroupSerializer, MemberSerializer, LessonSerializer,
@@ -354,6 +355,82 @@ class MembershipDetailView(APIView):
         membership = get_object_or_404(GroupMembership, pk=member_pk, group=group)
         membership.delete()
         return Response(status=204)
+
+
+# ── End Lesson ────────────────────────────────────────────────────────────────
+
+class EndLessonView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, group_pk, lesson_pk):
+        lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
+        if lesson.group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can end a lesson.'}, status=403)
+
+        from users.models import Notification
+        from users.telegram_bot import send_notification
+
+        group      = lesson.group
+        attendances = {a.student_id: a.present for a in Attendance.objects.filter(lesson=lesson)}
+        scores      = {s.student_id: s.value   for s in Score.objects.filter(lesson=lesson)}
+
+        memberships = (
+            GroupMembership.objects
+            .filter(group=group)
+            .select_related('student')
+            .prefetch_related('student__parents__parent')
+        )
+
+        for membership in memberships:
+            student = membership.student
+            present = attendances.get(student.id, False)
+            score   = scores.get(student.id)
+            name    = f'{student.first_name} {student.last_name}'.strip() or student.username
+
+            attendance_str = 'Keldi' if present else 'Kelmadi'
+            score_str      = f'{score}/5' if score is not None else '—'
+
+            # Student notification
+            title = f'{lesson.title}'
+            body  = f'Davomat: {attendance_str} | Ball: {score_str} | {group.name}'
+            Notification.objects.create(
+                user=student,
+                type='score' if score is not None else 'absent',
+                title=title,
+                body=body,
+            )
+
+            if student.telegram_id:
+                try:
+                    async_to_sync(send_notification)(
+                        student.telegram_id, 'lesson_end', student.telegram_lang or 'uz',
+                        lesson=lesson.title, group=group.name,
+                        attendance=attendance_str, score=score_str,
+                    )
+                except Exception:
+                    pass
+
+            # Parent notifications
+            for ps in student.parents.select_related('parent').all():
+                parent = ps.parent
+                p_body = f'{name} | Davomat: {attendance_str} | Ball: {score_str} | {group.name}'
+                Notification.objects.create(
+                    user=parent,
+                    type='score' if score is not None else 'absent',
+                    title=lesson.title,
+                    body=p_body,
+                )
+                if parent.telegram_id:
+                    try:
+                        async_to_sync(send_notification)(
+                            parent.telegram_id, 'lesson_end_parent', parent.telegram_lang or 'uz',
+                            name=name, lesson=lesson.title, group=group.name,
+                            attendance=attendance_str, score=score_str,
+                        )
+                    except Exception:
+                        pass
+
+        return Response({'ok': True, 'notified': len(memberships)})
 
 
 # ── Coins ─────────────────────────────────────────────────────────────────────

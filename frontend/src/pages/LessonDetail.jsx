@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Save, Loader2, CheckSquare, Star, BookOpen, Users, ClipboardList } from 'lucide-react'
-import { getGroup, getMembers, getLessons, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment } from '../api/groups'
+import { ChevronRight, Save, Loader2, CheckSquare, Star, BookOpen, Users, ClipboardList, BellRing } from 'lucide-react'
+import { getGroup, getMembers, getLessons, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
@@ -22,8 +22,21 @@ export default function LessonDetail() {
   const [homework, setHomework]     = useState({ assignment: '', submissions: [] })
   const [tab, setTab]               = useState('attendance')
   const [loading, setLoading]       = useState(true)
+  const [ending, setEnding]         = useState(false)
 
   const isTeacher = user?.role === 'teacher' && group?.teacher === user?.id
+
+  const handleEndLesson = async () => {
+    setEnding(true)
+    try {
+      const { data } = await endLesson(groupId, lessonId)
+      show(t('lesson.toast_ended', { count: data.notified }), 'success')
+    } catch {
+      show(t('lesson.toast_fail_end'), 'error')
+    } finally {
+      setEnding(false)
+    }
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -67,7 +80,30 @@ export default function LessonDetail() {
         <span>{lesson?.title || 'Lesson'}</span>
       </div>
 
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{lesson?.title}</h2>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700 }}>{lesson?.title}</h2>
+        {isTeacher && (
+          <motion.button
+            whileHover={{ translateY: -1 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleEndLesson}
+            disabled={ending}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '9px 18px', borderRadius: 8, border: 'none', flexShrink: 0,
+              background: ending ? 'var(--text-muted)' : '#7C3AED',
+              color: '#fff', fontWeight: 600, fontSize: 13, cursor: ending ? 'default' : 'pointer',
+              opacity: ending ? 0.7 : 1,
+            }}
+          >
+            {ending
+              ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />
+              : <BellRing size={14} />
+            }
+            {ending ? t('lesson.ending') : t('lesson.end_lesson')}
+          </motion.button>
+        )}
+      </div>
       <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 24 }}>
         {lesson ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
       </p>

@@ -3,7 +3,7 @@ from .views import (
     GroupListCreateView, GroupDetailView, JoinGroupView, GroupMembersView,
     LessonListCreateView, LessonDetailView,
     AttendanceView, ScoreView, JournalView, HomeworkView,
-    MembershipDetailView, CoinView,
+    MembershipDetailView, CoinView, EndLessonView,
 )
 
 urlpatterns = [
@@ -19,4 +19,5 @@ urlpatterns = [
     path('groups/<int:group_pk>/lessons/<int:lesson_pk>/scores/',               ScoreView.as_view(),            name='scores'),
     path('groups/<int:group_pk>/lessons/<int:lesson_pk>/journal/',              JournalView.as_view(),          name='journal'),
     path('groups/<int:group_pk>/lessons/<int:lesson_pk>/homework/',             HomeworkView.as_view(),         name='homework'),
+    path('groups/<int:group_pk>/lessons/<int:lesson_pk>/end/',                  EndLessonView.as_view(),        name='lesson_end'),
 ]

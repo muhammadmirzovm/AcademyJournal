@@ -172,16 +172,20 @@ async def send_otp(telegram_id: int, code: str, lang: str = 'uz'):
 
 NOTIF_MSG = {
     'uz': {
-        'score':          "📊 *{lesson}* darsida *{score}/5* ball oldingiz ({group})",
-        'absent':         "⚠️ *{lesson}* darsida qatnashmagansiz ({group})",
-        'score_parent':   "📊 *{name}*: *{lesson}* darsida *{score}/5* ball oldi ({group})",
-        'absent_parent':  "⚠️ *{name}*: *{lesson}* darsida qatnashmadi ({group})",
+        'score':            "📊 *{lesson}* darsida *{score}/5* ball oldingiz ({group})",
+        'absent':           "⚠️ *{lesson}* darsida qatnashmagansiz ({group})",
+        'score_parent':     "📊 *{name}*: *{lesson}* darsida *{score}/5* ball oldi ({group})",
+        'absent_parent':    "⚠️ *{name}*: *{lesson}* darsida qatnashmadi ({group})",
+        'lesson_end':       "📋 *{lesson}* darsi yakunlandi ({group})\n👤 Davomat: {attendance}\n⭐ Ball: {score}",
+        'lesson_end_parent':"📋 *{name}* — *{lesson}* darsi yakunlandi ({group})\n👤 Davomat: {attendance}\n⭐ Ball: {score}",
     },
     'ru': {
-        'score':          "📊 Вы получили *{score}/5* в уроке «{lesson}» ({group})",
-        'absent':         "⚠️ Вы отсутствовали на уроке «{lesson}» ({group})",
-        'score_parent':   "📊 *{name}*: получил(а) *{score}/5* в уроке «{lesson}» ({group})",
-        'absent_parent':  "⚠️ *{name}*: отсутствовал(а) на уроке «{lesson}» ({group})",
+        'score':            "📊 Вы получили *{score}/5* в уроке «{lesson}» ({group})",
+        'absent':           "⚠️ Вы отсутствовали на уроке «{lesson}» ({group})",
+        'score_parent':     "📊 *{name}*: получил(а) *{score}/5* в уроке «{lesson}» ({group})",
+        'absent_parent':    "⚠️ *{name}*: отсутствовал(а) на уроке «{lesson}» ({group})",
+        'lesson_end':       "📋 Урок *{lesson}* завершён ({group})\n👤 Посещаемость: {attendance}\n⭐ Оценка: {score}",
+        'lesson_end_parent':"📋 *{name}* — урок *{lesson}* завершён ({group})\n👤 Посещаемость: {attendance}\n⭐ Оценка: {score}",
     },
 }
 

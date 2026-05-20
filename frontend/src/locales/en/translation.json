@@ -348,7 +348,11 @@
     "toast_homework_saved": "Homework assignment saved!",
     "toast_homework_submitted": "Homework submitted!",
     "toast_fail_homework": "Failed to save homework.",
-    "err_homework_empty": "Submission cannot be empty."
+    "err_homework_empty": "Submission cannot be empty.",
+    "end_lesson": "End Lesson",
+    "ending": "Notifying…",
+    "toast_ended": "Lesson ended — {{count}} students notified!",
+    "toast_fail_end": "Failed to send notifications."
   },
   "profile": {
     "edit": "Edit profile",
