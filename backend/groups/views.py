@@ -440,6 +440,22 @@ class EndLessonView(APIView):
                     except Exception:
                         pass
 
+        # Send homework notification to students only (if homework exists)
+        if lesson.homework.strip():
+            for membership in memberships:
+                student = membership.student
+                if student.telegram_id:
+                    try:
+                        async_to_sync(send_notification)(
+                            student.telegram_id, 'hw_notification',
+                            student.telegram_lang or 'uz',
+                            lesson=lesson.title,
+                            group=group.name,
+                            homework=lesson.homework,
+                        )
+                    except Exception:
+                        pass
+
         return Response({'ok': True, 'notified': len(memberships)})
 
 
