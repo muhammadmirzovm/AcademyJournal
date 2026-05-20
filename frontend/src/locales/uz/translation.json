@@ -203,7 +203,10 @@
     "top_students": "Eng yaxshi o'quvchilar",
     "by_comprehension": "Tushunish darajasi bo'yicha",
     "no_data_yet": "Hali ma'lumot yo'q.",
-    "stickers": "stiker"
+    "stickers": "stiker",
+    "leaderboard": "O'quvchilar reytingi",
+    "at_risk": "E'tibor talab qiladi",
+    "below_80": "80% dan past"
   },
   "groups": {
     "title": "Mening guruhlarim",

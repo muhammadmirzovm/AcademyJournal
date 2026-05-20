@@ -203,7 +203,10 @@
     "top_students": "Лучшие ученики",
     "by_comprehension": "По уровню понимания",
     "no_data_yet": "Данных пока нет.",
-    "stickers": "стикеров"
+    "stickers": "стикеров",
+    "leaderboard": "Рейтинг учеников",
+    "at_risk": "Требуют внимания",
+    "below_80": "ниже 80%"
   },
   "groups": {
     "title": "Мои группы",

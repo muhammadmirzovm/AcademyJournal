@@ -6,7 +6,7 @@ from .views import (
     ParentChildrenView, AdminStatsView, UserChildrenView, UserGroupsView,
     ChangePasswordView, ConnectTelegramView,
     PasswordResetRequestView, PasswordResetConfirmView,
-    TelegramWebhookView,
+    TelegramWebhookView, TeacherLeaderboardView,
 )
 
 urlpatterns = [
@@ -28,4 +28,5 @@ urlpatterns = [
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('telegram/webhook/', TelegramWebhookView.as_view(), name='telegram_webhook'),
+    path('teacher/leaderboard/', TeacherLeaderboardView.as_view(), name='teacher_leaderboard'),
 ]

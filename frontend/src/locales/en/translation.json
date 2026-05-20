@@ -203,7 +203,10 @@
     "top_students": "Top Students",
     "by_comprehension": "Ranked by comprehension",
     "no_data_yet": "No data yet.",
-    "stickers": "stickers"
+    "stickers": "stickers",
+    "leaderboard": "Student Leaderboard",
+    "at_risk": "Needs Attention",
+    "below_80": "below 80%"
   },
   "groups": {
     "title": "My Groups",

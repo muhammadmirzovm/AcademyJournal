@@ -529,6 +529,56 @@ class PasswordResetConfirmView(APIView):
         return Response({'detail': 'Password reset successfully. You can now log in.'})
 
 
+class TeacherLeaderboardView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        if request.user.role != 'teacher':
+            return Response({'detail': 'Forbidden.'}, status=403)
+
+        from groups.models import GroupMembership, Score, Attendance
+        from django.db.models import Avg
+
+        memberships = (
+            GroupMembership.objects
+            .filter(group__teacher=request.user)
+            .select_related('student', 'group')
+        )
+
+        seen = {}
+        for m in memberships:
+            s = m.student
+            if s.id in seen:
+                seen[s.id]['groups'].append(m.group.name)
+            else:
+                seen[s.id] = {
+                    'id': s.id,
+                    'display_name': f'{s.first_name} {s.last_name}'.strip() or s.username,
+                    'username': s.username,
+                    'groups': [m.group.name],
+                }
+
+        results = []
+        for sid, data in seen.items():
+            avg = (
+                Score.objects
+                .filter(student_id=sid, lesson__group__teacher=request.user)
+                .aggregate(avg=Avg('value'))['avg']
+            )
+            total      = Attendance.objects.filter(student_id=sid, lesson__group__teacher=request.user).count()
+            present    = Attendance.objects.filter(student_id=sid, lesson__group__teacher=request.user, present=True).count()
+            attendance = round(present / total * 100) if total else None
+
+            results.append({
+                **data,
+                'avg_score':  round(avg, 1) if avg is not None else None,
+                'attendance': attendance,
+            })
+
+        results.sort(key=lambda x: (x['avg_score'] is None, -(x['avg_score'] or 0)))
+        return Response(results)
+
+
 class TelegramWebhookView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
