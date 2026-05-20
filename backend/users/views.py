@@ -537,7 +537,7 @@ class TeacherLeaderboardView(APIView):
             return Response({'detail': 'Forbidden.'}, status=403)
 
         from groups.models import GroupMembership, Score, Attendance
-        from django.db.models import Avg
+        from django.db.models import Sum
 
         memberships = (
             GroupMembership.objects
@@ -545,34 +545,42 @@ class TeacherLeaderboardView(APIView):
             .select_related('student', 'group')
         )
 
-        seen = {}
+        student_map = {}
         for m in memberships:
             s = m.student
-            if s.id in seen:
-                seen[s.id]['groups'].append(m.group.name)
-            else:
-                seen[s.id] = {
-                    'id': s.id,
-                    'display_name': f'{s.first_name} {s.last_name}'.strip() or s.username,
-                    'username': s.username,
-                    'groups': [m.group.name],
+            sid = s.id
+            if sid not in student_map:
+                student_map[sid] = {
+                    'id':            sid,
+                    'display_name':  f'{s.first_name} {s.last_name}'.strip() or s.username,
+                    'username':      s.username,
+                    'groups':        set(),
+                    'total_score':   0,
+                    'total_possible': 0,
                 }
+            student_map[sid]['groups'].add(m.group.name)
+            join_date    = m.joined_at.date()
+            lessons      = m.group.lessons.filter(date__gte=join_date)
+            lesson_count = lessons.count()
+            if lesson_count > 0:
+                score_sum = Score.objects.filter(
+                    lesson__in=lessons, student=s
+                ).aggregate(total=Sum('value'))['total'] or 0
+                student_map[sid]['total_score']    += score_sum
+                student_map[sid]['total_possible'] += lesson_count * 5
 
         results = []
-        for sid, data in seen.items():
-            avg = (
-                Score.objects
-                .filter(student_id=sid, lesson__group__teacher=request.user)
-                .aggregate(avg=Avg('value'))['avg']
-            )
-            total      = Attendance.objects.filter(student_id=sid, lesson__group__teacher=request.user).count()
-            present    = Attendance.objects.filter(student_id=sid, lesson__group__teacher=request.user, present=True).count()
-            attendance = round(present / total * 100) if total else None
-
+        for sid, data in student_map.items():
+            comp = round(data['total_score'] / data['total_possible'] * 100) if data['total_possible'] > 0 else None
+            total   = Attendance.objects.filter(student_id=sid, lesson__group__teacher=request.user).count()
+            present = Attendance.objects.filter(student_id=sid, lesson__group__teacher=request.user, present=True).count()
             results.append({
-                **data,
-                'avg_score':  round(avg * 20, 1) if avg is not None else None,
-                'attendance': attendance,
+                'id':           data['id'],
+                'display_name': data['display_name'],
+                'username':     data['username'],
+                'groups':       sorted(data['groups']),
+                'avg_score':    comp,
+                'attendance':   round(present / total * 100) if total else None,
             })
 
         results.sort(key=lambda x: (x['avg_score'] is None, -(x['avg_score'] or 0)))
