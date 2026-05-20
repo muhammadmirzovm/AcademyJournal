@@ -529,6 +529,41 @@ class PasswordResetConfirmView(APIView):
         return Response({'detail': 'Password reset successfully. You can now log in.'})
 
 
+class NotificationListView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        from .models import Notification
+        notifs = Notification.objects.filter(user=request.user)[:50]
+        data = [
+            {
+                'id':         n.id,
+                'type':       n.type,
+                'title':      n.title,
+                'body':       n.body,
+                'is_read':    n.is_read,
+                'created_at': n.created_at.isoformat(),
+            }
+            for n in notifs
+        ]
+        unread = sum(1 for n in data if not n['is_read'])
+        return Response({'results': data, 'unread': unread})
+
+    def post(self, request):
+        from .models import Notification
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({'detail': 'All marked as read.'})
+
+
+class NotificationReadView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        from .models import Notification
+        Notification.objects.filter(pk=pk, user=request.user).update(is_read=True)
+        return Response({'detail': 'Marked as read.'})
+
+
 class TeacherLeaderboardView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 

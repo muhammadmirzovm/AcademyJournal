@@ -394,6 +394,14 @@
     "avg_score_tooltip": "Avg score",
     "students_tooltip": "Students"
   },
+  "notif": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "mark_all": "Mark all read",
+    "score": "New score",
+    "absent": "Marked absent",
+    "lesson": "New lesson"
+  },
   "not_found": {
     "title": "Page not found",
     "sub": "The page you're looking for doesn't exist or has been moved.",

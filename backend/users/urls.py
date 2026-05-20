@@ -7,6 +7,7 @@ from .views import (
     ChangePasswordView, ConnectTelegramView,
     PasswordResetRequestView, PasswordResetConfirmView,
     TelegramWebhookView, TeacherLeaderboardView,
+    NotificationListView, NotificationReadView,
 )
 
 urlpatterns = [
@@ -29,4 +30,6 @@ urlpatterns = [
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('telegram/webhook/', TelegramWebhookView.as_view(), name='telegram_webhook'),
     path('teacher/leaderboard/', TeacherLeaderboardView.as_view(), name='teacher_leaderboard'),
+    path('notifications/', NotificationListView.as_view(), name='notifications'),
+    path('notifications/<int:pk>/read/', NotificationReadView.as_view(), name='notification_read'),
 ]

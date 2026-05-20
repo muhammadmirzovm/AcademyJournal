@@ -394,6 +394,14 @@
     "avg_score_tooltip": "O'rt ball",
     "students_tooltip": "O'quvchilar"
   },
+  "notif": {
+    "title": "Bildirishnomalar",
+    "empty": "Hali bildirishnomalar yo'q",
+    "mark_all": "Barchasini o'qildi deb belgilash",
+    "score": "Yangi ball",
+    "absent": "Qatnashmadi",
+    "lesson": "Yangi dars"
+  },
   "not_found": {
     "title": "Sahifa topilmadi",
     "sub": "Siz izlayotgan sahifa mavjud emas yoki ko'chirilgan.",

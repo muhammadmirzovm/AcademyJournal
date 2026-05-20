@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import NotificationBell from './NotificationBell'
 
 const LANGS = [
   { code: 'en', label: 'EN', full: 'English' },
@@ -100,6 +101,9 @@ export default function Navbar() {
 
           {/* Desktop right controls */}
           <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {/* Notifications */}
+            {user && <NotificationBell />}
+
             {/* Theme toggle */}
             <button onClick={toggle} style={circleBtn} title="Toggle theme">
               {theme === 'dark'

@@ -168,6 +168,39 @@ async def send_otp(telegram_id: int, code: str, lang: str = 'uz'):
     )
 
 
+# ── Notification sender (called from signals) ─────────────────────────────────
+
+NOTIF_MSG = {
+    'uz': {
+        'score':          "📊 *{lesson}* darsida *{score}/5* ball oldingiz ({group})",
+        'absent':         "⚠️ *{lesson}* darsida qatnashmagansiz ({group})",
+        'score_parent':   "📊 *{name}*: *{lesson}* darsida *{score}/5* ball oldi ({group})",
+        'absent_parent':  "⚠️ *{name}*: *{lesson}* darsida qatnashmadi ({group})",
+    },
+    'ru': {
+        'score':          "📊 Вы получили *{score}/5* в уроке «{lesson}» ({group})",
+        'absent':         "⚠️ Вы отсутствовали на уроке «{lesson}» ({group})",
+        'score_parent':   "📊 *{name}*: получил(а) *{score}/5* в уроке «{lesson}» ({group})",
+        'absent_parent':  "⚠️ *{name}*: отсутствовал(а) на уроке «{lesson}» ({group})",
+    },
+}
+
+
+async def send_notification(telegram_id: int, msg_key: str, lang: str = 'uz', **kwargs):
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not bot_token:
+        return
+    msgs = NOTIF_MSG.get(lang, NOTIF_MSG['uz'])
+    text = msgs.get(msg_key, '').format(**kwargs)
+    if not text:
+        return
+    bot = Bot(token=bot_token)
+    try:
+        await bot.send_message(chat_id=telegram_id, text=text, parse_mode='Markdown')
+    except Exception as e:
+        logger.error('Telegram notification error: %s', e)
+
+
 # ── Application singleton (used by webhook view) ───────────────────────────────
 
 _application = None

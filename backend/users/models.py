@@ -52,6 +52,29 @@ class TelegramOTP(models.Model):
         return not self.used and timezone.now() < self.expires_at
 
 
+class Notification(models.Model):
+    SCORE  = 'score'
+    ABSENT = 'absent'
+    LESSON = 'lesson'
+    TYPE_CHOICES = [
+        (SCORE,  'Score Added'),
+        (ABSENT, 'Marked Absent'),
+        (LESSON, 'New Lesson'),
+    ]
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    type       = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    title      = models.CharField(max_length=200)
+    body       = models.CharField(max_length=500)
+    is_read    = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username} — {self.type}: {self.title}'
+
+
 class ParentStudent(models.Model):
     parent  = models.ForeignKey(
         User,
