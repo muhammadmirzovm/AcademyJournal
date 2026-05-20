@@ -571,7 +571,7 @@ class TeacherLeaderboardView(APIView):
 
             results.append({
                 **data,
-                'avg_score':  round(avg, 1) if avg is not None else None,
+                'avg_score':  round(avg * 20, 1) if avg is not None else None,
                 'attendance': attendance,
             })
 
