@@ -142,13 +142,15 @@ class GroupMembersView(generics.ListAPIView):
             attendance_map[sid] = round(present / total * 100) if total > 0 else None
 
         from users.models import ParentStudent
+        from django.contrib.auth import get_user_model
+        _User = get_user_model()
         ctx['parent_set'] = set(
             ParentStudent.objects
             .filter(student_id__in=student_ids)
             .values_list('student_id', flat=True)
         )
         ctx['telegram_set'] = set(
-            User.objects
+            _User.objects
             .filter(id__in=student_ids)
             .exclude(telegram_id__isnull=True)
             .exclude(telegram_id='')
