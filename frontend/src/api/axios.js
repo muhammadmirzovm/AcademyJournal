@@ -25,7 +25,10 @@ api.interceptors.response.use(
           return api(original)
         } catch {
           localStorage.clear()
-          window.location.href = '/login'
+          const pub = ['/', '/login', '/register', '/forgot-password']
+          const isPublic = pub.includes(window.location.pathname) ||
+            window.location.pathname.startsWith('/invite/')
+          if (!isPublic) window.location.href = '/login'
         }
       }
     }
