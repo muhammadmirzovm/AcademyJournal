@@ -343,9 +343,9 @@
     "no_podium": "Hali reytingni hisoblash uchun ballar yo'q.",
     "filter_all": "Barchasi",
     "filter_with_parent": "Ota-onasi bor",
-    "filter_no_parent": "Ota-onasi yo'q",
+    "filter_no_parent": "Ota-ona ulanmagan",
     "badge_has_parent": "Ota-ona ulangan",
-    "badge_no_parent": "Ota-ona yo'q",
+    "badge_no_parent": "Ota-ona ulanmagan",
     "badge_tg_yes": "Telegram ulangan",
     "badge_tg_no": "Telegram yo'q"
   },
