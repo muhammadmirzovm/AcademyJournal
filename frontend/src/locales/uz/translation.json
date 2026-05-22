@@ -460,7 +460,8 @@
     "mark_all": "Barchasini o'qildi deb belgilash",
     "score": "Yangi ball",
     "absent": "Qatnashmadi",
-    "lesson": "Yangi dars"
+    "lesson": "Yangi dars",
+    "announcement": "E'lon"
   },
   "not_found": {
     "title": "Sahifa topilmadi",

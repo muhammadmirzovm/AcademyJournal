@@ -17,9 +17,10 @@ const TYPE_COLOR = {
 }
 
 const TYPE_TEXT_COLOR = {
-  score:  '#F59E0B',
-  absent: '#EF4444',
-  lesson: '#14B8A6',
+  score:        '#F59E0B',
+  absent:       '#EF4444',
+  lesson:       '#14B8A6',
+  announcement: '#6366F1',
 }
 
 function timeAgo(iso) {

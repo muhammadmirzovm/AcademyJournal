@@ -460,7 +460,8 @@
     "mark_all": "Mark all read",
     "score": "New score",
     "absent": "Marked absent",
-    "lesson": "New lesson"
+    "lesson": "New lesson",
+    "announcement": "Announcement"
   },
   "not_found": {
     "title": "Page not found",

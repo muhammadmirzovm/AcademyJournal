@@ -53,13 +53,15 @@ class TelegramOTP(models.Model):
 
 
 class Notification(models.Model):
-    SCORE  = 'score'
-    ABSENT = 'absent'
-    LESSON = 'lesson'
+    SCORE        = 'score'
+    ABSENT       = 'absent'
+    LESSON       = 'lesson'
+    ANNOUNCEMENT = 'announcement'
     TYPE_CHOICES = [
-        (SCORE,  'Score Added'),
-        (ABSENT, 'Marked Absent'),
-        (LESSON, 'New Lesson'),
+        (SCORE,        'Score Added'),
+        (ABSENT,       'Marked Absent'),
+        (LESSON,       'New Lesson'),
+        (ANNOUNCEMENT, 'Announcement'),
     ]
     user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     type       = models.CharField(max_length=20, choices=TYPE_CHOICES)

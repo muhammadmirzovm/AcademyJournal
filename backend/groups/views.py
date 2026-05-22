@@ -520,6 +520,36 @@ class CoinView(APIView):
         })
 
 
+def _notify_announcement(ann, recipients):
+    from users.models import Notification
+    from users.telegram_bot import send_notification
+
+    body_preview = (ann.body or '')[:200]
+    msg_key = 'announcement_group' if ann.group else 'announcement'
+    tg_kwargs = {'title': ann.title, 'body': body_preview or ann.title}
+    if ann.group:
+        tg_kwargs['group'] = ann.group.name
+
+    Notification.objects.bulk_create([
+        Notification(
+            user=u,
+            type='announcement',
+            title=ann.title,
+            body=body_preview,
+        )
+        for u in recipients
+    ])
+
+    if ann.is_pinned:
+        for u in recipients:
+            if u.telegram_id:
+                async_to_sync(send_notification)(
+                    u.telegram_id, msg_key,
+                    u.telegram_lang or 'uz',
+                    **tg_kwargs,
+                )
+
+
 class AcademyAnnouncementView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -532,7 +562,11 @@ class AcademyAnnouncementView(APIView):
             return Response({'detail': 'Admin only.'}, status=403)
         ser = AnnouncementSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        ser.save(author=request.user, group=None)
+        ann = ser.save(author=request.user, group=None)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        recipients = list(User.objects.filter(academy=request.user.academy).exclude(id=request.user.id))
+        _notify_announcement(ann, recipients)
         return Response(ser.data, status=201)
 
 
@@ -554,7 +588,15 @@ class GroupAnnouncementView(APIView):
             return Response({'detail': 'Teacher or admin only.'}, status=403)
         ser = AnnouncementSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        ser.save(author=request.user, group=group)
+        ann = ser.save(author=request.user, group=group)
+        from users.models import ParentStudent
+        students = [m.student for m in group.memberships.select_related('student').all()]
+        parent_ids = ParentStudent.objects.filter(student__in=students).values_list('parent_id', flat=True)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        parents = list(User.objects.filter(id__in=parent_ids))
+        recipients = list(set(students + parents) - {request.user})
+        _notify_announcement(ann, recipients)
         return Response(ser.data, status=201)
 
 
