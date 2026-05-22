@@ -4,12 +4,12 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum, Count
 from asgiref.sync import async_to_sync
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement
 from .serializers import (
     GroupSerializer, MemberSerializer, LessonSerializer,
     AttendanceSerializer, BulkAttendanceSerializer,
     ScoreSerializer, BulkScoreSerializer, JournalSerializer,
-    HomeworkSubmissionSerializer,
+    HomeworkSubmissionSerializer, AnnouncementSerializer,
 )
 
 
@@ -518,3 +518,52 @@ class CoinView(APIView):
             'sticker_count': membership.sticker_count,
             'sticker_earned': stickers_earned > 0,
         })
+
+
+class AcademyAnnouncementView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        anns = Announcement.objects.filter(group=None)
+        return Response(AnnouncementSerializer(anns, many=True).data)
+
+    def post(self, request):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin only.'}, status=403)
+        ser = AnnouncementSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(author=request.user, group=None)
+        return Response(ser.data, status=201)
+
+
+class GroupAnnouncementView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+        is_member  = group.memberships.filter(student=request.user).exists()
+        is_teacher = group.teacher == request.user
+        is_admin   = request.user.role == 'admin'
+        if not (is_member or is_teacher or is_admin):
+            return Response({'detail': 'No access.'}, status=403)
+        return Response(AnnouncementSerializer(group.announcements.all(), many=True).data)
+
+    def post(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Teacher or admin only.'}, status=403)
+        ser = AnnouncementSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        ser.save(author=request.user, group=group)
+        return Response(ser.data, status=201)
+
+
+class AnnouncementDeleteView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def delete(self, request, pk):
+        ann = get_object_or_404(Announcement, pk=pk)
+        if ann.author != request.user and request.user.role != 'admin':
+            return Response({'detail': 'No permission.'}, status=403)
+        ann.delete()
+        return Response(status=204)

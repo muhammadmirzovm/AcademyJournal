@@ -30,3 +30,9 @@ export const saveHomework       = (gid, lid, body)     => api.post(`/groups/${gi
 export const setHomeworkAssignment = (gid, lid, assignment) => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { assignment })
 
 export const endLesson              = (gid, lid)           => api.post(`/groups/${gid}/lessons/${lid}/end/`)
+
+export const getAcademyAnnouncements    = ()          => api.get('/announcements/')
+export const createAcademyAnnouncement  = (data)      => api.post('/announcements/', data)
+export const deleteAnnouncement         = (id)        => api.delete(`/announcements/${id}/`)
+export const getGroupAnnouncements      = (gid)       => api.get(`/groups/${gid}/announcements/`)
+export const createGroupAnnouncement    = (gid, data) => api.post(`/groups/${gid}/announcements/`, data)

@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star, MessageCircle, AlertTriangle } from 'lucide-react'
-import { getGroups, joinGroup } from '../api/groups'
+import { getGroups, joinGroup, getAcademyAnnouncements, createAcademyAnnouncement, deleteAnnouncement } from '../api/groups'
 import { getAdminStats, getTeacherLeaderboard } from '../api/users'
+import { AnnouncementsSection } from '../components/AnnouncementCard'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -45,6 +46,9 @@ export default function Dashboard() {
   const [joinErr,  setJoinErr]  = useState('')
   const [joining,  setJoining]  = useState(false)
 
+  const [announcements, setAnnouncements] = useState([])
+  const [annLoading,    setAnnLoading]    = useState(true)
+
   const [nudgeDismissed, setNudgeDismissed] = useState(
     () => localStorage.getItem('tg_nudge_dismissed') === '1'
   )
@@ -53,6 +57,25 @@ export default function Dashboard() {
   const dismissNudge = () => {
     localStorage.setItem('tg_nudge_dismissed', '1')
     setNudgeDismissed(true)
+  }
+
+  useEffect(() => {
+    getAcademyAnnouncements()
+      .then(r => setAnnouncements(r.data))
+      .catch(() => {})
+      .finally(() => setAnnLoading(false))
+  }, [])
+
+  const handlePostAnn = async data => {
+    const { data: ann } = await createAcademyAnnouncement(data)
+    setAnnouncements(prev => [ann, ...prev].sort((a, b) => b.is_pinned - a.is_pinned || new Date(b.created_at) - new Date(a.created_at)))
+    show(t('ann.toast_created'), 'success')
+  }
+
+  const handleDeleteAnn = async id => {
+    await deleteAnnouncement(id)
+    setAnnouncements(prev => prev.filter(a => a.id !== id))
+    show(t('ann.toast_deleted'), 'success')
   }
 
   useEffect(() => {
@@ -143,6 +166,14 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnnouncementsSection
+        announcements={announcements}
+        loading={annLoading}
+        canPost={role === 'admin'}
+        onPost={handlePostAnn}
+        onDelete={handleDeleteAnn}
+      />
 
       <div className="fade-up-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 32 }}>
         {role === 'admin' ? (

@@ -699,5 +699,20 @@
     "none_available": "Bu darajada savollar yo'q",
     "you": "siz",
     "no_banks": "Savollar banki mavjud emas."
+  },
+  "ann": {
+    "tab": "E'lonlar",
+    "new": "E'lon joylash",
+    "title_placeholder": "E'lon sarlavhasi…",
+    "body_placeholder": "Qo'shimcha ma'lumot (ixtiyoriy)…",
+    "pin": "Tepaga mahkamlash",
+    "post": "Joylash",
+    "posting": "Joylashmoqda…",
+    "cancel": "Bekor qilish",
+    "toast_created": "E'lon joylandi!",
+    "toast_deleted": "E'lon o'chirildi.",
+    "toast_fail": "E'lonni saqlashda xatolik.",
+    "empty": "Hali e'lonlar yo'q.",
+    "empty_sub": "Birinchi e'lonni joylang."
   }
 }

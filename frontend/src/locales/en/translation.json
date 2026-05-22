@@ -699,5 +699,20 @@
     "none_available": "No questions of this difficulty",
     "you": "you",
     "no_banks": "No question banks available."
+  },
+  "ann": {
+    "tab": "Announcements",
+    "new": "Post announcement",
+    "title_placeholder": "Announcement title…",
+    "body_placeholder": "More details (optional)…",
+    "pin": "Pin to top",
+    "post": "Post",
+    "posting": "Posting…",
+    "cancel": "Cancel",
+    "toast_created": "Announcement posted!",
+    "toast_deleted": "Announcement deleted.",
+    "toast_fail": "Failed to save announcement.",
+    "empty": "No announcements yet.",
+    "empty_sub": "Post one to let everyone know."
   }
 }

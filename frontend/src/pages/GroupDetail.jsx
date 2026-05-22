@@ -6,7 +6,9 @@ import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRigh
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
+  getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement,
 } from '../api/groups'
+import { AnnouncementsSection } from '../components/AnnouncementCard'
 import { getGames, createGame, deleteGame, getTopics, getQuestionBanks, duplicateGame } from '../api/quiz'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -146,16 +148,33 @@ export default function GroupDetail() {
   const [editingMembership, setEditingMembership] = useState(null)
   const [games,             setGames]             = useState([])
   const [showNewGame,       setShowNewGame]        = useState(false)
+  const [announcements,     setAnnouncements]      = useState([])
 
   const isTeacher = (user?.role === 'teacher' && group?.teacher === user?.id) || user?.role === 'admin'
 
   const load = async () => {
     setLoading(true)
     try {
-      const [g, m, l, gm] = await Promise.all([getGroup(id), getMembers(id), getLessons(id), getGames(id)])
+      const [g, m, l, gm, anns] = await Promise.all([
+        getGroup(id), getMembers(id), getLessons(id), getGames(id),
+        getGroupAnnouncements(id),
+      ])
       setGroup(g.data); setMembers(m.data); setLessons(l.data); setGames(gm.data)
+      setAnnouncements(anns.data)
     } catch { show(t('group_detail.toast_load_fail'), 'error') }
     finally { setLoading(false) }
+  }
+
+  const handlePostGroupAnn = async data => {
+    const { data: ann } = await createGroupAnnouncement(id, data)
+    setAnnouncements(prev => [ann, ...prev].sort((a, b) => b.is_pinned - a.is_pinned || new Date(b.created_at) - new Date(a.created_at)))
+    show(t('ann.toast_created'), 'success')
+  }
+
+  const handleDeleteGroupAnn = async annId => {
+    await deleteAnnouncement(annId)
+    setAnnouncements(prev => prev.filter(a => a.id !== annId))
+    show(t('ann.toast_deleted'), 'success')
   }
 
   useEffect(() => { load() }, [id])
@@ -233,7 +252,12 @@ export default function GroupDetail() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none' }}>
-        {[{ key: 'lessons', label: t('group_detail.tab_lessons') }, { key: 'members', label: t('group_detail.tab_members') }, { key: 'games', label: t('quiz.games') }].map(item => (
+        {[
+          { key: 'lessons',       label: t('group_detail.tab_lessons') },
+          { key: 'members',       label: t('group_detail.tab_members') },
+          { key: 'games',         label: t('quiz.games') },
+          { key: 'announcements', label: t('ann.tab') },
+        ].map(item => (
           <button key={item.key} className="tab-btn" onClick={() => setTab(item.key)} style={{
             padding: '8px 18px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, textTransform: 'capitalize', whiteSpace: 'nowrap',
             color: tab === item.key ? 'var(--accent)' : 'var(--text-muted)',
@@ -304,6 +328,17 @@ export default function GroupDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Announcements tab */}
+      {tab === 'announcements' && (
+        <AnnouncementsSection
+          announcements={announcements}
+          loading={false}
+          canPost={isTeacher}
+          onPost={handlePostGroupAnn}
+          onDelete={handleDeleteGroupAnn}
+        />
       )}
 
       {/* Modals */}

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -121,6 +121,18 @@ class HomeworkSubmissionSerializer(serializers.ModelSerializer):
 
     def get_student_name(self, obj):
         return f'{obj.student.first_name} {obj.student.last_name}'.strip() or obj.student.username
+
+
+class AnnouncementSerializer(serializers.ModelSerializer):
+    author_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = Announcement
+        fields = ('id', 'title', 'body', 'author_name', 'is_pinned', 'group', 'created_at')
+        read_only_fields = ('created_at',)
+
+    def get_author_name(self, obj):
+        return f'{obj.author.first_name} {obj.author.last_name}'.strip() or obj.author.username
 
 
 class JournalSerializer(serializers.ModelSerializer):

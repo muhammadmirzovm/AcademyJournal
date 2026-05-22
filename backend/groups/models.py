@@ -99,6 +99,22 @@ class HomeworkSubmission(models.Model):
         return f'{self.student.username} homework — {self.lesson.title}'
 
 
+class Announcement(models.Model):
+    author     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='announcements')
+    group      = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True, related_name='announcements')
+    title      = models.CharField(max_length=200)
+    body       = models.TextField(blank=True)
+    is_pinned  = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_pinned', '-created_at']
+
+    def __str__(self):
+        scope = self.group.name if self.group else 'Academy'
+        return f'[{scope}] {self.title}'
+
+
 class CoinTransaction(models.Model):
     group   = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='coin_transactions')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coin_transactions')
