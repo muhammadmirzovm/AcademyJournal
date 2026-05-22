@@ -342,7 +342,7 @@
     "toast_coin_fail": "Failed to update coins.",
     "no_podium": "No scores yet to rank students.",
     "filter_all": "All",
-    "filter_with_parent": "Has parent",
+    "filter_with_parent": "Parent connected",
     "filter_no_parent": "Parent not connected",
     "badge_has_parent": "Parent connected",
     "badge_no_parent": "Parent not connected",
