@@ -151,9 +151,7 @@ class GroupMembersView(generics.ListAPIView):
         )
         ctx['telegram_set'] = set(
             _User.objects
-            .filter(id__in=student_ids)
-            .exclude(telegram_id__isnull=True)
-            .exclude(telegram_id='')
+            .filter(id__in=student_ids, telegram_id__isnull=False)
             .values_list('id', flat=True)
         )
 
