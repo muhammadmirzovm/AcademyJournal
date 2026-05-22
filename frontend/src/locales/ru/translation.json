@@ -340,7 +340,14 @@
     "stickers": "стикеров",
     "toast_sticker_earned": "Стикер получен!",
     "toast_coin_fail": "Не удалось обновить монеты.",
-    "no_podium": "Нет оценок для составления рейтинга."
+    "no_podium": "Нет оценок для составления рейтинга.",
+    "filter_all": "Все",
+    "filter_with_parent": "Есть родитель",
+    "filter_no_parent": "Нет родителя",
+    "badge_has_parent": "Родитель подключён",
+    "badge_no_parent": "Нет родителя",
+    "badge_tg_yes": "Telegram подключён",
+    "badge_tg_no": "Telegram не подключён"
   },
   "lesson": {
     "tab_attendance": "посещаемость",

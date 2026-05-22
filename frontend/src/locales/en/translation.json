@@ -340,7 +340,14 @@
     "stickers": "stickers",
     "toast_sticker_earned": "Sticker earned!",
     "toast_coin_fail": "Failed to update coins.",
-    "no_podium": "No scores yet to rank students."
+    "no_podium": "No scores yet to rank students.",
+    "filter_all": "All",
+    "filter_with_parent": "Has parent",
+    "filter_no_parent": "No parent",
+    "badge_has_parent": "Parent connected",
+    "badge_no_parent": "No parent",
+    "badge_tg_yes": "Telegram connected",
+    "badge_tg_no": "No Telegram"
   },
   "lesson": {
     "tab_attendance": "attendance",

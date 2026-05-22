@@ -6,15 +6,17 @@ User = get_user_model()
 
 
 class MemberSerializer(serializers.ModelSerializer):
-    membership_id = serializers.IntegerField(source='id', read_only=True)
-    id            = serializers.IntegerField(source='student.id')
-    username      = serializers.CharField(source='student.username')
-    first_name    = serializers.CharField(source='student.first_name')
-    last_name     = serializers.CharField(source='student.last_name')
-    sticker_count = serializers.IntegerField(read_only=True)
-    comprehension  = serializers.SerializerMethodField()
-    coin_balance   = serializers.SerializerMethodField()
-    attendance_rate = serializers.SerializerMethodField()
+    membership_id    = serializers.IntegerField(source='id', read_only=True)
+    id               = serializers.IntegerField(source='student.id')
+    username         = serializers.CharField(source='student.username')
+    first_name       = serializers.CharField(source='student.first_name')
+    last_name        = serializers.CharField(source='student.last_name')
+    sticker_count    = serializers.IntegerField(read_only=True)
+    comprehension    = serializers.SerializerMethodField()
+    coin_balance     = serializers.SerializerMethodField()
+    attendance_rate  = serializers.SerializerMethodField()
+    has_parent       = serializers.SerializerMethodField()
+    student_telegram = serializers.SerializerMethodField()
 
     class Meta:
         model  = GroupMembership
@@ -22,6 +24,7 @@ class MemberSerializer(serializers.ModelSerializer):
             'membership_id', 'id', 'username', 'first_name', 'last_name',
             'joined_at', 'sticker_count',
             'comprehension', 'coin_balance', 'attendance_rate',
+            'has_parent', 'student_telegram',
         )
 
     def get_comprehension(self, obj):
@@ -32,6 +35,12 @@ class MemberSerializer(serializers.ModelSerializer):
 
     def get_attendance_rate(self, obj):
         return self.context.get('attendance_map', {}).get(obj.student.id)
+
+    def get_has_parent(self, obj):
+        return obj.student.id in self.context.get('parent_set', set())
+
+    def get_student_telegram(self, obj):
+        return obj.student.id in self.context.get('telegram_set', set())
 
 
 class GroupSerializer(serializers.ModelSerializer):

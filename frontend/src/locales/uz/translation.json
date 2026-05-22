@@ -340,7 +340,14 @@
     "stickers": "stiker",
     "toast_sticker_earned": "Stiker olindi!",
     "toast_coin_fail": "Coinni yangilashda xatolik.",
-    "no_podium": "Hali reytingni hisoblash uchun ballar yo'q."
+    "no_podium": "Hali reytingni hisoblash uchun ballar yo'q.",
+    "filter_all": "Barchasi",
+    "filter_with_parent": "Ota-onasi bor",
+    "filter_no_parent": "Ota-onasi yo'q",
+    "badge_has_parent": "Ota-ona ulangan",
+    "badge_no_parent": "Ota-ona yo'q",
+    "badge_tg_yes": "Telegram ulangan",
+    "badge_tg_no": "Telegram yo'q"
   },
   "lesson": {
     "tab_attendance": "davomat",

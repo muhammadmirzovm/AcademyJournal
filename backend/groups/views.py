@@ -141,6 +141,20 @@ class GroupMembersView(generics.ListAPIView):
             present = present_map.get(sid, 0)
             attendance_map[sid] = round(present / total * 100) if total > 0 else None
 
+        from users.models import ParentStudent
+        ctx['parent_set'] = set(
+            ParentStudent.objects
+            .filter(student_id__in=student_ids)
+            .values_list('student_id', flat=True)
+        )
+        ctx['telegram_set'] = set(
+            User.objects
+            .filter(id__in=student_ids)
+            .exclude(telegram_id__isnull=True)
+            .exclude(telegram_id='')
+            .values_list('id', flat=True)
+        )
+
         ctx['comprehension_map'] = comprehension_map
         ctx['coin_map']          = {sid: coin_map.get(sid, 0) for sid in student_ids}
         ctx['attendance_map']    = attendance_map

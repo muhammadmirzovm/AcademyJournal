@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
@@ -149,6 +149,7 @@ export default function GroupDetail() {
   const [games,             setGames]             = useState([])
   const [showNewGame,       setShowNewGame]        = useState(false)
   const [announcements,     setAnnouncements]      = useState([])
+  const [memberFilter,      setMemberFilter]       = useState('all')
 
   const isTeacher = (user?.role === 'teacher' && group?.teacher === user?.id) || user?.role === 'admin'
 
@@ -296,14 +297,49 @@ export default function GroupDetail() {
           {members.length === 0 ? (
             <EmptyTab icon={Users} text={t('group_detail.no_students')} sub={t('group_detail.no_students_sub')} />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {rankMembers(members).map((m, i) => (
-                <MemberRow key={m.membership_id} member={m} index={i} isTeacher={isTeacher}
-                  onEditJoinDate={() => setEditingMembership(m)}
-                  onRemove={() => handleRemoveMember(m.membership_id)}
-                  onCoin={(amount) => handleCoin(m.id, m.membership_id, amount)} />
-              ))}
-            </div>
+            <>
+              {isTeacher && (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'all',         label: t('group_detail.filter_all'),         icon: null },
+                    { key: 'with_parent', label: t('group_detail.filter_with_parent'), icon: <UserCheck size={12} /> },
+                    { key: 'no_parent',   label: t('group_detail.filter_no_parent'),   icon: null },
+                  ].map(f => (
+                    <button key={f.key} onClick={() => setMemberFilter(f.key)} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                      cursor: 'pointer', border: '1px solid',
+                      borderColor: memberFilter === f.key ? 'var(--accent)' : 'var(--border)',
+                      background:  memberFilter === f.key ? 'var(--accent-bg)' : 'transparent',
+                      color:       memberFilter === f.key ? 'var(--accent)' : 'var(--text-muted)',
+                      transition: 'all 0.15s',
+                    }}>
+                      {f.icon}{f.label}
+                      {f.key === 'with_parent' && (
+                        <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: 10, lineHeight: '16px' }}>
+                          {members.filter(m => m.has_parent).length}
+                        </span>
+                      )}
+                      {f.key === 'no_parent' && (
+                        <span style={{ background: 'var(--danger)', color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: 10, lineHeight: '16px' }}>
+                          {members.filter(m => !m.has_parent).length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {rankMembers(members)
+                  .filter(m => memberFilter === 'with_parent' ? m.has_parent : memberFilter === 'no_parent' ? !m.has_parent : true)
+                  .map((m, i) => (
+                    <MemberRow key={m.membership_id} member={m} index={i} isTeacher={isTeacher}
+                      onEditJoinDate={() => setEditingMembership(m)}
+                      onRemove={() => handleRemoveMember(m.membership_id)}
+                      onCoin={(amount) => handleCoin(m.id, m.membership_id, amount)} />
+                  ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -431,11 +467,23 @@ function MemberRow({ member: m, index, isTeacher, onEditJoinDate, onRemove, onCo
           <Link to={`/profile/${m.id}`} style={{ fontWeight: 600, fontSize: 14, textDecoration: 'none', color: 'var(--text)' }}>
             {m.first_name} {m.last_name}
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
               {new Date(m.joined_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
             {isTeacher && <button onClick={onEditJoinDate} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-muted)' }}><Pencil size={11} /></button>}
+            <span title={m.has_parent ? t('group_detail.badge_has_parent') : t('group_detail.badge_no_parent')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '1px 5px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                background: m.has_parent ? 'rgba(20,184,168,0.12)' : 'rgba(148,163,184,0.08)',
+                color: m.has_parent ? '#14B8A6' : 'var(--text-muted)' }}>
+              <UserCheck size={9} />{m.has_parent ? t('group_detail.badge_has_parent') : t('group_detail.badge_no_parent')}
+            </span>
+            <span title={m.student_telegram ? t('group_detail.badge_tg_yes') : t('group_detail.badge_tg_no')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '1px 5px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                background: m.student_telegram ? 'rgba(99,102,241,0.1)' : 'rgba(148,163,184,0.08)',
+                color: m.student_telegram ? '#6366F1' : 'var(--text-muted)' }}>
+              <Send size={9} />TG
+            </span>
           </div>
         </div>
 
