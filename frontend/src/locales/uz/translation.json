@@ -550,8 +550,8 @@
     "role_teacher": "O'qituvchi",
     "role_admin": "Admin",
     "role_parent": "Ota-ona",
-    "report_time": "Kunlik hisobot vaqti (UTC)",
-    "report_time_hint": "Bot har kuni shu vaqtda davomats hisobotini adminlarga yuboradi"
+    "report_time": "Kunlik hisobot vaqti (O'zbekiston vaqti, UTC+5)",
+    "report_time_hint": "Bot har kuni shu vaqtda davomat hisobotini adminlarga yuboradi"
   },
   "invite": {
     "expired_title": "Taklif muddati o'tgan",

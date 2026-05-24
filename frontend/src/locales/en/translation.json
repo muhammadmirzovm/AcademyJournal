@@ -550,7 +550,7 @@
     "role_teacher": "Teacher",
     "role_admin": "Admin",
     "role_parent": "Parent",
-    "report_time": "Daily Report Time (UTC)",
+    "report_time": "Daily Report Time (Tashkent, UTC+5)",
     "report_time_hint": "Bot sends attendance report to admins at this time every day"
   },
   "invite": {

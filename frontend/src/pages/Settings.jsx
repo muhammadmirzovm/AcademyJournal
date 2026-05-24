@@ -165,12 +165,26 @@ function CreateAcademy({ onCreated }) {
   )
 }
 
+// ── UTC ↔ UZT (UTC+5) helpers ──────────────────────────────────────────────────
+function utcToUzt(hhmm) {
+  if (!hhmm) return ''
+  const [h, m] = hhmm.split(':').map(Number)
+  const total = (h * 60 + m + 300) % (24 * 60)   // +5 hours
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+function uztToUtc(hhmm) {
+  if (!hhmm) return ''
+  const [h, m] = hhmm.split(':').map(Number)
+  const total = ((h * 60 + m - 300) % (24 * 60) + 24 * 60) % (24 * 60)  // -5 hours
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
 // ── Academy Tab ────────────────────────────────────────────────────────────────
 function AcademyTab({ academy, onUpdated }) {
   const { t } = useTranslation()
   const { show }  = useToast()
   const logoRef   = useRef()
-  const [form, setForm]       = useState({ name: academy.name, primary_color: academy.primary_color, report_time: academy.report_time || '' })
+  const [form, setForm]       = useState({ name: academy.name, primary_color: academy.primary_color, report_time: utcToUzt(academy.report_time) })
   const [loading, setLoading] = useState(false)
   const [logoLoading, setLogoLoading] = useState(false)
   const [saved, setSaved]     = useState(false)
@@ -179,7 +193,8 @@ function AcademyTab({ academy, onUpdated }) {
     e.preventDefault()
     setLoading(true)
     try {
-      const { data } = await api.patch('/academy/', form)
+      const payload = { ...form, report_time: uztToUtc(form.report_time) || null }
+      const { data } = await api.patch('/academy/', payload)
       onUpdated(data)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
