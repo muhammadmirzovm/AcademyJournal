@@ -170,7 +170,7 @@ function AcademyTab({ academy, onUpdated }) {
   const { t } = useTranslation()
   const { show }  = useToast()
   const logoRef   = useRef()
-  const [form, setForm]       = useState({ name: academy.name, primary_color: academy.primary_color })
+  const [form, setForm]       = useState({ name: academy.name, primary_color: academy.primary_color, report_time: academy.report_time || '' })
   const [loading, setLoading] = useState(false)
   const [logoLoading, setLogoLoading] = useState(false)
   const [saved, setSaved]     = useState(false)
@@ -309,6 +309,21 @@ function AcademyTab({ academy, onUpdated }) {
             <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('settings.invite_preview')}</p>
           </div>
         </div>
+      </div>
+
+      {/* Daily Report Time */}
+      <div>
+        <label style={labelStyle}>
+          <Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          {t('settings.report_time')}
+        </label>
+        <input
+          type="time"
+          style={{ ...inputStyle(false), width: 'auto', minWidth: 140 }}
+          value={form.report_time}
+          onChange={e => setForm(f => ({ ...f, report_time: e.target.value }))}
+        />
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t('settings.report_time_hint')}</p>
       </div>
 
       <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}

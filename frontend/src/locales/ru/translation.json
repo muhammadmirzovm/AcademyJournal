@@ -266,6 +266,7 @@
     "description": "Описание",
     "description_optional": "(необязательно)",
     "description_placeholder": "Чему будут учиться студенты?",
+    "class_days": "Дни занятий",
     "cancel": "Отмена",
     "creating": "Создаём…",
     "create_btn": "Создать группу",
@@ -548,7 +549,9 @@
     "role_student": "Ученик",
     "role_teacher": "Учитель",
     "role_admin": "Администратор",
-    "role_parent": "Родитель"
+    "role_parent": "Родитель",
+    "report_time": "Время ежедневного отчёта (UTC)",
+    "report_time_hint": "Бот отправляет отчёт о посещаемости администраторам каждый день в это время"
   },
   "invite": {
     "expired_title": "Приглашение истекло",

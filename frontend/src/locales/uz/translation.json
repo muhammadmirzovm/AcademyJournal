@@ -266,6 +266,7 @@
     "description": "Tavsif",
     "description_optional": "(ixtiyoriy)",
     "description_placeholder": "O'quvchilar nima o'rganadilar?",
+    "class_days": "Dars kunlari",
     "cancel": "Bekor qilish",
     "creating": "Yaratilmoqda…",
     "create_btn": "Guruh yaratish",
@@ -548,7 +549,9 @@
     "role_student": "O'quvchi",
     "role_teacher": "O'qituvchi",
     "role_admin": "Admin",
-    "role_parent": "Ota-ona"
+    "role_parent": "Ota-ona",
+    "report_time": "Kunlik hisobot vaqti (UTC)",
+    "report_time_hint": "Bot har kuni shu vaqtda davomats hisobotini adminlarga yuboradi"
   },
   "invite": {
     "expired_title": "Taklif muddati o'tgan",

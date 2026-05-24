@@ -125,12 +125,31 @@ function EmptyState({ isTeacher, onAction }) {
   )
 }
 
+const WEEKDAYS = [
+  { label: 'Mo', value: 0 },
+  { label: 'Tu', value: 1 },
+  { label: 'We', value: 2 },
+  { label: 'Th', value: 3 },
+  { label: 'Fr', value: 4 },
+  { label: 'Sa', value: 5 },
+  { label: 'Su', value: 6 },
+]
+
 function CreateGroupModal({ open, onClose, onCreated }) {
   const { show } = useToast()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '' })
+  const [form, setForm] = useState({ name: '', description: '', class_days: [] })
   const [error, setError] = useState('')
+
+  const toggleDay = day => {
+    setForm(f => ({
+      ...f,
+      class_days: f.class_days.includes(day)
+        ? f.class_days.filter(d => d !== day)
+        : [...f.class_days, day].sort((a, b) => a - b),
+    }))
+  }
 
   const submit = async e => {
     e.preventDefault()
@@ -138,7 +157,7 @@ function CreateGroupModal({ open, onClose, onCreated }) {
     setLoading(true)
     try {
       const { data } = await createGroup(form)
-      setForm({ name: '', description: '' })
+      setForm({ name: '', description: '', class_days: [] })
       onCreated(data)
     } catch { show(t('groups.toast_create_fail'), 'error') }
     finally { setLoading(false) }
@@ -153,11 +172,30 @@ function CreateGroupModal({ open, onClose, onCreated }) {
             value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setError('') }} autoFocus />
           {error && <p style={errorStyle}>{error}</p>}
         </div>
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>{t('groups.description')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('groups.description_optional')}</span></label>
           <textarea style={{ ...inputStyle(false), marginTop: 6, resize: 'vertical', minHeight: 80 }}
             placeholder={t('groups.description_placeholder')} value={form.description}
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={labelStyle}>{t('groups.class_days')}</label>
+          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            {WEEKDAYS.map(day => {
+              const active = form.class_days.includes(day.value)
+              return (
+                <button key={day.value} type="button" onClick={() => toggleDay(day.value)}
+                  style={{
+                    width: 38, height: 38, borderRadius: 9, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                    background: active ? 'var(--accent)' : 'transparent',
+                    color: active ? '#fff' : 'var(--text-muted)',
+                    fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
+                  }}>
+                  {day.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={ghostBtn}>{t('groups.cancel')}</button>

@@ -266,6 +266,7 @@
     "description": "Description",
     "description_optional": "(optional)",
     "description_placeholder": "What will students learn?",
+    "class_days": "Class Days",
     "cancel": "Cancel",
     "creating": "Creating…",
     "create_btn": "Create group",
@@ -548,7 +549,9 @@
     "role_student": "Student",
     "role_teacher": "Teacher",
     "role_admin": "Admin",
-    "role_parent": "Parent"
+    "role_parent": "Parent",
+    "report_time": "Daily Report Time (UTC)",
+    "report_time_hint": "Bot sends attendance report to admins at this time every day"
   },
   "invite": {
     "expired_title": "Invite Expired",
