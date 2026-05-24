@@ -6,10 +6,12 @@ from django.http import FileResponse, Http404
 import os
 
 def serve_spa(request, path=''):
-    index_file = settings.WHITENOISE_ROOT / 'index.html'
-    if os.path.exists(index_file):
-        return FileResponse(open(index_file, 'rb'), content_type='text/html')
-    raise Http404('Frontend not built. Run npm run build.')
+    whitenoise_root = getattr(settings, 'WHITENOISE_ROOT', None)
+    if whitenoise_root:
+        index_file = whitenoise_root / 'index.html'
+        if os.path.exists(index_file):
+            return FileResponse(open(index_file, 'rb'), content_type='text/html')
+    raise Http404('Frontend is served separately.')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
