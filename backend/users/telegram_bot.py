@@ -530,6 +530,43 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         text = m['welcome_other'].format(name=first_name)
     await query.edit_message_text(text)
+    if user:
+        await _set_user_commands(query.get_bot(), telegram_id, user.role)
+
+
+async def _set_user_commands(bot, telegram_id: int, role: str):
+    from telegram import BotCommandScopeChat
+    if role == 'student':
+        commands = [
+            BotCommand('mystats',  'Statistika / Статистика'),
+            BotCommand('myrank',   'Reyting / Рейтинг'),
+            BotCommand('homework', 'Uy vazifalari / Домашние задания'),
+            BotCommand('help',     'Yordam / Помощь'),
+        ]
+    elif role == 'teacher':
+        commands = [
+            BotCommand('mygroups',   'Guruhlar / Группы'),
+            BotCommand('struggling', "Qiynalayotganlar / Отстающие"),
+            BotCommand('notify',     'Guruhga xabar / Сообщение группе'),
+            BotCommand('help',       'Yordam / Помощь'),
+        ]
+    elif role == 'admin':
+        commands = [
+            BotCommand('academy', 'Akademiya / Академия'),
+            BotCommand('help',    'Yordam / Помощь'),
+        ]
+    elif role == 'parent':
+        commands = [
+            BotCommand('mystats', 'Statistika / Статистика'),
+            BotCommand('lessons', "So'nggi darslar / Последние уроки"),
+            BotCommand('help',    'Yordam / Помощь'),
+        ]
+    else:
+        commands = [BotCommand('help', 'Yordam / Помощь')]
+    try:
+        await bot.set_my_commands(commands, scope=BotCommandScopeChat(chat_id=telegram_id))
+    except Exception as e:
+        logger.warning('Could not set user commands for %s: %s', telegram_id, e)
 
 
 async def _process_connect(query, telegram_id: int, lang: str, token_str: str):
@@ -559,7 +596,22 @@ async def _process_connect(query, telegram_id: int, lang: str, token_str: str):
     user.telegram_lang = lang
     await sync_to_async(user.save)(update_fields=['telegram_id', 'telegram_lang'])
     await sync_to_async(token_obj.delete)()
-    await query.edit_message_text(MSG[lang]['success'].format(username=user.username))
+
+    first_name = query.from_user.first_name or ''
+    m = MSG[lang]
+    if user.role == 'student':
+        text = m['welcome_student'].format(name=first_name)
+    elif user.role == 'teacher':
+        text = m['welcome_teacher'].format(name=first_name)
+    elif user.role == 'admin':
+        text = m['welcome_admin'].format(name=first_name)
+    elif user.role == 'parent':
+        text = m['welcome_parent'].format(name=first_name)
+    else:
+        text = m['welcome_other'].format(name=first_name)
+
+    await query.edit_message_text(text)
+    await _set_user_commands(query.get_bot(), telegram_id, user.role)
 
 
 # ── /mystats ───────────────────────────────────────────────────────────────────
