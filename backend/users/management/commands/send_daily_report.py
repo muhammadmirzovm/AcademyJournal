@@ -109,14 +109,14 @@ class Command(BaseCommand):
         today = date.today()
         weekday = today.weekday()  # 0=Mon … 6=Sun
 
-        # Find academies whose report_time falls within the current 5-minute window.
-        # GitHub Actions cron fires every 5 minutes, so we match any academy whose
-        # report_time hour matches and whose minute is within [now, now+5).
+        # Find academies whose report_time falls within the last 5 minutes.
+        # GitHub Actions cron fires every 5 minutes, so we look backward [now-4, now]
+        # to catch any academy whose report_time was set in that window.
         now_minutes = now_utc.hour * 60 + now_utc.minute
         academies = Academy.objects.filter(report_time__isnull=False)
         matched = [
             a for a in academies
-            if a.report_time.hour * 60 + a.report_time.minute in range(now_minutes, now_minutes + 5)
+            if a.report_time.hour * 60 + a.report_time.minute in range(now_minutes - 4, now_minutes + 1)
         ]
 
         if not matched:
