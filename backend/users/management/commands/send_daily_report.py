@@ -96,6 +96,9 @@ def _lang(user):
 class Command(BaseCommand):
     help = 'Send daily attendance reports to admins and reminders to teachers'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--force', action='store_true', help='Send report for all academies regardless of time')
+
     def handle(self, *args, **options):
         from academies.models import Academy
         from groups.models import Group, Lesson, Attendance, GroupMembership
@@ -109,15 +112,19 @@ class Command(BaseCommand):
         today = date.today()
         weekday = today.weekday()  # 0=Mon … 6=Sun
 
-        # Find academies whose report_time falls within the last 5 minutes.
-        # GitHub Actions cron fires every 5 minutes, so we look backward [now-4, now]
-        # to catch any academy whose report_time was set in that window.
-        now_minutes = now_utc.hour * 60 + now_utc.minute
-        academies = Academy.objects.filter(report_time__isnull=False)
-        matched = [
-            a for a in academies
-            if a.report_time.hour * 60 + a.report_time.minute in range(now_minutes - 4, now_minutes + 1)
-        ]
+        if options.get('force'):
+            matched = list(Academy.objects.filter(report_time__isnull=False))
+            self.stdout.write(f'--force: sending for all {len(matched)} academies')
+        else:
+            # Find academies whose report_time falls within the last 5 minutes.
+            # GitHub Actions cron fires every 5 minutes, so we look backward [now-4, now]
+            # to catch any academy whose report_time was set in that window.
+            now_minutes = now_utc.hour * 60 + now_utc.minute
+            academies = Academy.objects.filter(report_time__isnull=False)
+            matched = [
+                a for a in academies
+                if a.report_time.hour * 60 + a.report_time.minute in range(now_minutes - 4, now_minutes + 1)
+            ]
 
         if not matched:
             self.stdout.write('No academies to report at this time.')
