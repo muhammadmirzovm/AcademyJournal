@@ -736,3 +736,17 @@ class UserNotifyView(APIView):
             sent += 1
 
         return Response({'ok': True, 'sent': sent})
+
+
+class CronDailyReportView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        from django.conf import settings
+        secret = request.headers.get('X-Cron-Secret', '')
+        if not secret or secret != settings.CRON_SECRET:
+            return Response({'error': 'forbidden'}, status=403)
+        from django.core.management import call_command
+        call_command('send_daily_report')
+        return Response({'ok': True})

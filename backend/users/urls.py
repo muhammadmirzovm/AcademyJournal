@@ -8,6 +8,7 @@ from .views import (
     PasswordResetRequestView, PasswordResetConfirmView,
     TelegramWebhookView, TeacherLeaderboardView,
     NotificationListView, NotificationReadView, UserNotifyView,
+    CronDailyReportView,
 )
 
 urlpatterns = [
@@ -33,4 +34,5 @@ urlpatterns = [
     path('notifications/', NotificationListView.as_view(), name='notifications'),
     path('notifications/<int:pk>/read/', NotificationReadView.as_view(), name='notification_read'),
     path('users/<int:pk>/notify/',       UserNotifyView.as_view(),       name='user_notify'),
+    path('cron/daily-report/',           CronDailyReportView.as_view(),  name='cron_daily_report'),
 ]

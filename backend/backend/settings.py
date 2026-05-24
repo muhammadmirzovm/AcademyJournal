@@ -14,6 +14,7 @@ DEBUG                    = os.environ.get('DEBUG', 'true').lower() == 'true'
 ALLOWED_HOSTS            = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 TELEGRAM_BOT_TOKEN       = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_WEBHOOK_SECRET  = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')
+CRON_SECRET              = os.environ.get('CRON_SECRET', '')
 
 # Trust Fly.io / reverse-proxy HTTPS headers so build_absolute_uri returns https://
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
