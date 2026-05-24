@@ -1,0 +1,22 @@
+name: Daily Attendance Report
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # every 5 minutes — management command matches within a 5-min window
+  workflow_dispatch:          # allow manual trigger for testing
+
+jobs:
+  report:
+    name: Send daily report
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+        with:
+          version: '0.4.43'
+
+      - name: Run send_daily_report
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl ssh console --app academyjournal --command "python manage.py send_daily_report"
