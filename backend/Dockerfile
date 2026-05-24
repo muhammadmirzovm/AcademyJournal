@@ -15,5 +15,7 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-# Daphne serves both HTTP and WebSocket (ASGI)
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "backend.asgi:application"]
+COPY start.sh .
+RUN chmod +x start.sh
+
+CMD ["./start.sh"]

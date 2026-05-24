@@ -28,5 +28,3 @@ primary_region = 'iad'
   source = 'codelearn_media'
   destination = '/app/media'
 
-[deploy]
-  release_command = 'python manage.py migrate --noinput'
