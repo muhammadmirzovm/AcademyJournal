@@ -30,3 +30,7 @@ primary_region = 'iad'
 
 [deploy]
   release_command = 'python manage.py migrate --noinput'
+
+[[crons]]
+  schedule = '* * * * *'
+  command   = 'python manage.py send_daily_report'

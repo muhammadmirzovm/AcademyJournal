@@ -7,7 +7,7 @@ class AcademySerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Academy
-        fields = ('id', 'name', 'slug', 'logo', 'logo_url', 'primary_color', 'created_at')
+        fields = ('id', 'name', 'slug', 'logo', 'logo_url', 'primary_color', 'report_time', 'created_at')
         read_only_fields = ('created_at', 'logo_url')
 
     def get_logo_url(self, obj):

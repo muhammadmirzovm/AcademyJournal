@@ -15,7 +15,8 @@ class Academy(models.Model):
         null=True,
         related_name='owned_academies',
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    report_time = models.TimeField(null=True, blank=True, help_text='Daily report time in UTC (e.g. 15:00)')
+    created_at  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name_plural = 'academies'
