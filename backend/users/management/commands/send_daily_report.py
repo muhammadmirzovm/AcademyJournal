@@ -1,9 +1,6 @@
 """
-Daily report management command.
-
-Run every minute via Fly.io cron. Finds academies whose report_time matches
-the current UTC minute, then sends attendance reports to admins and reminders
-to teachers who haven't completed attendance for today's lessons.
+Daily report: find teachers who had class today but did NOT create a lesson.
+Runs every 5 minutes via GitHub Actions; matches academy report_time within a 5-min window.
 """
 
 import os
@@ -14,94 +11,70 @@ import urllib.parse
 from datetime import date, datetime, timezone
 
 from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
 
-User = get_user_model()
 logger = logging.getLogger(__name__)
 
-# ── Translations ──────────────────────────────────────────────────────────────
-
-REPORT_MSG = {
+MSG = {
     'uz': {
-        'report_header': (
-            "📋 *Kunlik hisobot* — {date}\n"
-            "🏫 Akademiya: {academy}\n\n"
-        ),
-        'group_ok': "✅ *{group}* — davomat belgilangan\n",
-        'group_no_lesson': "📭 *{group}* — bugun dars yo'q (dars yaratilmagan)\n",
-        'group_absent': (
-            "⚠️ *{group}* (o'qituvchi: {teacher})\n"
-            "  ❌ Davomat belgilanmagan\n"
-            "  Kelmagan o'quvchilar: {absent}\n\n"
-        ),
-        'group_absent_none': (
-            "⚠️ *{group}* (o'qituvchi: {teacher})\n"
-            "  ❌ Davomat belgilanmagan\n\n"
-        ),
-        'no_groups': "Bugun dars bo'ladigan guruhlar yo'q.\n",
-        'teacher_reminder': (
-            "⏰ Eslatma: *{group}* guruhida bugun davomat belgilanmagan!\n"
-            "AcademyJournal'ga kiring va davomatni belgilang."
+        'header':    "📋 *Kunlik hisobot* — {date}\n🏫 {academy}\n\n",
+        'no_groups': "Bugun darsi bo'ladigan guruhlar yo'q.",
+        'intro_bad': "❌ *Bugun dars yaratmagan o'qituvchilar:*\n",
+        'intro_ok':  "\n✅ *Dars yaratgan o'qituvchilar:*\n",
+        'bad_row':   "• {teacher} — {group}\n",
+        'ok_row':    "• {teacher} — {group}\n",
+        'all_ok':    "✅ Barcha o'qituvchilar bugun dars yaratdi!",
+        'reminder':  (
+            "⏰ Eslatma!\n\n"
+            "*{group}* guruhida bugun dars bo'lishi kerak edi, "
+            "lekin siz hali dars yaratmadingiz.\n"
+            "AcademyJournal'ga kiring va dars yarating."
         ),
     },
     'ru': {
-        'report_header': (
-            "📋 *Ежедневный отчёт* — {date}\n"
-            "🏫 Академия: {academy}\n\n"
-        ),
-        'group_ok': "✅ *{group}* — посещаемость отмечена\n",
-        'group_no_lesson': "📭 *{group}* — урока сегодня нет (урок не создан)\n",
-        'group_absent': (
-            "⚠️ *{group}* (учитель: {teacher})\n"
-            "  ❌ Посещаемость не отмечена\n"
-            "  Отсутствующие: {absent}\n\n"
-        ),
-        'group_absent_none': (
-            "⚠️ *{group}* (учитель: {teacher})\n"
-            "  ❌ Посещаемость не отмечена\n\n"
-        ),
-        'no_groups': "Сегодня нет групп с занятиями.\n",
-        'teacher_reminder': (
-            "⏰ Напоминание: в группе *{group}* посещаемость сегодня не отмечена!\n"
-            "Войдите в AcademyJournal и отметьте посещаемость."
+        'header':    "📋 *Ежедневный отчёт* — {date}\n🏫 {academy}\n\n",
+        'no_groups': "Сегодня нет групп с занятиями.",
+        'intro_bad': "❌ *Учителя, не создавшие урок сегодня:*\n",
+        'intro_ok':  "\n✅ *Создали урок:*\n",
+        'bad_row':   "• {teacher} — {group}\n",
+        'ok_row':    "• {teacher} — {group}\n",
+        'all_ok':    "✅ Все учителя создали урок сегодня!",
+        'reminder':  (
+            "⏰ Напоминание!\n\n"
+            "В группе *{group}* сегодня должно быть занятие, "
+            "но вы ещё не создали урок.\n"
+            "Войдите в AcademyJournal и создайте урок."
         ),
     },
 }
 
 
 def _send(token, chat_id, text):
-    """Send a Telegram message synchronously."""
     url = f'https://api.telegram.org/bot{token}/sendMessage'
-    payload = {
-        'chat_id': chat_id,
-        'text': text,
-        'parse_mode': 'Markdown',
-    }
-    data = urllib.parse.urlencode(payload).encode()
+    data = urllib.parse.urlencode({'chat_id': chat_id, 'text': text, 'parse_mode': 'Markdown'}).encode()
     req = urllib.request.Request(url, data=data, method='POST')
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             result = json.loads(resp.read())
             if not result.get('ok'):
-                logger.warning('Telegram send failed for chat %s: %s', chat_id, result)
+                logger.warning('Telegram send failed chat=%s: %s', chat_id, result)
     except Exception as exc:
-        logger.error('Telegram send error for chat %s: %s', chat_id, exc)
+        logger.error('Telegram send error chat=%s: %s', chat_id, exc)
 
 
 def _lang(user):
     lang = getattr(user, 'telegram_lang', None) or 'uz'
-    return lang if lang in REPORT_MSG else 'uz'
+    return lang if lang in MSG else 'uz'
 
 
 class Command(BaseCommand):
-    help = 'Send daily attendance reports to admins and reminders to teachers'
+    help = 'Report teachers who had class today but did not create a lesson'
 
     def add_arguments(self, parser):
-        parser.add_argument('--force', action='store_true', help='Send report for all academies regardless of time')
+        parser.add_argument('--force', action='store_true', help='Run for all academies ignoring report_time')
 
     def handle(self, *args, **options):
         from academies.models import Academy
-        from groups.models import Group, Lesson, Attendance, GroupMembership
+        from groups.models import Group, Lesson
 
         token = os.environ.get('TELEGRAM_BOT_TOKEN')
         if not token:
@@ -114,16 +87,12 @@ class Command(BaseCommand):
 
         if options.get('force'):
             matched = list(Academy.objects.filter(report_time__isnull=False))
-            self.stdout.write(f'--force: sending for all {len(matched)} academies')
+            self.stdout.write(f'--force: {len(matched)} academies')
         else:
-            # Find academies whose report_time falls within the last 5 minutes.
-            # GitHub Actions cron fires every 5 minutes, so we look backward [now-4, now]
-            # to catch any academy whose report_time was set in that window.
-            now_minutes = now_utc.hour * 60 + now_utc.minute
-            academies = Academy.objects.filter(report_time__isnull=False)
+            now_min = now_utc.hour * 60 + now_utc.minute
             matched = [
-                a for a in academies
-                if a.report_time.hour * 60 + a.report_time.minute in range(now_minutes - 4, now_minutes + 1)
+                a for a in Academy.objects.filter(report_time__isnull=False)
+                if a.report_time.hour * 60 + a.report_time.minute in range(now_min - 4, now_min + 1)
             ]
 
         if not matched:
@@ -131,153 +100,60 @@ class Command(BaseCommand):
             return
 
         for academy in matched:
-            self.stdout.write(f'Processing academy: {academy.name}')
-            self._process_academy(academy, today, weekday, token, Lesson, Attendance, GroupMembership)
+            self.stdout.write(f'Processing: {academy.name}')
+            self._report(academy, today, weekday, token, Group, Lesson)
 
-    def _process_academy(self, academy, today, weekday, token, Lesson, Attendance, GroupMembership):
-        # Groups that have class today
-        all_groups = academy.members.filter(
-            role='teacher'
-        ).values_list('taught_groups', flat=True)
-
-        # Get all groups belonging to teachers in this academy
-        from groups.models import Group
+    def _report(self, academy, today, weekday, token, Group, Lesson):
+        # All groups of this academy that have class today
         groups_today = [
-            g for g in Group.objects.filter(
-                teacher__academy=academy
-            ).select_related('teacher')
+            g for g in
+            Group.objects.filter(teacher__academy=academy).select_related('teacher')
             if isinstance(g.class_days, list) and weekday in g.class_days
         ]
 
-        # Find admins with Telegram
-        admins = list(
-            academy.members.filter(role='admin', telegram_id__isnull=False)
-        )
-
-        if not admins and not groups_today:
+        # Admins with Telegram
+        admins = list(academy.members.filter(role='admin', telegram_id__isnull=False))
+        if not admins:
+            self.stdout.write('  No admins with Telegram — skipping')
             return
 
-        # Build report lines per group
-        report_lines = []
-        teacher_reminders = []  # list of (teacher_user, group_name)
+        # Classify each group: did the teacher create a lesson today?
+        no_lesson = []   # (group, teacher_name)
+        has_lesson = []  # (group, teacher_name)
 
-        for group in groups_today:
-            lesson = Lesson.objects.filter(group=group, date=today).first()
-
-            if not lesson:
-                report_lines.append(('no_lesson', group, None, []))
-                continue
-
-            # Get all members
-            member_ids = list(
-                GroupMembership.objects.filter(group=group).values_list('student_id', flat=True)
-            )
-
-            if not member_ids:
-                report_lines.append(('ok', group, lesson, []))
-                continue
-
-            # Get attended student IDs
-            attended_ids = set(
-                Attendance.objects.filter(lesson=lesson, present=True).values_list('student_id', flat=True)
-            )
-            marked_ids = set(
-                Attendance.objects.filter(lesson=lesson).values_list('student_id', flat=True)
-            )
-
-            # Attendance is considered incomplete if not all members have a record
-            all_marked = set(member_ids).issubset(marked_ids)
-
-            if all_marked:
-                # Find absent students (present=False)
-                absent_names = list(
-                    Attendance.objects.filter(
-                        lesson=lesson, present=False
-                    ).select_related('student').values_list(
-                        'student__first_name', 'student__last_name', 'student__username'
-                    )
-                )
-                absent_display = [
-                    f'{fn} {ln}'.strip() or un for fn, ln, un in absent_names
-                ]
-                report_lines.append(('ok_with_absent', group, lesson, absent_display))
+        for g in groups_today:
+            t_name = f'{g.teacher.first_name} {g.teacher.last_name}'.strip() or g.teacher.username
+            if Lesson.objects.filter(group=g, date=today).exists():
+                has_lesson.append((g, t_name))
             else:
-                # Attendance not completed — find who is absent (not marked)
-                from django.contrib.auth import get_user_model
-                U = get_user_model()
-                unmarked = U.objects.filter(
-                    id__in=set(member_ids) - marked_ids
-                ).values_list('first_name', 'last_name', 'username')
-                absent_display = [
-                    f'{fn} {ln}'.strip() or un for fn, ln, un in unmarked
-                ]
-                report_lines.append(('incomplete', group, lesson, absent_display))
-                teacher_reminders.append(group.teacher)
+                no_lesson.append((g, t_name))
 
-        # ── Send report to each admin ──────────────────────────────────────
+        # ── Send to each admin ─────────────────────────────────────────────
         for admin in admins:
-            lang = _lang(admin)
-            t = REPORT_MSG[lang]
-            msg = t['report_header'].format(
-                date=today.strftime('%d.%m.%Y'),
-                academy=academy.name,
-            )
+            m = MSG[_lang(admin)]
+            msg = m['header'].format(date=today.strftime('%d.%m.%Y'), academy=academy.name)
 
             if not groups_today:
-                msg += t['no_groups']
+                msg += m['no_groups']
+            elif not no_lesson:
+                msg += m['all_ok']
             else:
-                for status, group, lesson, absent in report_lines:
-                    teacher_name = (
-                        f'{group.teacher.first_name} {group.teacher.last_name}'.strip()
-                        or group.teacher.username
-                    )
-                    if status == 'no_lesson':
-                        msg += t['group_no_lesson'].format(group=group.name)
-                    elif status == 'ok_with_absent':
-                        if absent:
-                            msg += t['group_absent'].format(
-                                group=group.name,
-                                teacher=teacher_name,
-                                absent=', '.join(absent),
-                            )
-                        else:
-                            msg += t['group_ok'].format(group=group.name)
-                    elif status == 'incomplete':
-                        if absent:
-                            msg += t['group_absent'].format(
-                                group=group.name,
-                                teacher=teacher_name,
-                                absent=', '.join(absent),
-                            )
-                        else:
-                            msg += t['group_absent_none'].format(
-                                group=group.name,
-                                teacher=teacher_name,
-                            )
+                msg += m['intro_bad']
+                for g, t in no_lesson:
+                    msg += m['bad_row'].format(teacher=t, group=g.name)
+                if has_lesson:
+                    msg += m['intro_ok']
+                    for g, t in has_lesson:
+                        msg += m['ok_row'].format(teacher=t, group=g.name)
 
             _send(token, admin.telegram_id, msg)
-            self.stdout.write(f'  Sent report to admin {admin.username}')
+            self.stdout.write(f'  Report sent to admin {admin.username}')
 
-        # ── Send reminders to teachers who missed attendance ───────────────
-        seen_teachers = set()
-        for teacher in teacher_reminders:
-            if teacher.id in seen_teachers:
+        # ── Remind teachers who missed creating a lesson ───────────────────
+        for g, t_name in no_lesson:
+            if not g.teacher.telegram_id:
                 continue
-            seen_teachers.add(teacher.id)
-
-            if not teacher.telegram_id:
-                continue
-
-            # Collect group names for this teacher
-            teacher_groups = [
-                g.name for status, g, _, _ in report_lines
-                if status == 'incomplete' and g.teacher_id == teacher.id
-            ]
-
-            lang = _lang(teacher)
-            t = REPORT_MSG[lang]
-            for gname in teacher_groups:
-                msg = t['teacher_reminder'].format(group=gname)
-                _send(token, teacher.telegram_id, msg)
-
-            self.stdout.write(f'  Sent reminder to teacher {teacher.username}')
+            m = MSG[_lang(g.teacher)]
+            msg = m['reminder'].format(group=g.name)
+            _send(token, g.teacher.telegram_id, msg)
+            self.stdout.write(f'  Reminder sent to teacher {g.teacher.username}')
