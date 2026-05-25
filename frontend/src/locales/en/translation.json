@@ -21,7 +21,9 @@
     "connected": "Connected",
     "not_connected": "Not connected",
     "parent_yes": "Has parent",
-    "parent_no": "No parent"
+    "parent_no": "No parent",
+    "attendance": "Att",
+    "score": "Score"
   },
   "landing": {
     "badge": "Now live — start for free",

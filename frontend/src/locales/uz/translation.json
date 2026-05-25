@@ -21,7 +21,9 @@
     "connected": "Ulangan",
     "not_connected": "Ulanmagan",
     "parent_yes": "Ota-ona bor",
-    "parent_no": "Ota-ona yo'q"
+    "parent_no": "Ota-ona yo'q",
+    "attendance": "Dav",
+    "score": "Ball"
   },
   "landing": {
     "badge": "Endi jonli — bepul boshlang",

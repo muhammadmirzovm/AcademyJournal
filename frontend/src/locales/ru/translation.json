@@ -21,7 +21,9 @@
     "connected": "Подключён",
     "not_connected": "Не подключён",
     "parent_yes": "Есть родитель",
-    "parent_no": "Нет родителя"
+    "parent_no": "Нет родителя",
+    "attendance": "Пос",
+    "score": "Балл"
   },
   "landing": {
     "badge": "Уже в сети — начните бесплатно",

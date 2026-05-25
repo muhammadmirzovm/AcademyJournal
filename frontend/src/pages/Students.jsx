@@ -8,13 +8,17 @@ import { useToast } from '../context/ToastContext'
 
 const PAGE_SIZE = 20
 
-function StatBadge({ value, suffix = '%', color }) {
-  if (value == null) return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+function StatBadge({ value, suffix = '%', color, label }) {
+  if (value == null) return (
+    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+      {label}: —
+    </span>
+  )
   return (
     <span style={{
       fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
       background: color + '18', color,
-    }}>{value}{suffix}</span>
+    }}>{label}: {value}{suffix}</span>
   )
 }
 
@@ -150,8 +154,8 @@ export default function Students() {
 
               {/* Stats */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <StatBadge value={s.attendance_pct} color="#10B981" />
-                <StatBadge value={s.avg_score_pct}  color="#8B5CF6" />
+                <StatBadge value={s.attendance_pct} color="#10B981" label={t('students.attendance')} />
+                <StatBadge value={s.avg_score_pct}  color="#8B5CF6" label={t('students.score')} />
                 <span title="Telegram" style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6,
