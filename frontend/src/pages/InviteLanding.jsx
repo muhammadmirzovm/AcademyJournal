@@ -179,11 +179,7 @@ export default function InviteLanding() {
 
         {/* Academy header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          {invite.academy.logo_url ? (
-            <img src={invite.academy.logo_url} alt={invite.academy.name}
-              style={{ width: 72, height: 72, borderRadius: 18, objectFit: 'cover', marginBottom: 16, boxShadow: `0 8px 32px rgba(${colorRgb},0.3)` }} />
-          ) : (
-            <div style={{
+          <div style={{
               display: 'inline-flex', width: 72, height: 72, borderRadius: 18,
               background: `linear-gradient(135deg, ${color}, ${color}dd)`,
               alignItems: 'center', justifyContent: 'center', marginBottom: 16,
@@ -191,7 +187,6 @@ export default function InviteLanding() {
             }}>
               <GraduationCap size={32} color="#fff" />
             </div>
-          )}
           <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>
             {invite.academy.name}
           </h1>

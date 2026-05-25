@@ -7,7 +7,6 @@ from django.utils import timezone
 class Academy(models.Model):
     name          = models.CharField(max_length=120)
     slug          = models.SlugField(unique=True)
-    logo          = models.ImageField(upload_to='academy_logos/', blank=True, null=True)
     primary_color = models.CharField(max_length=7, default='#0D9488')
     created_by    = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -3,18 +3,10 @@ from .models import Academy, InviteToken, AcademyTelegramGroup
 
 
 class AcademySerializer(serializers.ModelSerializer):
-    logo_url = serializers.SerializerMethodField()
-
     class Meta:
         model  = Academy
-        fields = ('id', 'name', 'slug', 'logo', 'logo_url', 'primary_color', 'report_time', 'created_at')
-        read_only_fields = ('created_at', 'logo_url')
-
-    def get_logo_url(self, obj):
-        request = self.context.get('request')
-        if obj.logo and request:
-            return request.build_absolute_uri(obj.logo.url)
-        return None
+        fields = ('id', 'name', 'slug', 'primary_color', 'report_time', 'created_at')
+        read_only_fields = ('created_at',)
 
 
 class AcademyTelegramGroupSerializer(serializers.ModelSerializer):
@@ -25,17 +17,9 @@ class AcademyTelegramGroupSerializer(serializers.ModelSerializer):
 
 class AcademyBrandSerializer(serializers.ModelSerializer):
     """Lightweight public-facing serializer (used on invite landing page)."""
-    logo_url = serializers.SerializerMethodField()
-
     class Meta:
         model  = Academy
-        fields = ('id', 'name', 'primary_color', 'logo_url')
-
-    def get_logo_url(self, obj):
-        request = self.context.get('request')
-        if obj.logo and request:
-            return request.build_absolute_uri(obj.logo.url)
-        return None
+        fields = ('id', 'name', 'primary_color')
 
 
 class InviteTokenSerializer(serializers.ModelSerializer):

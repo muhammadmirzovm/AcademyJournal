@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   Building2, Link2, Plus, Copy, Check, Trash2,
-  Loader2, Upload, Users, GraduationCap,
+  Loader2, Users, GraduationCap,
   Clock, Hash, Shield, Sparkles, AlertCircle, UserX, Send,
 } from 'lucide-react'
 import api from '../api/axios'
@@ -183,10 +183,8 @@ function uztToUtc(hhmm) {
 function AcademyTab({ academy, onUpdated }) {
   const { t } = useTranslation()
   const { show }  = useToast()
-  const logoRef   = useRef()
   const [form, setForm]       = useState({ name: academy.name, primary_color: academy.primary_color, report_time: utcToUzt(academy.report_time) })
   const [loading, setLoading] = useState(false)
-  const [logoLoading, setLogoLoading] = useState(false)
   const [saved, setSaved]     = useState(false)
 
   const [tgGroups, setTgGroups]       = useState([])
@@ -235,83 +233,8 @@ function AcademyTab({ academy, onUpdated }) {
     } finally { setLoading(false) }
   }
 
-  const uploadLogo = async file => {
-    setLogoLoading(true)
-    const fd = new FormData()
-    fd.append('logo', file)
-    try {
-      // Do NOT set Content-Type manually — browser must set it with the boundary
-      const { data } = await api.patch('/academy/', fd)
-      onUpdated(data)
-      show(t('settings.logo_updated'), 'success')
-    } catch {
-      show(t('settings.err_logo_upload'), 'error')
-    } finally { setLogoLoading(false) }
-  }
-
-  const removeLogo = async () => {
-    setLogoLoading(true)
-    try {
-      const { data } = await api.delete('/academy/logo/')
-      onUpdated(data)
-      show(t('settings.logo_removed'), 'success')
-    } catch {
-      show(t('settings.err_logo_remove'), 'error')
-    } finally { setLogoLoading(false) }
-  }
-
   return (
     <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Logo */}
-      <div>
-        <label style={labelStyle}>{t('settings.academy_logo')}</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{
-            width: 80, height: 80, borderRadius: 18,
-            background: academy.logo_url
-              ? 'transparent'
-              : `linear-gradient(135deg, ${form.primary_color}, ${form.primary_color}cc)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '2px solid rgba(0,0,0,0.08)', overflow: 'hidden', flexShrink: 0,
-          }}>
-            {academy.logo_url
-              ? <img src={academy.logo_url} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <Building2 size={30} color="#fff" />
-            }
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => e.target.files[0] && uploadLogo(e.target.files[0])} />
-            <button type="button" onClick={() => logoRef.current.click()} disabled={logoLoading}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px',
-                borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.12)',
-                background: 'transparent', color: 'var(--text)', fontSize: 13,
-                fontWeight: 600, cursor: logoLoading ? 'not-allowed' : 'pointer',
-              }}>
-              {logoLoading
-                ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />
-                : <Upload size={14} />
-              }
-              {academy.logo_url ? t('settings.change_logo') : t('settings.upload_logo')}
-            </button>
-            {academy.logo_url && (
-              <button type="button" onClick={removeLogo} disabled={logoLoading}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px',
-                  borderRadius: 10, border: '1.5px solid rgba(239,68,68,0.25)',
-                  background: 'rgba(239,68,68,0.05)', color: '#EF4444', fontSize: 13,
-                  fontWeight: 600, cursor: logoLoading ? 'not-allowed' : 'pointer',
-                }}>
-                <Trash2 size={14} />
-                {t('settings.remove_logo')}
-              </button>
-            )}
-            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('settings.logo_hint')}</p>
-          </div>
-        </div>
-      </div>
-
       {/* Name */}
       <div>
         <label style={labelStyle}>{t('settings.academy_name')}</label>

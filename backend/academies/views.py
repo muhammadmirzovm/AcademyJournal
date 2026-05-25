@@ -40,22 +40,6 @@ class AcademyDetailView(generics.RetrieveUpdateAPIView):
         return super().update(request, *args, **kwargs)
 
 
-class AcademyLogoView(APIView):
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def delete(self, request):
-        if request.user.role != 'admin':
-            return Response({'detail': 'Only admins can remove the logo.'}, status=403)
-        academy = request.user.academy
-        if not academy:
-            return Response({'detail': 'No academy found.'}, status=404)
-        if academy.logo:
-            academy.logo.delete(save=False)
-            academy.logo = None
-            academy.save(update_fields=['logo'])
-        return Response(AcademySerializer(academy, context={'request': request}).data)
-
-
 class AcademyMembersView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
