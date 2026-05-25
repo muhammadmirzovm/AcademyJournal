@@ -5,8 +5,8 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.text import slugify
 from datetime import timedelta
-from .models import Academy, InviteToken
-from .serializers import AcademySerializer, AcademyBrandSerializer, InviteTokenSerializer
+from .models import Academy, InviteToken, AcademyTelegramGroup
+from .serializers import AcademySerializer, AcademyBrandSerializer, InviteTokenSerializer, AcademyTelegramGroupSerializer
 
 
 class AcademyCreateView(generics.CreateAPIView):
@@ -246,3 +246,36 @@ class InviteAcceptView(APIView):
             'academy': invite.academy.name,
             'user':    UserSerializer(user, context={'request': request}).data,
         })
+
+
+class TelegramGroupListCreateView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        academy = request.user.academy
+        if not academy:
+            return Response([], status=200)
+        groups = AcademyTelegramGroup.objects.filter(academy=academy)
+        return Response(AcademyTelegramGroupSerializer(groups, many=True).data)
+
+    def post(self, request):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admins can add Telegram groups.'}, status=403)
+        academy = request.user.academy
+        if not academy:
+            return Response({'detail': 'No academy found.'}, status=404)
+        serializer = AcademyTelegramGroupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(academy=academy)
+        return Response(serializer.data, status=201)
+
+
+class TelegramGroupDeleteView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def delete(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admins can remove Telegram groups.'}, status=403)
+        group = get_object_or_404(AcademyTelegramGroup, pk=pk, academy=request.user.academy)
+        group.delete()
+        return Response(status=204)

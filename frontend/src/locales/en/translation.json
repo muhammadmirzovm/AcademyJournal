@@ -551,7 +551,10 @@
     "role_admin": "Admin",
     "role_parent": "Parent",
     "report_time": "Daily Report Time (Tashkent, UTC+5)",
-    "report_time_hint": "Bot sends attendance report to admins at this time every day"
+    "report_time_hint": "Bot sends attendance report to admins at this time every day",
+    "telegram_groups": "Telegram Groups",
+    "tg_group_name": "Group name",
+    "tg_group_hint": "Add the bot to a Telegram group, enter the group chat ID — reports will also be sent there"
   },
   "invite": {
     "expired_title": "Invite Expired",

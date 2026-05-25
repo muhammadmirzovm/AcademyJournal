@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   Building2, Link2, Plus, Copy, Check, Trash2,
   Loader2, Upload, Users, GraduationCap,
-  Clock, Hash, Shield, Sparkles, AlertCircle, UserX,
+  Clock, Hash, Shield, Sparkles, AlertCircle, UserX, Send,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -189,6 +189,38 @@ function AcademyTab({ academy, onUpdated }) {
   const [logoLoading, setLogoLoading] = useState(false)
   const [saved, setSaved]     = useState(false)
 
+  const [tgGroups, setTgGroups]       = useState([])
+  const [tgForm, setTgForm]           = useState({ chat_id: '', name: '' })
+  const [tgLoading, setTgLoading]     = useState(false)
+  const [tgAdding, setTgAdding]       = useState(false)
+
+  useEffect(() => {
+    api.get('/academy/telegram-groups/').then(r => setTgGroups(r.data)).catch(() => {})
+  }, [])
+
+  const addTgGroup = async e => {
+    e.preventDefault()
+    if (!tgForm.chat_id || !tgForm.name) return
+    setTgAdding(true)
+    try {
+      const { data } = await api.post('/academy/telegram-groups/', { chat_id: Number(tgForm.chat_id), name: tgForm.name })
+      setTgGroups(g => [...g, data])
+      setTgForm({ chat_id: '', name: '' })
+    } catch {
+      show(t('settings.err_save'), 'error')
+    } finally { setTgAdding(false) }
+  }
+
+  const removeTgGroup = async id => {
+    setTgLoading(true)
+    try {
+      await api.delete(`/academy/telegram-groups/${id}/`)
+      setTgGroups(g => g.filter(x => x.id !== id))
+    } catch {
+      show(t('settings.err_save'), 'error')
+    } finally { setTgLoading(false) }
+  }
+
   const save = async e => {
     e.preventDefault()
     setLoading(true)
@@ -339,6 +371,61 @@ function AcademyTab({ academy, onUpdated }) {
           onChange={e => setForm(f => ({ ...f, report_time: e.target.value }))}
         />
         <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t('settings.report_time_hint')}</p>
+      </div>
+
+      {/* Telegram groups */}
+      <div>
+        <label style={labelStyle}>
+          <Send size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          {t('settings.telegram_groups')}
+        </label>
+
+        {tgGroups.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+            {tgGroups.map(g => (
+              <div key={g.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 14px', borderRadius: 10,
+                background: 'var(--card)', border: '1.5px solid rgba(0,0,0,0.08)',
+              }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{g.name}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, fontFamily: 'monospace' }}>{g.chat_id}</p>
+                </div>
+                <button type="button" onClick={() => removeTgGroup(g.id)} disabled={tgLoading}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: 4 }}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            placeholder={t('settings.tg_group_name')}
+            value={tgForm.name}
+            onChange={e => setTgForm(f => ({ ...f, name: e.target.value }))}
+            style={{ ...inputStyle(false), flex: 1 }}
+          />
+          <input
+            placeholder="Chat ID (-100...)"
+            value={tgForm.chat_id}
+            onChange={e => setTgForm(f => ({ ...f, chat_id: e.target.value }))}
+            style={{ ...inputStyle(false), width: 160 }}
+          />
+          <button type="button" onClick={addTgGroup} disabled={tgAdding || !tgForm.chat_id || !tgForm.name}
+            style={{
+              padding: '0 16px', borderRadius: 10, border: 'none',
+              background: '#0D9488', color: '#fff', fontWeight: 700,
+              cursor: tgAdding ? 'not-allowed' : 'pointer', fontSize: 13,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+            {tgAdding ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Plus size={14} />}
+            {t('settings.add')}
+          </button>
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t('settings.tg_group_hint')}</p>
       </div>
 
       <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}

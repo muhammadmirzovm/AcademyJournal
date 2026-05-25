@@ -25,6 +25,18 @@ class Academy(models.Model):
         return self.name
 
 
+class AcademyTelegramGroup(models.Model):
+    academy = models.ForeignKey(Academy, on_delete=models.CASCADE, related_name='telegram_groups')
+    chat_id = models.BigIntegerField()
+    name    = models.CharField(max_length=120)
+
+    class Meta:
+        unique_together = ('academy', 'chat_id')
+
+    def __str__(self):
+        return f'{self.name} ({self.chat_id})'
+
+
 class InviteToken(models.Model):
     ROLE_CHOICES = [
         ('teacher', 'Teacher'),

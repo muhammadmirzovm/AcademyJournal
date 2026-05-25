@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Academy, InviteToken
+from .models import Academy, InviteToken, AcademyTelegramGroup
 
 
 class AcademySerializer(serializers.ModelSerializer):
@@ -7,7 +7,7 @@ class AcademySerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Academy
-        fields = ('id', 'name', 'slug', 'logo', 'logo_url', 'primary_color', 'report_time', 'created_at')
+        fields = ('id', 'name', 'slug', 'logo', 'logo_url', 'primary_color', 'report_time', 'telegram_group_id', 'created_at')
         read_only_fields = ('created_at', 'logo_url')
 
     def get_logo_url(self, obj):
@@ -15,6 +15,12 @@ class AcademySerializer(serializers.ModelSerializer):
         if obj.logo and request:
             return request.build_absolute_uri(obj.logo.url)
         return None
+
+
+class AcademyTelegramGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = AcademyTelegramGroup
+        fields = ('id', 'chat_id', 'name')
 
 
 class AcademyBrandSerializer(serializers.ModelSerializer):

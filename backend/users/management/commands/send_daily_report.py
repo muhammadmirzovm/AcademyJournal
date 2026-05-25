@@ -91,8 +91,8 @@ def run_report_for_academy(academy):
         else:
             no_lesson.append((g, t_name))
 
-    for admin in admins:
-        m = MSG[_lang(admin)]
+    def _build_report(lang):
+        m = MSG[lang]
         msg = m['header'].format(date=today.strftime('%d.%m.%Y'), academy=academy.name)
         if not groups_today:
             msg += m['no_groups']
@@ -106,7 +106,14 @@ def run_report_for_academy(academy):
                 msg += m['intro_ok']
                 for g, t in has_lesson:
                     msg += m['ok_row'].format(teacher=t, group=g.name)
-        _send(token, admin.telegram_id, msg)
+        return msg
+
+    for admin in admins:
+        _send(token, admin.telegram_id, _build_report(_lang(admin)))
+
+    from academies.models import AcademyTelegramGroup
+    for tg in AcademyTelegramGroup.objects.filter(academy=academy):
+        _send(token, tg.chat_id, _build_report('uz'))
 
     for g, _ in no_lesson:
         if g.teacher.telegram_id:
