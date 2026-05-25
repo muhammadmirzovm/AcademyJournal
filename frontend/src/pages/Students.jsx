@@ -149,15 +149,27 @@ export default function Students() {
               </div>
 
               {/* Stats */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <StatBadge value={s.attendance_pct} color="#10B981" />
                 <StatBadge value={s.avg_score_pct}  color="#8B5CF6" />
-                {s.telegram_linked && (
-                  <MessageCircle size={15} style={{ color: '#0EA5E9' }} title="Telegram" />
-                )}
-                {s.has_parent && (
-                  <UserCheck size={15} style={{ color: '#F59E0B' }} title="Parent" />
-                )}
+                <span title="Telegram" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6,
+                  background: s.telegram_linked ? '#0EA5E918' : 'rgba(0,0,0,0.05)',
+                  color: s.telegram_linked ? '#0EA5E9' : 'var(--text-muted)',
+                }}>
+                  <MessageCircle size={12} />
+                  {s.telegram_linked ? t('students.connected') : t('students.not_connected')}
+                </span>
+                <span title="Parent" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 6,
+                  background: s.has_parent ? '#F59E0B18' : 'rgba(0,0,0,0.05)',
+                  color: s.has_parent ? '#F59E0B' : 'var(--text-muted)',
+                }}>
+                  <UserCheck size={12} />
+                  {s.has_parent ? t('students.parent_yes') : t('students.parent_no')}
+                </span>
               </div>
             </motion.div>
           ))}

@@ -17,7 +17,11 @@
     "search": "Search by name or username...",
     "all_groups": "All groups",
     "no_group": "No group",
-    "empty": "No students found"
+    "empty": "No students found",
+    "connected": "Connected",
+    "not_connected": "Not connected",
+    "parent_yes": "Has parent",
+    "parent_no": "No parent"
   },
   "landing": {
     "badge": "Now live — start for free",

@@ -17,7 +17,11 @@
     "search": "Ism yoki username bo'yicha qidirish...",
     "all_groups": "Barcha guruhlar",
     "no_group": "Guruhsiz",
-    "empty": "O'quvchilar topilmadi"
+    "empty": "O'quvchilar topilmadi",
+    "connected": "Ulangan",
+    "not_connected": "Ulanmagan",
+    "parent_yes": "Ota-ona bor",
+    "parent_no": "Ota-ona yo'q"
   },
   "landing": {
     "badge": "Endi jonli — bepul boshlang",
