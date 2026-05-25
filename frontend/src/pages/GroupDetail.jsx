@@ -9,7 +9,7 @@ import {
   getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement,
 } from '../api/groups'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
-import { getGames, createGame, deleteGame, getTopics, getQuestionBanks, duplicateGame } from '../api/quiz'
+import { getGames, createGame, deleteGame, getTopics, duplicateGame } from '../api/quiz'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
@@ -851,40 +851,29 @@ function DiffInput({ diff, available, value, onChange, t }) {
 function NewGameModal({ open, onClose, groupId, onCreated }) {
   const { show } = useToast(); const { t } = useTranslation()
   const [loading,       setLoading]       = useState(false)
-  const [banks,         setBanks]         = useState([])
-  const [selectedBank,  setSelectedBank]  = useState(null)
   const [topics,        setTopics]        = useState([])
-  const [diffCounts,    setDiffCounts]    = useState({})  // {topic_id: {easy: N, medium: N, hard: N}}
+  const [diffCounts,    setDiffCounts]    = useState({})
   const [topicsLoading, setTopicsLoading] = useState(false)
   const [form, setForm] = useState({ name: '', timer_seconds: 30, team_count: 2 })
   const [formError, setFormError] = useState('')
 
   const reset = () => {
     setForm({ name: '', timer_seconds: 30, team_count: 2 })
-    setTopics([]); setDiffCounts({}); setBanks([]); setSelectedBank(null); setFormError('')
+    setTopics([]); setDiffCounts({}); setFormError('')
   }
 
   useEffect(() => {
     if (open) {
-      getQuestionBanks().then(res => {
-        setBanks(res.data)
-        const me = res.data.find(b => b.is_me)
-        setSelectedBank(me ? me.id : (res.data[0]?.id ?? null))
-      }).catch(() => {})
+      setTopicsLoading(true)
+      getTopics().then(res => {
+        setTopics(res.data)
+        const init = {}
+        res.data.forEach(tp => { init[tp.id] = { easy: 0, medium: 0, hard: 0 } })
+        setDiffCounts(init)
+      }).catch(() => {}).finally(() => setTopicsLoading(false))
     }
     if (!open) reset()
   }, [open])
-
-  useEffect(() => {
-    if (!selectedBank) { setTopics([]); setDiffCounts({}); return }
-    setTopicsLoading(true)
-    getTopics({ owner: selectedBank }).then(res => {
-      setTopics(res.data)
-      const init = {}
-      res.data.forEach(tp => { init[tp.id] = { easy: 0, medium: 0, hard: 0 } })
-      setDiffCounts(init)
-    }).catch(() => {}).finally(() => setTopicsLoading(false))
-  }, [selectedBank])
 
   const setCount = (topicId, diff, val) => {
     setDiffCounts(c => ({ ...c, [topicId]: { ...c[topicId], [diff]: val } }))
@@ -917,7 +906,6 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
       const { data } = await createGame(groupId, {
         ...form,
         topic_difficulty_counts: diffCounts,
-        source_teacher_id: selectedBank,
       })
       onCreated(data)
     } catch (err) {
@@ -945,24 +933,6 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
             <input type="number" min={2} max={8} style={{ ...inputStyle(false), marginTop: 5 }}
               value={form.team_count} onChange={e => setForm(f => ({ ...f, team_count: Number(e.target.value) }))} />
           </div>
-        </div>
-
-        {/* Question bank selector */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>{t('quiz.question_bank')}</label>
-          {banks.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>{t('quiz.no_banks')}</p>
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-              {banks.map(b => (
-                <button key={b.id} type="button" onClick={() => setSelectedBank(b.id)}
-                  style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${selectedBank === b.id ? 'var(--accent)' : 'var(--border)'}`, background: selectedBank === b.id ? 'var(--accent-bg)' : 'var(--bg)', color: selectedBank === b.id ? 'var(--accent)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-                  {b.name}{b.is_me ? ` (${t('quiz.you')})` : ''}
-                  <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{b.question_count}q</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Header row */}
@@ -998,7 +968,10 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
                 borderRadius: 10, padding: '10px 12px', transition: 'all 0.15s',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{tp.name}</span>
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{tp.name}</span>
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{tp.created_by_name}</p>
+                  </div>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {[['easy', tp.easy_count, '#22C55E'], ['medium', tp.medium_count, '#F59E0B'], ['hard', tp.hard_count, '#EF4444']].map(([d, cnt, col]) => (
                       <span key={d} style={{ fontSize: 10, fontWeight: 700, color: cnt > 0 ? col : 'var(--text-muted)', background: cnt > 0 ? `${col}18` : 'transparent', border: `1px solid ${cnt > 0 ? `${col}40` : 'var(--border)'}`, borderRadius: 4, padding: '1px 5px' }}>

@@ -31,6 +31,10 @@ class TopicListCreateView(generics.ListCreateAPIView):
         qs = Topic.objects.all().select_related('created_by')
         if owner := self.request.query_params.get('owner'):
             qs = qs.filter(created_by_id=owner)
+        elif self.request.user.academy_id:
+            qs = qs.filter(created_by__academy=self.request.user.academy_id)
+        else:
+            qs = qs.filter(created_by=self.request.user)
         return qs
 
     def perform_create(self, serializer):
@@ -112,9 +116,10 @@ def game_response(game):
     return GameSerializer(game).data
 
 
-def pick_questions_by_difficulty(teacher, topic_id, diff_counts):
+def pick_questions_by_difficulty(topic_id, diff_counts):
     """
-    Pick exactly diff_counts['easy'/'medium'/'hard'] questions per difficulty.
+    Pick exactly diff_counts['easy'/'medium'/'hard'] questions per difficulty
+    from all teachers in the academy.
     Raises ValueError if not enough questions are available.
     """
     chosen = []
@@ -122,7 +127,7 @@ def pick_questions_by_difficulty(teacher, topic_id, diff_counts):
         count = max(0, int(diff_counts.get(diff) or 0))
         if count == 0:
             continue
-        pool = list(Question.objects.filter(created_by=teacher, topic_id=topic_id, difficulty=diff))
+        pool = list(Question.objects.filter(topic_id=topic_id, difficulty=diff))
         if len(pool) < count:
             raise ValueError(f'{diff}:{topic_id}:{count}:{len(pool)}')
         random.shuffle(pool)
@@ -149,15 +154,12 @@ class GameListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         game = serializer.save(group=group, created_by=request.user)
 
-        source_id = request.data.get('source_teacher_id')
-        source_teacher = get_object_or_404(User, pk=source_id) if source_id else request.user
-
         topic_difficulty_counts = request.data.get('topic_difficulty_counts', {})
         chosen = []
         try:
             for topic_id, diff_counts in topic_difficulty_counts.items():
                 if isinstance(diff_counts, dict):
-                    chosen.extend(pick_questions_by_difficulty(source_teacher, topic_id, diff_counts))
+                    chosen.extend(pick_questions_by_difficulty(topic_id, diff_counts))
         except ValueError as e:
             game.delete()
             parts = str(e).split(':')

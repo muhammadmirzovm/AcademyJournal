@@ -21,13 +21,13 @@ class TopicSerializer(serializers.ModelSerializer):
         return u.get_full_name() or u.username
 
     def get_easy_count(self, obj):
-        return obj.questions.filter(difficulty='easy', created_by=obj.created_by).count()
+        return obj.questions.filter(difficulty='easy').count()
 
     def get_medium_count(self, obj):
-        return obj.questions.filter(difficulty='medium', created_by=obj.created_by).count()
+        return obj.questions.filter(difficulty='medium').count()
 
     def get_hard_count(self, obj):
-        return obj.questions.filter(difficulty='hard', created_by=obj.created_by).count()
+        return obj.questions.filter(difficulty='hard').count()
 
 
 class QuestionSerializer(serializers.ModelSerializer):
