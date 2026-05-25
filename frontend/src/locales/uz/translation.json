@@ -728,7 +728,9 @@
     "err_overflow": "Ba'zi qiymatlar mavjud savollar sonidan oshib ketdi.",
     "none_available": "Bu darajada savollar yo'q",
     "you": "siz",
-    "no_banks": "Savollar banki mavjud emas."
+    "no_banks": "Savollar banki mavjud emas.",
+    "save_and_next": "Saqlash va yana qo'sh",
+    "close_form": "Yopish"
   },
   "ann": {
     "tab": "E'lonlar",

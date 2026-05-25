@@ -728,7 +728,9 @@
     "err_overflow": "Some inputs exceed available question counts. Please fix them.",
     "none_available": "No questions of this difficulty",
     "you": "you",
-    "no_banks": "No question banks available."
+    "no_banks": "No question banks available.",
+    "save_and_next": "Save & Add Another",
+    "close_form": "Close"
   },
   "ann": {
     "tab": "Announcements",
