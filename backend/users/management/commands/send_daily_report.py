@@ -1,14 +1,9 @@
-"""
-Daily report: find teachers who had class today but did NOT create a lesson.
-Runs every 5 minutes via GitHub Actions; matches academy report_time within a 5-min window.
-"""
-
 import os
 import json
 import logging
 import urllib.request
 import urllib.parse
-from datetime import date, datetime, timezone
+from datetime import date
 
 from django.core.management.base import BaseCommand
 
@@ -66,94 +61,77 @@ def _lang(user):
     return lang if lang in MSG else 'uz'
 
 
+def run_report_for_academy(academy):
+    from groups.models import Group, Lesson
+
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not token:
+        logger.warning('TELEGRAM_BOT_TOKEN not set')
+        return
+
+    today = date.today()
+    weekday = today.weekday()
+
+    groups_today = [
+        g for g in
+        Group.objects.filter(teacher__academy=academy).select_related('teacher')
+        if isinstance(g.class_days, list) and weekday in g.class_days
+    ]
+
+    admins = list(academy.members.filter(role='admin', telegram_id__isnull=False))
+    if not admins:
+        logger.info('Academy %s: no admins with Telegram', academy.name)
+        return
+
+    no_lesson, has_lesson = [], []
+    for g in groups_today:
+        t_name = f'{g.teacher.first_name} {g.teacher.last_name}'.strip() or g.teacher.username
+        if Lesson.objects.filter(group=g, date=today).exists():
+            has_lesson.append((g, t_name))
+        else:
+            no_lesson.append((g, t_name))
+
+    for admin in admins:
+        m = MSG[_lang(admin)]
+        msg = m['header'].format(date=today.strftime('%d.%m.%Y'), academy=academy.name)
+        if not groups_today:
+            msg += m['no_groups']
+        elif not no_lesson:
+            msg += m['all_ok']
+        else:
+            msg += m['intro_bad']
+            for g, t in no_lesson:
+                msg += m['bad_row'].format(teacher=t, group=g.name)
+            if has_lesson:
+                msg += m['intro_ok']
+                for g, t in has_lesson:
+                    msg += m['ok_row'].format(teacher=t, group=g.name)
+        _send(token, admin.telegram_id, msg)
+
+    for g, _ in no_lesson:
+        if g.teacher.telegram_id:
+            m = MSG[_lang(g.teacher)]
+            _send(token, g.teacher.telegram_id, m['reminder'].format(group=g.name))
+
+
 class Command(BaseCommand):
-    help = 'Report teachers who had class today but did not create a lesson'
+    help = 'Send daily report for one or all academies'
 
     def add_arguments(self, parser):
-        parser.add_argument('--force', action='store_true', help='Run for all academies ignoring report_time')
+        parser.add_argument('--academy-id', type=int, help='Run for a specific academy')
+        parser.add_argument('--force', action='store_true', help='Run for all academies')
 
     def handle(self, *args, **options):
         from academies.models import Academy
-        from groups.models import Group, Lesson
 
-        token = os.environ.get('TELEGRAM_BOT_TOKEN')
-        if not token:
-            self.stderr.write('TELEGRAM_BOT_TOKEN not set — skipping')
-            return
-
-        now_utc = datetime.now(timezone.utc)
-        today = date.today()
-        weekday = today.weekday()  # 0=Mon … 6=Sun
-
-        if options.get('force'):
-            matched = list(Academy.objects.filter(report_time__isnull=False))
-            self.stdout.write(f'--force: {len(matched)} academies')
+        if options.get('academy_id'):
+            academies = Academy.objects.filter(id=options['academy_id'])
+        elif options.get('force'):
+            academies = Academy.objects.filter(report_time__isnull=False)
         else:
-            now_min = now_utc.hour * 60 + now_utc.minute
-            matched = [
-                a for a in Academy.objects.filter(report_time__isnull=False)
-                if a.report_time.hour * 60 + a.report_time.minute in range(now_min - 4, now_min + 1)
-            ]
-
-        if not matched:
-            self.stdout.write('No academies to report at this time.')
+            self.stderr.write('Use --academy-id <id> or --force')
             return
 
-        for academy in matched:
-            self.stdout.write(f'Processing: {academy.name}')
-            self._report(academy, today, weekday, token, Group, Lesson)
-
-    def _report(self, academy, today, weekday, token, Group, Lesson):
-        # All groups of this academy that have class today
-        groups_today = [
-            g for g in
-            Group.objects.filter(teacher__academy=academy).select_related('teacher')
-            if isinstance(g.class_days, list) and weekday in g.class_days
-        ]
-
-        # Admins with Telegram
-        admins = list(academy.members.filter(role='admin', telegram_id__isnull=False))
-        if not admins:
-            self.stdout.write('  No admins with Telegram — skipping')
-            return
-
-        # Classify each group: did the teacher create a lesson today?
-        no_lesson = []   # (group, teacher_name)
-        has_lesson = []  # (group, teacher_name)
-
-        for g in groups_today:
-            t_name = f'{g.teacher.first_name} {g.teacher.last_name}'.strip() or g.teacher.username
-            if Lesson.objects.filter(group=g, date=today).exists():
-                has_lesson.append((g, t_name))
-            else:
-                no_lesson.append((g, t_name))
-
-        # ── Send to each admin ─────────────────────────────────────────────
-        for admin in admins:
-            m = MSG[_lang(admin)]
-            msg = m['header'].format(date=today.strftime('%d.%m.%Y'), academy=academy.name)
-
-            if not groups_today:
-                msg += m['no_groups']
-            elif not no_lesson:
-                msg += m['all_ok']
-            else:
-                msg += m['intro_bad']
-                for g, t in no_lesson:
-                    msg += m['bad_row'].format(teacher=t, group=g.name)
-                if has_lesson:
-                    msg += m['intro_ok']
-                    for g, t in has_lesson:
-                        msg += m['ok_row'].format(teacher=t, group=g.name)
-
-            _send(token, admin.telegram_id, msg)
-            self.stdout.write(f'  Report sent to admin {admin.username}')
-
-        # ── Remind teachers who missed creating a lesson ───────────────────
-        for g, t_name in no_lesson:
-            if not g.teacher.telegram_id:
-                continue
-            m = MSG[_lang(g.teacher)]
-            msg = m['reminder'].format(group=g.name)
-            _send(token, g.teacher.telegram_id, msg)
-            self.stdout.write(f'  Reminder sent to teacher {g.teacher.username}')
+        for academy in academies:
+            self.stdout.write(f'Sending report: {academy.name}')
+            run_report_for_academy(academy)

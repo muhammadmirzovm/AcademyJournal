@@ -18,5 +18,8 @@ dj-database-url==2.3.0
 # Telegram bot
 python-telegram-bot==21.9
 
+# Scheduler
+apscheduler==3.10.4
+
 # Environment
 python-dotenv==1.1.0
