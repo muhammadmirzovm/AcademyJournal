@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views import View
@@ -18,6 +18,7 @@ import random
 import secrets
 from asgiref.sync import async_to_sync
 from .serializers import RegisterSerializer, UserSerializer
+from backend.throttles import LoginRateThrottle, PasswordResetRateThrottle
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -27,6 +28,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [LoginRateThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -152,7 +154,6 @@ class UserStatsView(APIView):
         present = Attendance.objects.filter(student=user, present=True).count()
 
         from groups.models import GroupMembership
-        from django.db.models import Sum
         total_stickers = (
             GroupMembership.objects.filter(student=user)
             .aggregate(total=Sum('sticker_count'))['total'] or 0
@@ -452,6 +453,7 @@ class ConnectTelegramView(APIView):
 class PasswordResetRequestView(APIView):
     """Step 1 — user enters their username, OTP is sent to their Telegram."""
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [PasswordResetRateThrottle]
 
     def post(self, request):
         from .models import TelegramOTP
@@ -572,7 +574,6 @@ class TeacherLeaderboardView(APIView):
             return Response({'detail': 'Forbidden.'}, status=403)
 
         from groups.models import GroupMembership, Score, Attendance
-        from django.db.models import Sum
 
         memberships = (
             GroupMembership.objects

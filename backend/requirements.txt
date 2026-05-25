@@ -21,5 +21,12 @@ python-telegram-bot==21.9
 # Scheduler
 apscheduler==3.10.4
 
+# Audit log
+django-auditlog==3.0.0
+
+# Testing
+pytest-django==4.9.0
+pytest-cov==6.1.0
+
 # Environment
 python-dotenv==1.1.0

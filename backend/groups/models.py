@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+from auditlog.registry import auditlog
 
 
 def generate_join_key():
@@ -128,3 +129,9 @@ class CoinTransaction(models.Model):
 
     def __str__(self):
         return f'{self.student.username} {self.amount:+d} coins in {self.group.name}'
+
+
+auditlog.register(Group)
+auditlog.register(Lesson)
+auditlog.register(Attendance)
+auditlog.register(Score)
