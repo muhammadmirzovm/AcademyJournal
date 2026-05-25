@@ -8,7 +8,16 @@
     "get_started": "Начать",
     "questions": "Вопросы",
     "settings": "Настройки",
-    "language": "Язык"
+    "language": "Язык",
+    "students": "Ученики"
+  },
+  "students": {
+    "title": "Все ученики",
+    "subtitle": "Всего: {{count}} учеников",
+    "search": "Поиск по имени или username...",
+    "all_groups": "Все группы",
+    "no_group": "Без группы",
+    "empty": "Ученики не найдены"
   },
   "landing": {
     "badge": "Уже в сети — начните бесплатно",

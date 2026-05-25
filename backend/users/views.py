@@ -402,6 +402,70 @@ class PlatformStatsView(APIView):
 
 
 
+class AdminStudentsView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        if request.user.role != 'admin' or not request.user.academy:
+            return Response({'detail': 'Admin only.'}, status=403)
+
+        academy = request.user.academy
+        from groups.models import GroupMembership, Attendance, Score
+
+        qs = User.objects.filter(academy=academy, role='student').order_by('first_name', 'last_name')
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(username__icontains=search)
+            )
+
+        group_id = request.query_params.get('group')
+        if group_id:
+            qs = qs.filter(memberships__group_id=group_id).distinct()
+
+        # Pagination
+        page_size = int(request.query_params.get('page_size', 20))
+        page      = int(request.query_params.get('page', 1))
+        total     = qs.count()
+        students  = qs[(page - 1) * page_size : page * page_size]
+
+        data = []
+        for s in students:
+            memberships = GroupMembership.objects.filter(student=s).select_related('group')
+            groups = [{'id': m.group.id, 'name': m.group.name} for m in memberships]
+
+            total_att  = Attendance.objects.filter(student=s).count()
+            present    = Attendance.objects.filter(student=s, present=True).count()
+            att_pct    = round(present / total_att * 100) if total_att else None
+
+            scores     = Score.objects.filter(student=s)
+            avg_score  = scores.aggregate(avg=Avg('value'))['avg']
+            avg_pct    = round(avg_score * 20) if avg_score else None
+
+            data.append({
+                'id':               s.id,
+                'username':         s.username,
+                'first_name':       s.first_name,
+                'last_name':        s.last_name,
+                'groups':           groups,
+                'attendance_pct':   att_pct,
+                'avg_score_pct':    avg_pct,
+                'telegram_linked':  bool(s.telegram_id),
+                'has_parent':       s.parents.exists(),
+                'date_joined':      s.date_joined,
+            })
+
+        return Response({
+            'count':    total,
+            'pages':    (total + page_size - 1) // page_size,
+            'page':     page,
+            'results':  data,
+        })
+
+
 class ChangePasswordView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 

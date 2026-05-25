@@ -48,6 +48,9 @@ export default function Navbar() {
     ...(user.role === 'teacher'
       ? [{ to: '/questions', label: t('nav.questions'), icon: <BookMarked size={15} /> }]
       : []),
+    ...(user.role === 'admin'
+      ? [{ to: '/students', label: t('nav.students'), icon: <GraduationCap size={15} /> }]
+      : []),
     ...(user.role === 'admin' || user.role === 'teacher'
       ? [{ to: '/settings', label: t('nav.settings'), icon: <Settings size={15} /> }]
       : []),

@@ -8,7 +8,16 @@
     "get_started": "Get started",
     "questions": "Questions",
     "settings": "Settings",
-    "language": "Language"
+    "language": "Language",
+    "students": "Students"
+  },
+  "students": {
+    "title": "All Students",
+    "subtitle": "Total: {{count}} students",
+    "search": "Search by name or username...",
+    "all_groups": "All groups",
+    "no_group": "No group",
+    "empty": "No students found"
   },
   "landing": {
     "badge": "Now live — start for free",

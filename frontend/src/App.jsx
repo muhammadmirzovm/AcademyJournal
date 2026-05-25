@@ -18,6 +18,7 @@ import QuestionBank from './pages/QuestionBank'
 import GameBoard from './pages/GameBoard'
 import InviteLanding from './pages/InviteLanding'
 import Settings from './pages/Settings'
+import Students from './pages/Students'
 import ForgotPassword from './pages/ForgotPassword'
 import NotFound from './pages/NotFound'
 
@@ -51,6 +52,7 @@ function AppShell() {
             <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/invite/:token"     element={<InviteLanding />} />
             <Route path="/settings"          element={<ProtectedRoute roles={['teacher','admin']}><Settings /></ProtectedRoute>} />
+            <Route path="/students"          element={<ProtectedRoute roles={['admin']}><Students /></ProtectedRoute>} />
             <Route path="*"                  element={<NotFound />} />
           </Routes>
         </Layout>

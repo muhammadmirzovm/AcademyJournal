@@ -8,7 +8,16 @@
     "get_started": "Boshlash",
     "questions": "Savollar",
     "settings": "Sozlamalar",
-    "language": "Til"
+    "language": "Til",
+    "students": "O'quvchilar"
+  },
+  "students": {
+    "title": "Barcha o'quvchilar",
+    "subtitle": "Jami: {{count}} o'quvchi",
+    "search": "Ism yoki username bo'yicha qidirish...",
+    "all_groups": "Barcha guruhlar",
+    "no_group": "Guruhsiz",
+    "empty": "O'quvchilar topilmadi"
   },
   "landing": {
     "badge": "Endi jonli — bepul boshlang",
