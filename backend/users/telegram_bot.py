@@ -987,6 +987,21 @@ async def send_notification(telegram_id: int, msg_key: str, lang: str = 'uz', **
 
 # ── Application singleton ─────────────────────────────────────────────────────
 
+async def chatid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    if chat.type == 'private':
+        await update.message.reply_text(
+            "Bu buyruq faqat guruhlarda ishlaydi.\n"
+            "Botni guruhga qo'shing va o'sha guruhda /chatid yuboring."
+        )
+        return
+    await update.message.reply_text(
+        f"Bu guruhning Chat ID si:\n`{chat.id}`\n\n"
+        "AcademyJournal Settings → Telegram guruhlar bo'limiga shu raqamni kiriting.",
+        parse_mode='Markdown',
+    )
+
+
 _application = None
 
 
@@ -1023,6 +1038,7 @@ def get_application():
     app.add_handler(CommandHandler('lessons',    lessons_cmd))
     app.add_handler(CommandHandler('academy',    academy_cmd))
     app.add_handler(CommandHandler('help',       help_cmd))
+    app.add_handler(CommandHandler('chatid',     chatid_cmd))
     app.add_handler(CallbackQueryHandler(language_callback, pattern=r'^lang_(uz|ru)$'))
 
     async_to_sync(app.initialize)()
