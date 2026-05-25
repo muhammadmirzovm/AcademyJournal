@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { Search, Users, GraduationCap, MessageCircle, UserCheck, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -23,9 +24,10 @@ function StatBadge({ value, suffix = '%', color, label }) {
 }
 
 export default function Students() {
-  const { t }    = useTranslation()
-  const { user } = useAuth()
-  const { show } = useToast()
+  const { t }      = useTranslation()
+  const { user }   = useAuth()
+  const { show }   = useToast()
+  const navigate   = useNavigate()
 
   const [students, setStudents] = useState([])
   const [groups,   setGroups]   = useState([])
@@ -62,7 +64,7 @@ export default function Students() {
 
   useEffect(() => { fetchStudents(page) }, [page])
 
-  if (user?.role !== 'admin') return null
+  if (!['admin', 'teacher'].includes(user?.role)) return null
 
   return (
     <div style={{ padding: '24px 20px', maxWidth: 900, margin: '0 auto' }}>
@@ -122,11 +124,14 @@ export default function Students() {
             <motion.div key={s.id}
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
+              onClick={() => navigate(`/profile/${s.id}`)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 16,
                 padding: '14px 18px', borderRadius: 14,
                 background: 'var(--card)', border: '1.5px solid rgba(0,0,0,0.07)',
+                cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
               }}
+              whileHover={{ boxShadow: '0 4px 16px rgba(0,0,0,0.08)', borderColor: 'rgba(13,148,136,0.3)' }}
             >
               {/* Avatar */}
               <div style={{

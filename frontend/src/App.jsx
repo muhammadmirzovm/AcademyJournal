@@ -52,7 +52,7 @@ function AppShell() {
             <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/invite/:token"     element={<InviteLanding />} />
             <Route path="/settings"          element={<ProtectedRoute roles={['teacher','admin']}><Settings /></ProtectedRoute>} />
-            <Route path="/students"          element={<ProtectedRoute roles={['admin']}><Students /></ProtectedRoute>} />
+            <Route path="/students"          element={<ProtectedRoute roles={['admin','teacher']}><Students /></ProtectedRoute>} />
             <Route path="*"                  element={<NotFound />} />
           </Routes>
         </Layout>

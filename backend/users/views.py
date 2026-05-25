@@ -406,13 +406,17 @@ class AdminStudentsView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request):
-        if request.user.role != 'admin' or not request.user.academy:
-            return Response({'detail': 'Admin only.'}, status=403)
+        role = request.user.role
+        if role not in ('admin', 'teacher') or not request.user.academy:
+            return Response({'detail': 'Admin or teacher only.'}, status=403)
 
         academy = request.user.academy
         from groups.models import GroupMembership, Attendance, Score
 
         qs = User.objects.filter(academy=academy, role='student').order_by('first_name', 'last_name')
+
+        if role == 'teacher':
+            qs = qs.filter(memberships__group__teacher=request.user).distinct()
 
         search = request.query_params.get('search', '').strip()
         if search:
