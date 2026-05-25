@@ -554,7 +554,8 @@
     "report_time_hint": "Bot har kuni shu vaqtda davomat hisobotini adminlarga yuboradi",
     "telegram_groups": "Telegram guruhlar",
     "tg_group_name": "Guruh nomi",
-    "tg_group_hint": "Botni guruhga qo'shing, guruh ID sini kiriting — hisobot o'sha guruhga ham yuboriladi"
+    "tg_group_hint": "Botni guruhga qo'shing, guruh ID sini kiriting — hisobot o'sha guruhga ham yuboriladi",
+    "add": "Qo'shish"
   },
   "invite": {
     "expired_title": "Taklif muddati o'tgan",

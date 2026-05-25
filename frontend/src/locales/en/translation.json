@@ -554,7 +554,8 @@
     "report_time_hint": "Bot sends attendance report to admins at this time every day",
     "telegram_groups": "Telegram Groups",
     "tg_group_name": "Group name",
-    "tg_group_hint": "Add the bot to a Telegram group, enter the group chat ID — reports will also be sent there"
+    "tg_group_hint": "Add the bot to a Telegram group, enter the group chat ID — reports will also be sent there",
+    "add": "Add"
   },
   "invite": {
     "expired_title": "Invite Expired",
