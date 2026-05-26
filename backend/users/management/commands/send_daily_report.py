@@ -121,7 +121,7 @@ def run_report_for_academy(academy, only_chat_id=None):
 
     from academies.models import AcademyTelegramGroup
     for tg in AcademyTelegramGroup.objects.filter(academy=academy):
-        _send(token, tg.chat_id, _build_report('uz'))
+        _send(token, tg.chat_id, _build_report(tg.language or 'uz'))
 
     for g, _ in no_lesson:
         if g.teacher.telegram_id:

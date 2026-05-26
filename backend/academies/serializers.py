@@ -12,7 +12,7 @@ class AcademySerializer(serializers.ModelSerializer):
 class AcademyTelegramGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model  = AcademyTelegramGroup
-        fields = ('id', 'chat_id', 'name')
+        fields = ('id', 'chat_id', 'name', 'language')
 
 
 class AcademyBrandSerializer(serializers.ModelSerializer):

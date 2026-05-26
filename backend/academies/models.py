@@ -25,9 +25,11 @@ class Academy(models.Model):
 
 
 class AcademyTelegramGroup(models.Model):
-    academy = models.ForeignKey(Academy, on_delete=models.CASCADE, related_name='telegram_groups')
-    chat_id = models.BigIntegerField()
-    name    = models.CharField(max_length=120)
+    LANG_CHOICES = [('uz', 'Uzbek'), ('ru', 'Russian')]
+    academy  = models.ForeignKey(Academy, on_delete=models.CASCADE, related_name='telegram_groups')
+    chat_id  = models.BigIntegerField()
+    name     = models.CharField(max_length=120)
+    language = models.CharField(max_length=2, default='uz', choices=LANG_CHOICES)
 
     class Meta:
         unique_together = ('academy', 'chat_id')

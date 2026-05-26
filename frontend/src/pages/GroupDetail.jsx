@@ -631,7 +631,7 @@ const WEEKDAYS = [
 function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
   const { show } = useToast(); const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [], telegram_chat_id: '' })
+  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [], telegram_chat_id: '', language: 'uz' })
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -641,6 +641,7 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
       coin_threshold: group.coin_threshold || 10,
       class_days: Array.isArray(group.class_days) ? group.class_days : [],
       telegram_chat_id: group.telegram_chat_id ?? '',
+      language: group.language || 'uz',
     })
   }, [group])
 
@@ -716,6 +717,24 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
           <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
             {t('group_detail.telegram_chat_id_hint')}
           </p>
+          <div style={{ marginTop: 10 }}>
+            <label style={{ ...labelStyle, marginBottom: 6, display: 'block' }}>{t('group_detail.group_language')}</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[{ value: 'uz', label: "🇺🇿 O'zbek" }, { value: 'ru', label: '🇷🇺 Русский' }].map(opt => (
+                <button key={opt.value} type="button"
+                  onClick={() => setForm(f => ({ ...f, language: opt.value }))}
+                  style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    border: `1.5px solid ${form.language === opt.value ? 'var(--accent)' : 'var(--border)'}`,
+                    background: form.language === opt.value ? 'var(--accent)' : 'transparent',
+                    color: form.language === opt.value ? '#fff' : 'var(--text-muted)',
+                    transition: 'all 0.15s',
+                  }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={ghostBtn}>{t('group_detail.cancel')}</button>

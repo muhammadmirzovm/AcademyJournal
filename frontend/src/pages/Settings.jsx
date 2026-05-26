@@ -188,7 +188,7 @@ function AcademyTab({ academy, onUpdated }) {
   const [saved, setSaved]     = useState(false)
 
   const [tgGroups, setTgGroups]       = useState([])
-  const [tgForm, setTgForm]           = useState({ chat_id: '', name: '' })
+  const [tgForm, setTgForm]           = useState({ chat_id: '', name: '', language: 'uz' })
   const [tgLoading, setTgLoading]     = useState(false)
   const [tgAdding, setTgAdding]       = useState(false)
 
@@ -201,9 +201,9 @@ function AcademyTab({ academy, onUpdated }) {
     if (!tgForm.chat_id || !tgForm.name) return
     setTgAdding(true)
     try {
-      const { data } = await api.post('/academy/telegram-groups/', { chat_id: Number(tgForm.chat_id), name: tgForm.name })
+      const { data } = await api.post('/academy/telegram-groups/', { chat_id: Number(tgForm.chat_id), name: tgForm.name, language: tgForm.language })
       setTgGroups(g => [...g, data])
-      setTgForm({ chat_id: '', name: '' })
+      setTgForm({ chat_id: '', name: '', language: 'uz' })
     } catch {
       show(t('settings.err_save'), 'error')
     } finally { setTgAdding(false) }
@@ -313,7 +313,9 @@ function AcademyTab({ academy, onUpdated }) {
               }}>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{g.name}</p>
-                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, fontFamily: 'monospace' }}>{g.chat_id}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, fontFamily: 'monospace' }}>
+                    {g.chat_id} · {g.language === 'ru' ? '🇷🇺 Русский' : "🇺🇿 O'zbek"}
+                  </p>
                 </div>
                 <button type="button" onClick={() => removeTgGroup(g.id)} disabled={tgLoading}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: 4 }}>
@@ -324,19 +326,27 @@ function AcademyTab({ academy, onUpdated }) {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input
             placeholder={t('settings.tg_group_name')}
             value={tgForm.name}
             onChange={e => setTgForm(f => ({ ...f, name: e.target.value }))}
-            style={{ ...inputStyle(false), flex: 1 }}
+            style={{ ...inputStyle(false), flex: 1, minWidth: 140 }}
           />
           <input
             placeholder="Chat ID (-100...)"
             value={tgForm.chat_id}
             onChange={e => setTgForm(f => ({ ...f, chat_id: e.target.value }))}
-            style={{ ...inputStyle(false), width: 160 }}
+            style={{ ...inputStyle(false), width: 150 }}
           />
+          <select
+            value={tgForm.language}
+            onChange={e => setTgForm(f => ({ ...f, language: e.target.value }))}
+            style={{ ...inputStyle(false), width: 120, cursor: 'pointer' }}
+          >
+            <option value="uz">🇺🇿 O'zbek</option>
+            <option value="ru">🇷🇺 Русский</option>
+          </select>
           <button type="button" onClick={addTgGroup} disabled={tgAdding || !tgForm.chat_id || !tgForm.name}
             style={{
               padding: '0 16px', borderRadius: 10, border: 'none',

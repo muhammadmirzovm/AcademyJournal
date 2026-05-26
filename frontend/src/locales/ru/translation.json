@@ -350,6 +350,7 @@
     "toast_member_removed": "Ученик удалён.",
     "toast_member_fail": "Не удалось удалить ученика.",
     "coin_threshold_label": "Монет за стикер",
+    "group_language": "Язык группы (для сообщений в Telegram)",
     "telegram_chat_id_label": "Chat ID Telegram-группы",
     "telegram_chat_id_hint": "Добавьте бота в Telegram-группу, отправьте /chatid и вставьте Chat ID сюда.",
     "tg_linked": "Telegram подключён",

@@ -350,6 +350,7 @@
     "toast_member_removed": "Student removed.",
     "toast_member_fail": "Failed to remove student.",
     "coin_threshold_label": "Coins per sticker",
+    "group_language": "Group language (for Telegram messages)",
     "telegram_chat_id_label": "Telegram Group Chat ID",
     "telegram_chat_id_hint": "Add the bot to your Telegram group, send /chatid, then paste the Chat ID here.",
     "tg_linked": "Telegram linked",

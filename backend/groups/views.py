@@ -475,7 +475,9 @@ class EndLessonView(APIView):
             try:
                 import os
                 from telegram import Bot as TelegramBot
-                all_members = list(memberships)
+
+                lang = group.language or 'uz'
+                all_members   = list(memberships)
                 total         = len(all_members)
                 present_count = sum(1 for m in all_members if attendances.get(m.student.id, False))
                 absent_names  = [
@@ -483,22 +485,29 @@ class EndLessonView(APIView):
                     for m in all_members if not attendances.get(m.student.id, False)
                 ]
 
-                lines = [f"📚 *{lesson.title}* — {lesson.date.strftime('%d.%m.%Y')}", ""]
-
-                if present_count == total:
-                    lines.append(f"✅ Davomat: {present_count}/{total} — Hamma qatnashdi!")
+                if lang == 'ru':
+                    all_present_text   = f"✅ Посещаемость: {present_count}/{total} — Все присутствовали!"
+                    partial_pres_text  = f"✅ Посещаемость: {present_count}/{total} учеников"
+                    absent_header      = "❌ *Отсутствовали:*"
+                    homework_header    = "📝 *Домашнее задание:*"
                 else:
-                    lines.append(f"✅ Davomat: {present_count}/{total} o'quvchi qatnashdi")
+                    all_present_text   = f"✅ Davomat: {present_count}/{total} — Hamma qatnashdi!"
+                    partial_pres_text  = f"✅ Davomat: {present_count}/{total} o'quvchi qatnashdi"
+                    absent_header      = "❌ *Qatnashmaganlar:*"
+                    homework_header    = "📝 *Uyga vazifa:*"
+
+                lines = [f"📚 *{lesson.title}* — {lesson.date.strftime('%d.%m.%Y')}", ""]
+                lines.append(all_present_text if present_count == total else partial_pres_text)
 
                 if absent_names:
                     lines.append("")
-                    lines.append("❌ *Qatnashmaganlar:*")
+                    lines.append(absent_header)
                     for name in absent_names:
                         lines.append(f"• {name}")
 
                 if lesson.homework.strip():
                     lines.append("")
-                    lines.append("📝 *Uyga vazifa:*")
+                    lines.append(homework_header)
                     lines.append(lesson.homework)
 
                 bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')

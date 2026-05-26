@@ -350,6 +350,7 @@
     "toast_member_removed": "O'quvchi chiqarildi.",
     "toast_member_fail": "O'quvchini chiqarishda xatolik.",
     "coin_threshold_label": "Stikerga coinlar",
+    "group_language": "Guruh tili (Telegram xabarlari uchun)",
     "telegram_chat_id_label": "Telegram guruh Chat ID",
     "telegram_chat_id_hint": "Botni Telegram guruhga qo'shing, /chatid yuboring va shu yerga Chat ID ni kiriting.",
     "tg_linked": "Telegram ulangan",
