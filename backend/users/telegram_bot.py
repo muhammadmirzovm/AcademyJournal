@@ -914,6 +914,26 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(m[key], parse_mode='Markdown')
 
 
+# ── /username ─────────────────────────────────────────────────────────────────
+
+async def username_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    user = await sync_to_async(_get_user)(telegram_id)
+
+    if not user:
+        await update.message.reply_text(
+            "❌ Hisobingiz ulanmagan.\n"
+            "AcademyJournal Profilingizga o'ting va Telegramni ulang."
+        )
+        return
+
+    await update.message.reply_text(
+        f"👤 Sizning username ingiz:\n\n`{user.username}`\n\n"
+        "Parolni tiklash uchun saytdagi «Forgot password» sahifasiga o'ting va shu username ni kiriting.",
+        parse_mode='Markdown',
+    )
+
+
 # ── OTP sender ────────────────────────────────────────────────────────────────
 
 async def send_otp(telegram_id: int, code: str, lang: str = 'uz'):
@@ -1087,8 +1107,9 @@ def get_application():
     app.add_handler(CommandHandler('mygroups',   mygroups,    filters=private))
     app.add_handler(CommandHandler('struggling', struggling,  filters=private))
     app.add_handler(CommandHandler('lessons',    lessons_cmd, filters=private))
-    app.add_handler(CommandHandler('academy',    academy_cmd, filters=private))
-    app.add_handler(CommandHandler('help',       help_cmd,    filters=private))
+    app.add_handler(CommandHandler('academy',    academy_cmd,  filters=private))
+    app.add_handler(CommandHandler('username',   username_cmd, filters=private))
+    app.add_handler(CommandHandler('help',       help_cmd,     filters=private))
     app.add_handler(CommandHandler('chatid',      chatid_cmd))
     app.add_handler(CommandHandler('dailyreport', dailyreport_cmd))
     app.add_handler(CallbackQueryHandler(language_callback, pattern=r'^lang_(uz|ru)$'))
@@ -1106,6 +1127,7 @@ def get_application():
             BotCommand('notify',     'Guruhga xabar / Сообщение группе'),
             BotCommand('lessons',    "So'nggi darslar / Последние уроки"),
             BotCommand('academy',    'Akademiya / Академия'),
+            BotCommand('username',   'Username ni ko\'rish / Мой логин'),
             BotCommand('help',       'Yordam / Помощь'),
         ])
         # Group-only commands (academy/admin groups only)
