@@ -454,7 +454,7 @@ class EndLessonView(APIView):
                     except Exception:
                         pass
 
-        # Send homework notification to students only (if homework exists)
+        # Send homework notification to individual students via DM
         if lesson.homework.strip():
             for membership in memberships:
                 student = membership.student
@@ -470,17 +470,47 @@ class EndLessonView(APIView):
                     except Exception:
                         pass
 
-            # Send homework to the group's linked Telegram group chat
-            if group.telegram_chat_id:
-                try:
-                    async_to_sync(send_notification)(
-                        group.telegram_chat_id, 'hw_notification', 'uz',
-                        lesson=lesson.title,
-                        group=group.name,
-                        homework=lesson.homework,
+        # Send lesson summary to the linked student Telegram group chat
+        if group.telegram_chat_id:
+            try:
+                import os
+                from telegram import Bot as TelegramBot
+                all_members = list(memberships)
+                total         = len(all_members)
+                present_count = sum(1 for m in all_members if attendances.get(m.student.id, False))
+                absent_names  = [
+                    (f'{m.student.first_name} {m.student.last_name}'.strip() or m.student.username)
+                    for m in all_members if not attendances.get(m.student.id, False)
+                ]
+
+                lines = [f"📚 *{lesson.title}* — {lesson.date.strftime('%d.%m.%Y')}", ""]
+
+                if present_count == total:
+                    lines.append(f"✅ Davomat: {present_count}/{total} — Hamma qatnashdi!")
+                else:
+                    lines.append(f"✅ Davomat: {present_count}/{total} o'quvchi qatnashdi")
+
+                if absent_names:
+                    lines.append("")
+                    lines.append("❌ *Qatnashmaganlar:*")
+                    for name in absent_names:
+                        lines.append(f"• {name}")
+
+                if lesson.homework.strip():
+                    lines.append("")
+                    lines.append("📝 *Uyga vazifa:*")
+                    lines.append(lesson.homework)
+
+                bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+                if bot_token:
+                    bot = TelegramBot(token=bot_token)
+                    async_to_sync(bot.send_message)(
+                        chat_id=group.telegram_chat_id,
+                        text='\n'.join(lines),
+                        parse_mode='Markdown',
                     )
-                except Exception:
-                    pass
+            except Exception:
+                pass
 
         return Response({'ok': True, 'notified': len(memberships)})
 
