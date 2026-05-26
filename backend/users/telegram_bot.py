@@ -537,34 +537,37 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _set_user_commands(bot, telegram_id: int, role: str):
     from telegram import BotCommandScopeChat
+    u = BotCommand('username', "Usernameni ko'rish / Мой логин")
+    h = BotCommand('help',     'Yordam / Помощь')
+
     if role == 'student':
         commands = [
             BotCommand('mystats',  'Statistika / Статистика'),
             BotCommand('myrank',   'Reyting / Рейтинг'),
             BotCommand('homework', 'Uy vazifalari / Домашние задания'),
-            BotCommand('help',     'Yordam / Помощь'),
+            u, h,
         ]
     elif role == 'teacher':
         commands = [
             BotCommand('mygroups',   'Guruhlar / Группы'),
             BotCommand('struggling', "Qiynalayotganlar / Отстающие"),
             BotCommand('notify',     'Guruhga xabar / Сообщение группе'),
-            BotCommand('help',       'Yordam / Помощь'),
+            u, h,
         ]
     elif role == 'admin':
         commands = [
-            BotCommand('academy',      'Akademiya / Академия'),
-            BotCommand('dailyreport',  'Kunlik hisobot / Ежедневный отчёт'),
-            BotCommand('help',         'Yordam / Помощь'),
+            BotCommand('academy',     'Akademiya / Академия'),
+            BotCommand('dailyreport', 'Kunlik hisobot / Ежедневный отчёт'),
+            u, h,
         ]
     elif role == 'parent':
         commands = [
             BotCommand('mystats', 'Statistika / Статистика'),
             BotCommand('lessons', "So'nggi darslar / Последние уроки"),
-            BotCommand('help',    'Yordam / Помощь'),
+            u, h,
         ]
     else:
-        commands = [BotCommand('help', 'Yordam / Помощь')]
+        commands = [u, h]
     try:
         await bot.set_my_commands(commands, scope=BotCommandScopeChat(chat_id=telegram_id))
     except Exception as e:
@@ -1118,17 +1121,11 @@ def get_application():
 
     async def _set_commands():
         from telegram import BotCommandScopeAllGroupChats
+        # Default commands for users who haven't linked yet
         await app.bot.set_my_commands([
-            BotCommand('mystats',    'Statistika / Статистика'),
-            BotCommand('myrank',     'Reyting / Рейтинг'),
-            BotCommand('homework',   'Uy vazifalari / Домашние задания'),
-            BotCommand('mygroups',   'Guruhlar / Группы'),
-            BotCommand('struggling', "Qiynalayotganlar / Отстающие"),
-            BotCommand('notify',     'Guruhga xabar / Сообщение группе'),
-            BotCommand('lessons',    "So'nggi darslar / Последние уроки"),
-            BotCommand('academy',    'Akademiya / Академия'),
-            BotCommand('username',   'Username ni ko\'rish / Мой логин'),
-            BotCommand('help',       'Yordam / Помощь'),
+            BotCommand('start',    'Boshlash / Начать'),
+            BotCommand('username', "Usernameni ko'rish / Мой логин"),
+            BotCommand('help',     'Yordam / Помощь'),
         ])
         # Group-only commands (academy/admin groups only)
         await app.bot.set_my_commands([
