@@ -1127,10 +1127,9 @@ def get_application():
             BotCommand('username', "Usernameni ko'rish / Мой логин"),
             BotCommand('help',     'Yordam / Помощь'),
         ])
-        # Group-only commands (academy/admin groups only)
+        # Group-only commands
         await app.bot.set_my_commands([
             BotCommand('dailyreport', "Kunlik hisobot / Ежедневный отчёт"),
-            BotCommand('chatid',      "Guruh Chat ID sini ko'rish"),
         ], scope=BotCommandScopeAllGroupChats())
     try:
         async_to_sync(_set_commands)()
