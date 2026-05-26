@@ -470,6 +470,18 @@ class EndLessonView(APIView):
                     except Exception:
                         pass
 
+            # Send homework to the group's linked Telegram group chat
+            if group.telegram_chat_id:
+                try:
+                    async_to_sync(send_notification)(
+                        group.telegram_chat_id, 'hw_notification', 'uz',
+                        lesson=lesson.title,
+                        group=group.name,
+                        homework=lesson.homework,
+                    )
+                except Exception:
+                    pass
+
         return Response({'ok': True, 'notified': len(memberships)})
 
 
