@@ -1002,6 +1002,11 @@ async def chatid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+def _get_academy_tg_group(chat_id):
+    from academies.models import AcademyTelegramGroup
+    return AcademyTelegramGroup.objects.filter(chat_id=chat_id).select_related('academy').first()
+
+
 async def dailyreport_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if chat.type == 'private':
@@ -1011,8 +1016,7 @@ async def dailyreport_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    from academies.models import AcademyTelegramGroup
-    tg = AcademyTelegramGroup.objects.filter(chat_id=chat.id).select_related('academy').first()
+    tg = await sync_to_async(_get_academy_tg_group)(chat.id)
     if not tg:
         await update.message.reply_text(
             "Bu guruh hech qaysi akademiyaga bog'lanmagan.\n"
@@ -1021,8 +1025,9 @@ async def dailyreport_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        from .management.commands.send_daily_report import run_report_for_academy
-        run_report_for_academy(tg.academy)
+        from users.management.commands.send_daily_report import run_report_for_academy
+        academy = tg.academy
+        await sync_to_async(run_report_for_academy)(academy)
         await update.message.reply_text("✅ Kunlik hisobot yuborildi.")
     except Exception as e:
         logger.error('dailyreport_cmd error: %s', e)
