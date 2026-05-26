@@ -61,7 +61,11 @@ def _lang(user):
     return lang if lang in MSG else 'uz'
 
 
-def run_report_for_academy(academy):
+def run_report_for_academy(academy, only_chat_id=None):
+    """
+    only_chat_id: when set, send the report only to that Telegram chat (manual /dailyreport).
+                  Skips admin DMs and teacher reminders.
+    """
     from groups.models import Group, Lesson
 
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
@@ -77,11 +81,6 @@ def run_report_for_academy(academy):
         Group.objects.filter(teacher__academy=academy).select_related('teacher')
         if isinstance(g.class_days, list) and weekday in g.class_days
     ]
-
-    admins = list(academy.members.filter(role='admin', telegram_id__isnull=False))
-    if not admins:
-        logger.info('Academy %s: no admins with Telegram', academy.name)
-        return
 
     no_lesson, has_lesson = [], []
     for g in groups_today:
@@ -107,6 +106,15 @@ def run_report_for_academy(academy):
                 for g, t in has_lesson:
                     msg += m['ok_row'].format(teacher=t, group=g.name)
         return msg
+
+    if only_chat_id is not None:
+        _send(token, only_chat_id, _build_report('uz'))
+        return
+
+    admins = list(academy.members.filter(role='admin', telegram_id__isnull=False))
+    if not admins:
+        logger.info('Academy %s: no admins with Telegram', academy.name)
+        return
 
     for admin in admins:
         _send(token, admin.telegram_id, _build_report(_lang(admin)))

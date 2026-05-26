@@ -1027,7 +1027,7 @@ async def dailyreport_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         from users.management.commands.send_daily_report import run_report_for_academy
         academy = tg.academy
-        await sync_to_async(run_report_for_academy)(academy)
+        await sync_to_async(run_report_for_academy)(academy, only_chat_id=chat.id)
         await update.message.reply_text("✅ Kunlik hisobot yuborildi.")
     except Exception as e:
         logger.error('dailyreport_cmd error: %s', e)
