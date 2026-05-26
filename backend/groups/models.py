@@ -15,9 +15,10 @@ class Group(models.Model):
     description = models.TextField(blank=True)
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='taught_groups')
     join_key = models.CharField(max_length=8, unique=True, default=generate_join_key)
-    coin_threshold = models.PositiveIntegerField(default=10)
-    class_days     = models.JSONField(default=list, blank=True, help_text='List of weekday ints: 0=Mon … 6=Sun')
-    created_at     = models.DateTimeField(auto_now_add=True)
+    coin_threshold    = models.PositiveIntegerField(default=10)
+    class_days        = models.JSONField(default=list, blank=True, help_text='List of weekday ints: 0=Mon … 6=Sun')
+    telegram_chat_id  = models.BigIntegerField(null=True, blank=True)
+    created_at        = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name

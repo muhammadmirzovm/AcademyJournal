@@ -227,6 +227,13 @@ export default function GroupDetail() {
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Users size={14} />{members.length} {t('group_detail.students_count')}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><BookOpen size={14} />{lessons.length} {t('group_detail.lessons_count')}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Star size={14} />{group.coin_threshold} {t('group_detail.coins')} = 1 {t('group_detail.stickers')}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5,
+              color: group.telegram_chat_id ? '#0EA5E9' : 'var(--text-muted)',
+              background: group.telegram_chat_id ? 'rgba(14,165,233,0.1)' : 'rgba(0,0,0,0.04)',
+              borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              {group.telegram_chat_id ? t('group_detail.tg_linked') : t('group_detail.tg_not_linked')}
+            </span>
           </div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
@@ -624,7 +631,7 @@ const WEEKDAYS = [
 function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
   const { show } = useToast(); const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [] })
+  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [], telegram_chat_id: '' })
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -633,6 +640,7 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
       description: group.description || '',
       coin_threshold: group.coin_threshold || 10,
       class_days: Array.isArray(group.class_days) ? group.class_days : [],
+      telegram_chat_id: group.telegram_chat_id ?? '',
     })
   }, [group])
 
@@ -647,7 +655,11 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
     e.preventDefault()
     if (!form.name.trim()) { setError(t('groups.err_name_required')); return }
     setLoading(true)
-    try { const { data } = await updateGroup(groupId, form); onUpdated(data) }
+    const payload = {
+      ...form,
+      telegram_chat_id: form.telegram_chat_id !== '' ? Number(form.telegram_chat_id) : null,
+    }
+    try { const { data } = await updateGroup(groupId, payload); onUpdated(data) }
     catch { show(t('group_detail.toast_group_update_fail'), 'error') } finally { setLoading(false) }
   }
 
@@ -689,6 +701,21 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
               )
             })}
           </div>
+        </div>
+        <div style={{ marginBottom: 24, padding: '14px 16px', background: 'rgba(14,165,233,0.06)', borderRadius: 10, border: '1px solid rgba(14,165,233,0.15)' }}>
+          <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            {t('group_detail.telegram_chat_id_label')}
+          </label>
+          <input
+            style={{ ...inputStyle(false), marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: 14 }}
+            placeholder="-100123456789"
+            value={form.telegram_chat_id}
+            onChange={e => setForm(f => ({ ...f, telegram_chat_id: e.target.value }))}
+          />
+          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            {t('group_detail.telegram_chat_id_hint')}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={ghostBtn}>{t('group_detail.cancel')}</button>
