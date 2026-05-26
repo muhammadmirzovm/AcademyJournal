@@ -387,6 +387,17 @@ def _student_homework(user):
     return items
 
 
+def _group_last_homework(chat_id):
+    from groups.models import Group
+    group = Group.objects.filter(telegram_chat_id=chat_id).first()
+    if not group:
+        return None
+    lesson = group.lessons.filter(homework__gt='').order_by('-date', '-created_at').first()
+    if not lesson:
+        return None
+    return {'group': group.name, 'lesson': lesson.title, 'homework': lesson.homework}
+
+
 def _parent_stats(user):
     rows = []
     for ps in user.children.select_related('student').all():
@@ -689,6 +700,22 @@ async def myrank(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── /homework ──────────────────────────────────────────────────────────────────
 
 async def homework_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+
+    # Group chat: show last homework for the linked group
+    if chat.type != 'private':
+        result = await sync_to_async(_group_last_homework)(chat.id)
+        if not result:
+            await update.message.reply_text("📭 Hozircha uy vazifasi yo'q.")
+            return
+        text = (
+            f"📝 *{result['lesson']}* darsi uchun uy vazifasi ({result['group']}):\n\n"
+            f"{result['homework']}"
+        )
+        await update.message.reply_text(text, parse_mode='Markdown')
+        return
+
+    # Private chat: show student's own homework
     telegram_id = update.effective_user.id
     user = await sync_to_async(_get_user)(telegram_id)
     lang = (user.telegram_lang if user else None) or 'uz'
@@ -1082,7 +1109,7 @@ def get_application():
     app.add_handler(CommandHandler('start',      start,       filters=private))
     app.add_handler(CommandHandler('mystats',    mystats,     filters=private))
     app.add_handler(CommandHandler('myrank',     myrank,      filters=private))
-    app.add_handler(CommandHandler('homework',   homework_cmd, filters=private))
+    app.add_handler(CommandHandler('homework',   homework_cmd))
     app.add_handler(CommandHandler('mygroups',   mygroups,    filters=private))
     app.add_handler(CommandHandler('struggling', struggling,  filters=private))
     app.add_handler(CommandHandler('lessons',    lessons_cmd, filters=private))
@@ -1109,6 +1136,7 @@ def get_application():
         ])
         # Group-only commands
         await app.bot.set_my_commands([
+            BotCommand('homework',    "So'nggi uy vazifasi / Последнее ДЗ"),
             BotCommand('dailyreport', "Kunlik hisobot / Ежедневный отчёт"),
             BotCommand('chatid',      "Guruh Chat ID sini ko'rish"),
         ], scope=BotCommandScopeAllGroupChats())
