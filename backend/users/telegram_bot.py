@@ -1002,6 +1002,33 @@ async def chatid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def dailyreport_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    if chat.type == 'private':
+        await update.message.reply_text(
+            "Bu buyruq faqat guruhlarda ishlaydi.\n"
+            "Akademiya guruhiga qo'shing va o'sha yerda /dailyreport yuboring."
+        )
+        return
+
+    from academies.models import AcademyTelegramGroup
+    tg = AcademyTelegramGroup.objects.filter(chat_id=chat.id).select_related('academy').first()
+    if not tg:
+        await update.message.reply_text(
+            "Bu guruh hech qaysi akademiyaga bog'lanmagan.\n"
+            "AcademyJournal → Settings → Telegram guruhlar bo'limida shu guruhni qo'shing."
+        )
+        return
+
+    try:
+        from .management.commands.send_daily_report import run_report_for_academy
+        run_report_for_academy(tg.academy)
+        await update.message.reply_text("✅ Kunlik hisobot yuborildi.")
+    except Exception as e:
+        logger.error('dailyreport_cmd error: %s', e)
+        await update.message.reply_text("❌ Hisobotni yuborishda xatolik yuz berdi.")
+
+
 _application = None
 
 
@@ -1038,12 +1065,14 @@ def get_application():
     app.add_handler(CommandHandler('lessons',    lessons_cmd))
     app.add_handler(CommandHandler('academy',    academy_cmd))
     app.add_handler(CommandHandler('help',       help_cmd))
-    app.add_handler(CommandHandler('chatid',     chatid_cmd))
+    app.add_handler(CommandHandler('chatid',      chatid_cmd))
+    app.add_handler(CommandHandler('dailyreport', dailyreport_cmd))
     app.add_handler(CallbackQueryHandler(language_callback, pattern=r'^lang_(uz|ru)$'))
 
     async_to_sync(app.initialize)()
 
     async def _set_commands():
+        from telegram import BotCommandScopeAllGroupChats
         await app.bot.set_my_commands([
             BotCommand('mystats',    'Statistika / Статистика'),
             BotCommand('myrank',     'Reyting / Рейтинг'),
@@ -1055,6 +1084,11 @@ def get_application():
             BotCommand('academy',    'Akademiya / Академия'),
             BotCommand('help',       'Yordam / Помощь'),
         ])
+        # Group-only commands
+        await app.bot.set_my_commands([
+            BotCommand('dailyreport', "Kunlik hisobot / Ежедневный отчёт"),
+            BotCommand('chatid',      'Guruh ID sini olish / Получить ID группы'),
+        ], scope=BotCommandScopeAllGroupChats())
     try:
         async_to_sync(_set_commands)()
     except Exception as e:
