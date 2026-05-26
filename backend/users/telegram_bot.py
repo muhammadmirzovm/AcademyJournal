@@ -1076,16 +1076,18 @@ def get_application():
         fallbacks=[CommandHandler('cancel', notify_cancel)],
     )
 
+    private = filters.ChatType.PRIVATE
+
     app.add_handler(notify_handler)
-    app.add_handler(CommandHandler('start',      start))
-    app.add_handler(CommandHandler('mystats',    mystats))
-    app.add_handler(CommandHandler('myrank',     myrank))
-    app.add_handler(CommandHandler('homework',   homework_cmd))
-    app.add_handler(CommandHandler('mygroups',   mygroups))
-    app.add_handler(CommandHandler('struggling', struggling))
-    app.add_handler(CommandHandler('lessons',    lessons_cmd))
-    app.add_handler(CommandHandler('academy',    academy_cmd))
-    app.add_handler(CommandHandler('help',       help_cmd))
+    app.add_handler(CommandHandler('start',      start,       filters=private))
+    app.add_handler(CommandHandler('mystats',    mystats,     filters=private))
+    app.add_handler(CommandHandler('myrank',     myrank,      filters=private))
+    app.add_handler(CommandHandler('homework',   homework_cmd, filters=private))
+    app.add_handler(CommandHandler('mygroups',   mygroups,    filters=private))
+    app.add_handler(CommandHandler('struggling', struggling,  filters=private))
+    app.add_handler(CommandHandler('lessons',    lessons_cmd, filters=private))
+    app.add_handler(CommandHandler('academy',    academy_cmd, filters=private))
+    app.add_handler(CommandHandler('help',       help_cmd,    filters=private))
     app.add_handler(CommandHandler('chatid',      chatid_cmd))
     app.add_handler(CommandHandler('dailyreport', dailyreport_cmd))
     app.add_handler(CallbackQueryHandler(language_callback, pattern=r'^lang_(uz|ru)$'))
