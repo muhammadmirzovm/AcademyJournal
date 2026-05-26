@@ -552,8 +552,9 @@ async def _set_user_commands(bot, telegram_id: int, role: str):
         ]
     elif role == 'admin':
         commands = [
-            BotCommand('academy', 'Akademiya / Академия'),
-            BotCommand('help',    'Yordam / Помощь'),
+            BotCommand('academy',      'Akademiya / Академия'),
+            BotCommand('dailyreport',  'Kunlik hisobot / Ежедневный отчёт'),
+            BotCommand('help',         'Yordam / Помощь'),
         ]
     elif role == 'parent':
         commands = [
@@ -1009,11 +1010,27 @@ def _get_academy_tg_group(chat_id):
 
 async def dailyreport_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
+    from users.management.commands.send_daily_report import run_report_for_academy
+
     if chat.type == 'private':
-        await update.message.reply_text(
-            "Bu buyruq faqat guruhlarda ishlaydi.\n"
-            "Akademiya guruhiga qo'shing va o'sha yerda /dailyreport yuboring."
-        )
+        telegram_id = update.effective_user.id
+        user = await sync_to_async(_get_user)(telegram_id)
+        if not user or user.role != 'admin' or not user.academy_id:
+            await update.message.reply_text(
+                "Bu buyruq faqat admin uchun.\n"
+                "Hisobingizni ulang yoki admin huquqini oling."
+            )
+            return
+        def _get_admin_academy(user_id):
+            from users.models import User
+            u = User.objects.select_related('academy').get(id=user_id)
+            return u.academy
+        try:
+            academy = await sync_to_async(_get_admin_academy)(user.id)
+            await sync_to_async(run_report_for_academy)(academy, only_chat_id=chat.id)
+        except Exception as e:
+            logger.error('dailyreport_cmd (private) error: %s', e)
+            await update.message.reply_text("❌ Hisobotni yuborishda xatolik yuz berdi.")
         return
 
     tg = await sync_to_async(_get_academy_tg_group)(chat.id)
@@ -1025,7 +1042,6 @@ async def dailyreport_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        from users.management.commands.send_daily_report import run_report_for_academy
         academy = tg.academy
         await sync_to_async(run_report_for_academy)(academy, only_chat_id=chat.id)
         await update.message.reply_text("✅ Kunlik hisobot yuborildi.")
