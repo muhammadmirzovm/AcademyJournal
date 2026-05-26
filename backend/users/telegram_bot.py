@@ -1087,7 +1087,6 @@ def get_application():
         # Group-only commands
         await app.bot.set_my_commands([
             BotCommand('dailyreport', "Kunlik hisobot / Ежедневный отчёт"),
-            BotCommand('chatid',      'Guruh ID sini olish / Получить ID группы'),
         ], scope=BotCommandScopeAllGroupChats())
     try:
         async_to_sync(_set_commands)()
