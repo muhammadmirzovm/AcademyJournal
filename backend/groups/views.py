@@ -474,9 +474,11 @@ class EndLessonView(APIView):
         if group.telegram_chat_id:
             try:
                 import os
-                import logging
-                logger = logging.getLogger(__name__)
+                import html as html_module
                 from telegram import Bot as TelegramBot
+
+                def e(text):
+                    return html_module.escape(str(text))
 
                 lang = group.language or 'uz'
                 all_members   = list(memberships)
@@ -488,29 +490,29 @@ class EndLessonView(APIView):
                 ]
 
                 if lang == 'ru':
-                    all_present_text   = f"✅ Посещаемость: {present_count}/{total} — Все присутствовали!"
-                    partial_pres_text  = f"✅ Посещаемость: {present_count}/{total} учеников"
-                    absent_header      = "❌ *Отсутствовали:*"
-                    homework_header    = "📝 *Домашнее задание:*"
+                    all_present_text  = f"✅ Посещаемость: {present_count}/{total} — Все присутствовали!"
+                    partial_pres_text = f"✅ Посещаемость: {present_count}/{total} учеников"
+                    absent_header     = "❌ <b>Отсутствовали:</b>"
+                    homework_header   = "📝 <b>Домашнее задание:</b>"
                 else:
-                    all_present_text   = f"✅ Davomat: {present_count}/{total} — Hamma qatnashdi!"
-                    partial_pres_text  = f"✅ Davomat: {present_count}/{total} o'quvchi qatnashdi"
-                    absent_header      = "❌ *Qatnashmaganlar:*"
-                    homework_header    = "📝 *Uyga vazifa:*"
+                    all_present_text  = f"✅ Davomat: {present_count}/{total} — Hamma qatnashdi!"
+                    partial_pres_text = f"✅ Davomat: {present_count}/{total} o'quvchi qatnashdi"
+                    absent_header     = "❌ <b>Qatnashmaganlar:</b>"
+                    homework_header   = "📝 <b>Uyga vazifa:</b>"
 
-                lines = [f"📚 *{lesson.title}* — {lesson.date.strftime('%d.%m.%Y')}", ""]
+                lines = [f"📚 <b>{e(lesson.title)}</b> — {lesson.date.strftime('%d.%m.%Y')}", ""]
                 lines.append(all_present_text if present_count == total else partial_pres_text)
 
                 if absent_names:
                     lines.append("")
                     lines.append(absent_header)
                     for name in absent_names:
-                        lines.append(f"• {name}")
+                        lines.append(f"• {e(name)}")
 
                 if lesson.homework.strip():
                     lines.append("")
                     lines.append(homework_header)
-                    lines.append(lesson.homework)
+                    lines.append(e(lesson.homework))
 
                 bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
                 if bot_token:
@@ -518,7 +520,7 @@ class EndLessonView(APIView):
                     async_to_sync(bot.send_message)(
                         chat_id=group.telegram_chat_id,
                         text='\n'.join(lines),
-                        parse_mode='Markdown',
+                        parse_mode='HTML',
                     )
             except Exception as e:
                 import logging
