@@ -436,6 +436,8 @@
     "lessons_scored": "{{count}} уроков оценено",
     "attendance": "Посещаемость",
     "total_lessons": "{{count}} уроков всего",
+    "coin_trend": "Рост монет",
+    "total_coins": "{{count}} монет всего",
     "my_groups": "Мои группы",
     "teaching": "Преподаёт",
     "not_found": "Пользователь не найден.",

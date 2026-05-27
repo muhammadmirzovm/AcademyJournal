@@ -436,6 +436,8 @@
     "lessons_scored": "{{count}} lessons scored",
     "attendance": "Attendance",
     "total_lessons": "{{count}} total lessons",
+    "coin_trend": "Coin Growth",
+    "total_coins": "{{count}} coins total",
     "my_groups": "My Groups",
     "teaching": "Teaching",
     "not_found": "User not found.",

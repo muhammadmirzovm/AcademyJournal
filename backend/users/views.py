@@ -153,16 +153,32 @@ class UserStatsView(APIView):
         total   = Attendance.objects.filter(student=user).count()
         present = Attendance.objects.filter(student=user, present=True).count()
 
-        from groups.models import GroupMembership
+        from groups.models import GroupMembership, CoinTransaction
         total_stickers = (
             GroupMembership.objects.filter(student=user)
             .aggregate(total=Sum('sticker_count'))['total'] or 0
         )
 
+        coin_txns = (
+            CoinTransaction.objects.filter(student=user)
+            .order_by('created_at')
+        )
+        running = 0
+        coin_trend = []
+        for txn in coin_txns:
+            running += txn.amount
+            coin_trend.append({
+                'date':   str(txn.created_at.date()),
+                'amount': txn.amount,
+                'total':  max(0, running),
+                'note':   txn.note,
+            })
+
         return Response({
             'role': 'student',
             'total_stickers': total_stickers,
             'score_trend': score_trend,
+            'coin_trend': coin_trend,
             'attendance_summary': {
                 'present': present,
                 'absent':  total - present,

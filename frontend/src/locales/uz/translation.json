@@ -436,6 +436,8 @@
     "lessons_scored": "{{count}} ta dars baholandi",
     "attendance": "Davomat",
     "total_lessons": "Jami {{count}} ta dars",
+    "coin_trend": "Coinlar o'sishi",
+    "total_coins": "Jami {{count}} coin",
     "my_groups": "Mening guruhlarim",
     "teaching": "O'qitmoqda",
     "not_found": "Foydalanuvchi topilmadi.",

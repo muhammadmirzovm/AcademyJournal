@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
-  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle,
+  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle, Gem,
 } from 'lucide-react'
 import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword, connectTelegram, disconnectTelegram, getNotifyInfo, sendDirectNotification } from '../api/users'
 import { useAuth } from '../context/AuthContext'
@@ -12,6 +12,7 @@ import { useToast } from '../context/ToastContext'
 import ScoreLineChart from '../components/charts/ScoreLineChart'
 import AttendanceDoughnut from '../components/charts/AttendanceDoughnut'
 import TeacherStats from '../components/charts/TeacherStats'
+import CoinLineChart from '../components/charts/CoinLineChart'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 
 export default function Profile() {
@@ -279,6 +280,16 @@ export default function Profile() {
                 </div>
               </div>
               <AttendanceDoughnut data={stats?.attendance_summary} />
+            </div>
+            <div style={chartCard}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                <div style={{ ...chartIconWrap, background: 'rgba(245,158,11,0.1)' }}><Gem size={16} color="#F59E0B" /></div>
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: 14 }}>{t('profile.coin_trend')}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('profile.total_coins', { count: stats?.coin_trend?.length ? stats.coin_trend[stats.coin_trend.length - 1].total : 0 })}</p>
+                </div>
+              </div>
+              <CoinLineChart data={stats?.coin_trend} />
             </div>
           </div>
         )}
