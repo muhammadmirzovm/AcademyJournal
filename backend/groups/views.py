@@ -474,6 +474,8 @@ class EndLessonView(APIView):
         if group.telegram_chat_id:
             try:
                 import os
+                import logging
+                logger = logging.getLogger(__name__)
                 from telegram import Bot as TelegramBot
 
                 lang = group.language or 'uz'
@@ -518,8 +520,9 @@ class EndLessonView(APIView):
                         text='\n'.join(lines),
                         parse_mode='Markdown',
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f'Group chat send failed: {e}', exc_info=True)
 
         return Response({'ok': True, 'notified': len(memberships)})
 
