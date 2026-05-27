@@ -29,7 +29,7 @@ export default function Profile() {
   const [children, setChildren] = useState([])
   const [loading,  setLoading]  = useState(true)
   const [editing, setEditing]     = useState(false)
-  const [bio, setBio]             = useState('')
+  const [editForm, setEditForm]   = useState({ first_name: '', last_name: '', username: '', email: '', bio: '' })
   const [saving, setSaving]       = useState(false)
   const [pwForm, setPwForm]       = useState({ old_password: '', new_password: '', confirm: '' })
   const [pwErrors, setPwErrors]   = useState({})
@@ -57,7 +57,7 @@ export default function Profile() {
         return
       }
       setProfile(p.data)
-      setBio(p.data.bio || '')
+      setEditForm({ first_name: p.data.first_name || '', last_name: p.data.last_name || '', username: p.data.username || '', email: p.data.email || '', bio: p.data.bio || '' })
       setStats(s.data)
       if (targetRole === 'student' || targetRole === 'teacher') {
         if (viewerIsOwner || viewerRole === 'admin' || viewerRole === 'teacher') {
@@ -71,21 +71,28 @@ export default function Profile() {
     .finally(() => setLoading(false))
   }, [id])
 
+  const setField = (k, v) => setEditForm(f => ({ ...f, [k]: v }))
+
   const saveProfile = async () => {
     setSaving(true)
     try {
-      const { data } = await updateMe({ bio })
+      const { data } = await updateMe(editForm)
       setProfile(p => ({ ...p, ...data }))
       setUser(u => ({ ...u, ...data }))
+      setEditForm({ first_name: data.first_name || '', last_name: data.last_name || '', username: data.username || '', email: data.email || '', bio: data.bio || '' })
       setEditing(false)
       show(t('profile.toast_updated'), 'success')
-    } catch { show(t('profile.fail_update'), 'error') }
+    } catch (err) {
+      const detail = err.response?.data
+      if (detail?.username) show(t('profile.err_username_taken'), 'error')
+      else show(t('profile.fail_update'), 'error')
+    }
     finally { setSaving(false) }
   }
 
   const cancelEdit = () => {
     setEditing(false)
-    setBio(profile?.bio || '')
+    setEditForm({ first_name: profile?.first_name || '', last_name: profile?.last_name || '', username: profile?.username || '', email: profile?.email || '', bio: profile?.bio || '' })
   }
 
   const setPw = (k, v) => setPwForm(f => ({ ...f, [k]: v }))
@@ -200,14 +207,44 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Bio */}
+          {/* Edit form / Bio */}
           <div style={{ marginTop: 16 }}>
             {editing ? (
-              <textarea
-                value={bio} onChange={e => setBio(e.target.value)}
-                placeholder={t('profile.bio_placeholder')} rows={3}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, lineHeight: 1.6, resize: 'vertical', outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{t('profile.first_name')}</label>
+                    <input value={editForm.first_name} onChange={e => setField('first_name', e.target.value)}
+                      placeholder={t('profile.first_name')}
+                      style={{ width: '100%', padding: '8px 11px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{t('profile.last_name')}</label>
+                    <input value={editForm.last_name} onChange={e => setField('last_name', e.target.value)}
+                      placeholder={t('profile.last_name')}
+                      style={{ width: '100%', padding: '8px 11px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{t('profile.username_label')}</label>
+                  <input value={editForm.username} onChange={e => setField('username', e.target.value)}
+                    placeholder="username"
+                    style={{ width: '100%', padding: '8px 11px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>💡 {t('profile.username_hint')}</p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{t('profile.email_label')}</label>
+                  <input type="email" value={editForm.email} onChange={e => setField('email', e.target.value)}
+                    placeholder="email@example.com"
+                    style={{ width: '100%', padding: '8px 11px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{t('profile.bio')}</label>
+                  <textarea value={editForm.bio} onChange={e => setField('bio', e.target.value)}
+                    placeholder={t('profile.bio_placeholder')} rows={3}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, lineHeight: 1.6, resize: 'vertical', outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }} />
+                </div>
+              </div>
             ) : profile.bio ? (
               <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.7 }}>{profile.bio}</p>
             ) : isOwn ? (

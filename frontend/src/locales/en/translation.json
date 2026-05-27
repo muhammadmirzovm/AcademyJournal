@@ -469,7 +469,14 @@
     "notify_err_empty": "Message cannot be empty.",
     "notify_toast_sent": "Notification sent!",
     "notify_toast_fail": "Failed to send notification.",
-    "notify_no_parents": "No parents linked"
+    "notify_no_parents": "No parents linked",
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "username_label": "Username",
+    "username_hint": "If you forget it, use /username command in the Telegram bot.",
+    "email_label": "Email",
+    "bio": "Bio",
+    "err_username_taken": "This username is taken, please choose another."
   },
   "teacher_stats": {
     "total_students": "Total Students",

@@ -469,7 +469,14 @@
     "notify_err_empty": "Сообщение не может быть пустым.",
     "notify_toast_sent": "Уведомление отправлено!",
     "notify_toast_fail": "Не удалось отправить уведомление.",
-    "notify_no_parents": "Родители не привязаны"
+    "notify_no_parents": "Родители не привязаны",
+    "first_name": "Имя",
+    "last_name": "Фамилия",
+    "username_label": "Имя пользователя",
+    "username_hint": "Если забудете — узнайте через Telegram бот командой /username.",
+    "email_label": "Email",
+    "bio": "О себе",
+    "err_username_taken": "Это имя пользователя занято, выберите другое."
   },
   "teacher_stats": {
     "total_students": "Всего учеников",

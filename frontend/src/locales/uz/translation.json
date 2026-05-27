@@ -469,7 +469,14 @@
     "notify_err_empty": "Xabar bo'sh bo'lishi mumkin emas.",
     "notify_toast_sent": "Xabar yuborildi!",
     "notify_toast_fail": "Xabar yuborishda xatolik.",
-    "notify_no_parents": "Bog'langan ota-ona yo'q"
+    "notify_no_parents": "Bog'langan ota-ona yo'q",
+    "first_name": "Ism",
+    "last_name": "Familiya",
+    "username_label": "Username",
+    "username_hint": "Unutib qo'ysangiz Telegram botdan /username buyrug'i bilan ko'rishingiz mumkin.",
+    "email_label": "Email",
+    "bio": "Bio",
+    "err_username_taken": "Bu username band, boshqasini tanlang."
   },
   "teacher_stats": {
     "total_students": "Jami o'quvchilar",
