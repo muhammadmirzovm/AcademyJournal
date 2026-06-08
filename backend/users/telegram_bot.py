@@ -57,7 +57,7 @@ MSG = {
             "Salom, {name}! 👋  Hisobingiz ulangan ✅\n\n"
             "📌 Buyruqlar:\n"
             "/mystats — farzandlaringiz statistikasi\n"
-            "/lessons — so'nggi darslar\n"
+            "/lessons — so'nggi darslar (masalan: /lessons 10)\n"
             "/help — barcha buyruqlar"
         ),
         'welcome_other': (
@@ -106,7 +106,7 @@ MSG = {
         'help_parent': (
             "📚 *AcademyJournal Bot*\n\n"
             "/mystats — farzandlaringiz statistikasi\n"
-            "/lessons — so'nggi darslar\n"
+            "/lessons — so'nggi darslar (masalan: /lessons 10)\n"
             "/help — shu ro'yxat"
         ),
         'help_other': (
@@ -151,10 +151,11 @@ MSG = {
         'notify_cancel': "❌ Bekor qilindi.",
 
         # ── Parent: recent lessons ─────────────────────────────────────────
-        'lessons_header': "📅 *So'nggi darslar:*\n",
-        'lessons_child':  "\n👤 *{name}*",
+        'lessons_header': "📅 *So'nggi darslar* ({shown} ta, jami {total} ta):\n",
+        'lessons_child':  "\n👤 *{name}* — {group}",
         'lessons_item':   "\n• {lesson}: {status} {score}",
         'lessons_none':   "\nDarslar topilmadi.",
+        'lessons_tip':    "\n\n💡 Ko'proq ko'rish: /lessons 10",
 
         # ── Admin ──────────────────────────────────────────────────────────
         'academy_stats': (
@@ -200,7 +201,7 @@ MSG = {
             "Привет, {name}! 👋  Аккаунт привязан ✅\n\n"
             "📌 Команды:\n"
             "/mystats — статистика детей\n"
-            "/lessons — последние уроки\n"
+            "/lessons — последние уроки (например: /lessons 10)\n"
             "/help — все команды"
         ),
         'welcome_other': (
@@ -249,7 +250,7 @@ MSG = {
         'help_parent': (
             "📚 *AcademyJournal Bot*\n\n"
             "/mystats — статистика детей\n"
-            "/lessons — последние уроки\n"
+            "/lessons — последние уроки (например: /lessons 10)\n"
             "/help — этот список"
         ),
         'help_other': (
@@ -294,10 +295,11 @@ MSG = {
         'notify_cancel': "❌ Отменено.",
 
         # ── Parent: recent lessons ─────────────────────────────────────────
-        'lessons_header': "📅 *Последние уроки:*\n",
-        'lessons_child':  "\n👤 *{name}*",
+        'lessons_header': "📅 *Последние уроки* ({shown} из {total}):\n",
+        'lessons_child':  "\n👤 *{name}* — {group}",
         'lessons_item':   "\n• {lesson}: {status} {score}",
         'lessons_none':   "\nУроков не найдено.",
+        'lessons_tip':    "\n\n💡 Показать больше: /lessons 10",
 
         # ── Admin ──────────────────────────────────────────────────────────
         'academy_stats': (
@@ -397,23 +399,30 @@ def _parent_stats(user):
     return rows
 
 
-def _parent_recent_lessons(user):
+def _parent_recent_lessons(user, limit=5):
     from groups.models import GroupMembership, Score, Attendance
     children_data = []
     for ps in user.children.select_related('student').all():
         child = ps.student
         name  = f'{child.first_name} {child.last_name}'.strip() or child.username
         memberships = list(GroupMembership.objects.filter(student=child).select_related('group'))
-        lessons_list = []
         for m in memberships:
-            recent = list(m.group.lessons.order_by('-date')[:3])
+            total_count  = m.group.lessons.count()
+            recent       = list(m.group.lessons.order_by('-date')[:limit])
+            lessons_list = []
             for lesson in recent:
                 score_obj = Score.objects.filter(lesson=lesson, student=child).first()
                 att_obj   = Attendance.objects.filter(lesson=lesson, student=child).first()
                 score     = f'{score_obj.value}/5' if score_obj else '—'
                 status    = '✅' if (att_obj and att_obj.present) else '❌'
                 lessons_list.append({'lesson': lesson.title, 'score': score, 'status': status})
-        children_data.append({'name': name, 'lessons': lessons_list[:3]})
+            children_data.append({
+                'name':    name,
+                'group':   m.group.name,
+                'lessons': lessons_list,
+                'total':   total_count,
+                'shown':   len(lessons_list),
+            })
     return children_data
 
 
@@ -858,19 +867,30 @@ async def lessons_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(m['no_data'])
         return
 
-    children_data = await sync_to_async(_parent_recent_lessons)(user)
+    limit = 5
+    if context.args:
+        try:
+            limit = max(1, min(int(context.args[0]), 50))
+        except ValueError:
+            pass
+
+    children_data = await sync_to_async(_parent_recent_lessons)(user, limit)
     if not children_data:
         await update.message.reply_text(m['no_data'])
         return
 
-    text = m['lessons_header']
+    total_all = sum(c['total'] for c in children_data)
+    shown_all = sum(c['shown'] for c in children_data)
+    text = m['lessons_header'].format(shown=shown_all, total=total_all)
     for child in children_data:
-        text += m['lessons_child'].format(name=child['name'])
+        text += m['lessons_child'].format(name=child['name'], group=child['group'])
         if child['lessons']:
             for l in child['lessons']:
                 text += m['lessons_item'].format(**l)
         else:
             text += m['lessons_none']
+    if shown_all < total_all:
+        text += m['lessons_tip']
     await update.message.reply_text(text, parse_mode='Markdown')
 
 

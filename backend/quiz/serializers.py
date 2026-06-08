@@ -73,14 +73,19 @@ class GameSerializer(serializers.ModelSerializer):
     current_question_data= serializers.SerializerMethodField()
     double_question_id   = serializers.IntegerField(read_only=True, allow_null=True)
     board                = serializers.SerializerMethodField()
+    is_individual        = serializers.SerializerMethodField()
 
     class Meta:
         model  = Game
         fields = ['id', 'name', 'timer_seconds', 'team_count', 'students_per_team', 'status',
                   'current_question', 'current_question_data', 'current_team',
-                  'double_question_id', 'teams', 'answered_question_ids', 'board', 'created_at']
+                  'double_question_id', 'teams', 'answered_question_ids', 'board',
+                  'is_individual', 'created_at']
         read_only_fields = ['id', 'status', 'current_question', 'current_team',
                             'double_question_id', 'created_at']
+
+    def get_is_individual(self, obj):
+        return obj.group.is_individual
 
     def get_answered_question_ids(self, obj):
         return list(obj.rounds.values_list('question_id', flat=True).distinct())

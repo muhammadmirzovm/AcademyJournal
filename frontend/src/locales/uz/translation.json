@@ -296,7 +296,11 @@
     "toast_created": "Guruh yaratildi!",
     "toast_joined": "\"{{name}}\" guruhiga qo'shildingiz!",
     "toast_load_fail": "Guruhlarni yuklashda xatolik.",
-    "toast_create_fail": "Guruh yaratishda xatolik."
+    "toast_create_fail": "Guruh yaratishda xatolik.",
+    "group_type": "Guruh turi",
+    "type_group": "Guruh (ko'p o'quvchi)",
+    "type_individual": "Individual (1 o'quvchi)",
+    "individual_hint": "Individual guruhda bitta o'quvchi bilan ishlaysiz"
   },
   "group_detail": {
     "tab_lessons": "darslar",
@@ -684,6 +688,11 @@
     "teams_ready": "Jamoalar tayyor!",
     "go_board": "Taxtani ochish →",
     "waiting_teacher": "O'qituvchi taxtani ochishini kutmoqda…",
+    "swap_hint": "A'zoni tanlang → boshqa jamoadan birini tanlang — ular almashadi",
+    "swap_hint_select_second": "Endi boshqa jamoadan birini tanlang — ular almashadi 🔄",
+    "reshuffle": "Qayta aralashtirish",
+    "swap_fail": "Almashtirishda xatolik.",
+    "reshuffle_fail": "Aralashtishda xatolik.",
     "scoreboard": "Hisoblar",
     "whose_turn": "Kim navbatda?",
     "picking_for": "Tanlayapti",
@@ -744,7 +753,8 @@
     "you": "siz",
     "no_banks": "Savollar banki mavjud emas.",
     "save_and_next": "Saqlash va yana qo'sh",
-    "close_form": "Yopish"
+    "close_form": "Yopish",
+    "solo_quiz": "Solo Quiz"
   },
   "ann": {
     "tab": "E'lonlar",

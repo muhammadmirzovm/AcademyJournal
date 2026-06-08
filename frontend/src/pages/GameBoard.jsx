@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Crown, ChevronRight, RotateCcw, Trophy, Zap, Check, X, Loader2, Lightbulb, Flag, Users, Clock, HelpCircle, AlertTriangle, XCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { getGame, startGame, pickSquare, answerQuestion, finishGame, resetGame } from '../api/quiz'
+import { getGame, startGame, pickSquare, answerQuestion, finishGame, resetGame, swapTeamMembers, reshuffleTeams } from '../api/quiz'
 
 const DIFF_COLOR = { easy: '#22C55E', medium: '#F59E0B', hard: '#EF4444' }
 const TEAM_COLORS = ['#6366F1', '#F59E0B', '#22C55E', '#EF4444', '#8B5CF6', '#EC4899']
@@ -96,41 +96,118 @@ function StolenFlash({ teamColor, teamName, onDone }) {
 }
 
 // ── Split animation ───────────────────────────────────────────────────────────
-function TeamSplitScreen({ teams, isTeacher, onDone }) {
+function TeamSplitScreen({ teams: initialTeams, isTeacher, groupId, gameId, onDone, onUpdate }) {
   const { t } = useTranslation()
+  const { show } = useToast()
+  const [teams, setTeams]           = useState(initialTeams)
+  const [selected, setSelected]     = useState(null) // { studentId, teamId }
+  const [swapping, setSwapping]     = useState(false)
+  const [reshuffling, setReshuffling] = useState(false)
+
+  useEffect(() => { setTeams(initialTeams) }, [initialTeams])
+
+  const handleMemberClick = async (student, team) => {
+    if (!isTeacher) return
+    if (!selected) {
+      setSelected({ studentId: student.id, teamId: team.id })
+      return
+    }
+    if (selected.studentId === student.id) { setSelected(null); return }
+    if (selected.teamId === team.id) { setSelected({ studentId: student.id, teamId: team.id }); return }
+
+    setSwapping(true)
+    try {
+      const { data } = await swapTeamMembers(groupId, gameId, { student_a: selected.studentId, student_b: student.id })
+      setTeams(data.teams)
+      onUpdate(data)
+    } catch { show(t('quiz.swap_fail'), 'error') }
+    finally { setSwapping(false); setSelected(null) }
+  }
+
+  const handleReshuffle = async () => {
+    setReshuffling(true)
+    setSelected(null)
+    try {
+      const { data } = await reshuffleTeams(groupId, gameId)
+      setTeams(data.teams)
+      onUpdate(data)
+    } catch { show(t('quiz.reshuffle_fail'), 'error') }
+    finally { setReshuffling(false) }
+  }
+
   const totalDelay = teams.length * 0.18 + 0.5
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32, padding: 24 }}>
+      style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: 24, overflowY: 'auto' }}>
+
       <motion.h2 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-        style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, color: 'var(--text)' }}>
+        style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>
         {t('quiz.teams_ready')}
       </motion.h2>
-      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {teams.map((team, ti) => (
-          <motion.div key={team.id}
-            initial={{ opacity: 0, scale: 0.6, y: 60 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ delay: ti * 0.18, type: 'spring', stiffness: 300, damping: 22 }}
-            style={{ background: 'var(--surface)', border: `2px solid ${TEAM_COLORS[ti % TEAM_COLORS.length]}`, borderRadius: 16, padding: '20px 28px', minWidth: 160, textAlign: 'center' }}>
-            <p style={{ fontWeight: 800, fontSize: 18, color: TEAM_COLORS[ti % TEAM_COLORS.length], marginBottom: 12 }}>{team.name}</p>
-            {team.members.map(m => (
-              <motion.div key={m.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: ti * 0.18 + 0.3 }}
-                style={{ fontSize: 13, color: 'var(--text-muted)', padding: '3px 0' }}>
-                {m.first_name || m.username}
-              </motion.div>
-            ))}
-          </motion.div>
-        ))}
+
+      {isTeacher && (
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 400 }}>
+          {selected ? t('quiz.swap_hint_select_second') : t('quiz.swap_hint')}
+        </motion.p>
+      )}
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 900 }}>
+        {teams.map((team, ti) => {
+          const color = TEAM_COLORS[ti % TEAM_COLORS.length]
+          return (
+            <motion.div key={team.id}
+              initial={{ opacity: 0, scale: 0.6, y: 60 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ delay: ti * 0.18, type: 'spring', stiffness: 300, damping: 22 }}
+              style={{ background: 'var(--surface)', border: `2px solid ${color}`, borderRadius: 16, padding: '18px 20px', minWidth: 150, textAlign: 'center' }}>
+              <p style={{ fontWeight: 800, fontSize: 16, color, marginBottom: 12 }}>{team.name}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {team.members.map(m => {
+                  const isSel = selected?.studentId === m.id
+                  const isSwapTarget = selected && selected.teamId !== team.id
+                  return (
+                    <motion.div key={m.id}
+                      whileHover={isTeacher ? { scale: 1.04 } : {}}
+                      whileTap={isTeacher ? { scale: 0.96 } : {}}
+                      onClick={() => handleMemberClick(m, team)}
+                      style={{
+                        padding: '7px 12px', borderRadius: 9, fontSize: 13, fontWeight: 600,
+                        cursor: isTeacher ? 'pointer' : 'default',
+                        background: isSel ? `${color}28` : isSwapTarget ? 'rgba(255,255,255,0.04)' : 'var(--bg)',
+                        border: isSel ? `2px solid ${color}` : isSwapTarget ? `1.5px dashed ${color}66` : '1.5px solid var(--border)',
+                        color: isSel ? color : 'var(--text)',
+                        transition: 'all 0.18s',
+                        opacity: swapping ? 0.6 : 1,
+                      }}>
+                      {isSel && <span style={{ marginRight: 5 }}>👆</span>}
+                      {m.first_name ? `${m.first_name} ${m.last_name || ''}`.trim() : m.username}
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )
+        })}
       </div>
+
       {isTeacher ? (
-        <motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: totalDelay }}
-          whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} onClick={onDone}
-          style={{ ...primaryBtn, fontSize: 16, padding: '13px 36px' }}>
-          {t('quiz.go_board')}
-        </motion.button>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: totalDelay }}
+          style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+            onClick={handleReshuffle} disabled={reshuffling}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 22px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: reshuffling ? 0.6 : 1 }}>
+            {reshuffling
+              ? <Loader2 size={15} style={{ animation: 'spin 0.7s linear infinite' }} />
+              : <RotateCcw size={15} />}
+            {t('quiz.reshuffle')}
+          </motion.button>
+          <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} onClick={() => { setSelected(null); onDone() }}
+            style={{ ...primaryBtn, fontSize: 15, padding: '10px 32px' }}>
+            <Zap size={15} /> {t('quiz.go_board')}
+          </motion.button>
+        </motion.div>
       ) : (
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: totalDelay }}
           style={{ fontSize: 13, color: 'var(--text-muted)' }}>
@@ -599,7 +676,7 @@ export default function GameBoard() {
     try {
       const { data } = await startGame(groupId, gameId)
       setGame(data)
-      setSplitting(true)
+      if (!data.is_individual) setSplitting(true)
     } catch { show(t('quiz.toast_start_fail'), 'error') }
   }
 
@@ -640,10 +717,17 @@ export default function GameBoard() {
         <span>{game.name}</span>
       </div>
 
-      {/* Split animation */}
+      {/* Split animation — skip for individual (solo) games */}
       <AnimatePresence>
-        {splitting && (
-          <TeamSplitScreen teams={game.teams} isTeacher={isTeacher} onDone={() => { setSplitting(false); load() }} />
+        {splitting && !game.is_individual && (
+          <TeamSplitScreen
+            teams={game.teams}
+            isTeacher={isTeacher}
+            groupId={groupId}
+            gameId={gameId}
+            onUpdate={data => setGame(data)}
+            onDone={() => { setSplitting(false); load() }}
+          />
         )}
       </AnimatePresence>
 
@@ -681,8 +765,17 @@ export default function GameBoard() {
 
               {/* Stat pills */}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
+                {game.is_individual && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 999, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', border: '1px solid var(--accent)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+                    ⚡ {t('quiz.solo_quiz')}
+                  </span>
+                )}
+                {!game.is_individual && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 999, background: 'var(--bg)', border: '1px solid var(--border)', fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+                    <Users size={13} /> {game.team_count} {t('quiz.teams')}
+                  </span>
+                )}
                 {[
-                  { icon: <Users size={13} />, label: `${game.team_count} ${t('quiz.teams')}` },
                   { icon: <Clock size={13} />, label: `${game.timer_seconds}s ${t('quiz.per_question')}` },
                   { icon: <HelpCircle size={13} />, label: `${totalQ} ${t('quiz.questions_in_game')}` },
                 ].map(({ icon, label }) => (

@@ -19,6 +19,7 @@ class Group(models.Model):
     class_days        = models.JSONField(default=list, blank=True, help_text='List of weekday ints: 0=Mon … 6=Sun')
     telegram_chat_id  = models.BigIntegerField(null=True, blank=True)
     language          = models.CharField(max_length=2, default='uz', choices=[('uz', 'Uzbek'), ('ru', 'Russian')])
+    is_individual     = models.BooleanField(default=False)
     created_at        = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

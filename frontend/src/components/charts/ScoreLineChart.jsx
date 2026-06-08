@@ -22,6 +22,8 @@ function shortDate(dateStr) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+const MIN_PX_PER_POINT = 40
+
 export default function ScoreLineChart({ data }) {
   if (!data || data.length === 0) {
     return (
@@ -38,32 +40,40 @@ export default function ScoreLineChart({ data }) {
     date: d.date,
   }))
 
+  const minWidth = Math.max(chartData.length * MIN_PX_PER_POINT, 300)
+  const dotR = chartData.length > 30 ? 2.5 : 4
+  const tickInterval = chartData.length > 20 ? Math.floor(chartData.length / 10) : 0
+
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <LineChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-        <XAxis
-          dataKey="label"
-          tick={{ fontSize: 11, fill: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-          axisLine={false}
-          tickLine={false}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          domain={[0, 5]} ticks={[0,1,2,3,4,5]}
-          tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-          axisLine={false} tickLine={false}
-        />
-        <Tooltip content={<CustomTooltip />} />
-        <ReferenceLine y={3} stroke="var(--warning)" strokeDasharray="4 4" strokeOpacity={0.5} />
-        <Line
-          type="monotone" dataKey="score"
-          stroke="var(--accent)" strokeWidth={2.5}
-          dot={{ fill: 'var(--accent)', strokeWidth: 0, r: 4 }}
-          activeDot={{ r: 6, fill: 'var(--accent)', stroke: 'var(--surface)', strokeWidth: 2 }}
-          animationDuration={800}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div style={{ overflowX: 'auto', width: '100%' }}>
+      <div style={{ minWidth, width: '100%' }}>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+              axisLine={false}
+              tickLine={false}
+              interval={tickInterval}
+            />
+            <YAxis
+              domain={[0, 5]} ticks={[0,1,2,3,4,5]}
+              tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+              axisLine={false} tickLine={false}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine y={3} stroke="var(--warning)" strokeDasharray="4 4" strokeOpacity={0.5} />
+            <Line
+              type="monotone" dataKey="score"
+              stroke="var(--accent)" strokeWidth={2.5}
+              dot={{ fill: 'var(--accent)', strokeWidth: 0, r: dotR }}
+              activeDot={{ r: dotR + 2, fill: 'var(--accent)', stroke: 'var(--surface)', strokeWidth: 2 }}
+              animationDuration={800}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   )
 }

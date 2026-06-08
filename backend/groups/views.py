@@ -619,6 +619,28 @@ def _notify_announcement(ann, recipients):
                     **tg_kwargs,
                 )
 
+        if ann.group and ann.group.telegram_chat_id:
+            try:
+                import os, html as html_module
+                from telegram import Bot as TelegramBot
+                e = lambda t: html_module.escape(str(t))
+                bot  = TelegramBot(token=os.environ['TELEGRAM_BOT_TOKEN'])
+                lang = ann.group.language or 'uz'
+                if lang == 'ru':
+                    text = f"📢 <b>Объявление</b> — {e(ann.group.name)}\n\n<b>{e(ann.title)}</b>"
+                else:
+                    text = f"📢 <b>E'lon</b> — {e(ann.group.name)}\n\n<b>{e(ann.title)}</b>"
+                if ann.body:
+                    text += f"\n\n{e(ann.body[:500])}"
+                async_to_sync(bot.send_message)(
+                    chat_id=ann.group.telegram_chat_id,
+                    text=text,
+                    parse_mode='HTML',
+                )
+            except Exception as ex:
+                import logging
+                logging.getLogger(__name__).error('Announcement group chat send error: %s', ex)
+
 
 class AcademyAnnouncementView(APIView):
     permission_classes = (permissions.IsAuthenticated,)

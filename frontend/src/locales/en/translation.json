@@ -296,7 +296,11 @@
     "toast_created": "Group created!",
     "toast_joined": "Joined \"{{name}}\"!",
     "toast_load_fail": "Failed to load groups.",
-    "toast_create_fail": "Failed to create group."
+    "toast_create_fail": "Failed to create group.",
+    "group_type": "Group type",
+    "type_group": "Group (multiple students)",
+    "type_individual": "Individual (1 student)",
+    "individual_hint": "Individual groups are for one-on-one teaching"
   },
   "group_detail": {
     "tab_lessons": "lessons",
@@ -684,6 +688,11 @@
     "teams_ready": "Teams are set!",
     "go_board": "Open the board →",
     "waiting_teacher": "Waiting for teacher to open the board…",
+    "swap_hint": "Select a member → select another from a different team — they will swap",
+    "swap_hint_select_second": "Now pick someone from another team to swap 🔄",
+    "reshuffle": "Reshuffle",
+    "swap_fail": "Failed to swap members.",
+    "reshuffle_fail": "Failed to reshuffle teams.",
     "scoreboard": "Scoreboard",
     "whose_turn": "Whose turn?",
     "picking_for": "Picking for",
@@ -744,7 +753,8 @@
     "you": "you",
     "no_banks": "No question banks available.",
     "save_and_next": "Save & Add Another",
-    "close_form": "Close"
+    "close_form": "Close",
+    "solo_quiz": "Solo Quiz"
   },
   "ann": {
     "tab": "Announcements",

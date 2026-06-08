@@ -221,10 +221,17 @@ export default function GroupDetail() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 28 }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginBottom: 6 }}>{group.name}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, margin: 0 }}>{group.name}</h2>
+            {group.is_individual && (
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', letterSpacing: '0.05em', flexShrink: 0 }}>
+                INDIVIDUAL
+              </span>
+            )}
+          </div>
           {group.description && <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 8 }}>{group.description}</p>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Users size={14} />{members.length} {t('group_detail.students_count')}</span>
+            {!group.is_individual && <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Users size={14} />{members.length} {t('group_detail.students_count')}</span>}
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><BookOpen size={14} />{lessons.length} {t('group_detail.lessons_count')}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Star size={14} />{group.coin_threshold} {t('group_detail.coins')} = 1 {t('group_detail.stickers')}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5,
@@ -239,15 +246,17 @@ export default function GroupDetail() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
           {isTeacher && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 16px' }}>
-                <Key size={14} color="var(--accent)" />
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, letterSpacing: '0.12em', fontWeight: 600 }}>{group.join_key}</span>
-                <motion.button whileTap={{ scale: 0.9 }} onClick={copy}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: copied ? 'var(--success)' : 'var(--text-muted)', padding: 0 }}>
-                  {copied ? <Check size={14} /> : <Copy size={14} />}
-                  {copied ? t('group_detail.copied') : t('group_detail.copy_key')}
-                </motion.button>
-              </div>
+              {!group.is_individual && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 16px' }}>
+                  <Key size={14} color="var(--accent)" />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, letterSpacing: '0.12em', fontWeight: 600 }}>{group.join_key}</span>
+                  <motion.button whileTap={{ scale: 0.9 }} onClick={copy}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: copied ? 'var(--success)' : 'var(--text-muted)', padding: 0 }}>
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    {copied ? t('group_detail.copied') : t('group_detail.copy_key')}
+                  </motion.button>
+                </div>
+              )}
               <button onClick={() => setShowEditGroup(true)} style={ghostBtn}><Pencil size={13} /> {t('group_detail.edit_group')}</button>
               <button onClick={() => setShowDeleteGroup(true)} style={dangerOutlineBtn}><Trash2 size={13} /> {t('group_detail.delete_group')}</button>
             </>
@@ -255,14 +264,14 @@ export default function GroupDetail() {
         </div>
       </div>
 
-      {/* Podium — always visible if there are scored members */}
-      {members.some(m => m.comprehension !== null) && <Podium members={members} t={t} />}
+      {/* Podium — only for group (not individual) with scored members */}
+      {!group.is_individual && members.some(m => m.comprehension !== null) && <Podium members={members} t={t} />}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none' }}>
         {[
           { key: 'lessons',       label: t('group_detail.tab_lessons') },
-          { key: 'members',       label: t('group_detail.tab_members') },
+          ...(!group.is_individual ? [{ key: 'members', label: t('group_detail.tab_members') }] : []),
           { key: 'games',         label: t('quiz.games') },
           { key: 'announcements', label: t('ann.tab') },
         ].map(item => (

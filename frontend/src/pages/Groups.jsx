@@ -85,8 +85,15 @@ function GroupCard({ group, index, isTeacher }) {
           <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 6, color: 'var(--text)' }}>{group.name}</h3>
           {group.description && <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 12 }}>{group.description}</p>}
         </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+          {group.is_individual && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', letterSpacing: '0.04em' }}>
+              INDIVIDUAL
+            </span>
+          )}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: 'var(--text-muted)', marginBottom: isTeacher ? 14 : 0 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={13} />{group.member_count} {t('groups.students')}</span>
+          {!group.is_individual && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={13} />{group.member_count} {t('groups.students')}</span>}
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={13} />{t('groups.teacher')}: {group.teacher_name}</span>
         </div>
         {isTeacher && (
@@ -139,7 +146,7 @@ function CreateGroupModal({ open, onClose, onCreated }) {
   const { show } = useToast()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', class_days: [] })
+  const [form, setForm] = useState({ name: '', description: '', class_days: [], is_individual: false })
   const [error, setError] = useState('')
 
   const toggleDay = day => {
@@ -157,7 +164,7 @@ function CreateGroupModal({ open, onClose, onCreated }) {
     setLoading(true)
     try {
       const { data } = await createGroup(form)
-      setForm({ name: '', description: '', class_days: [] })
+      setForm({ name: '', description: '', class_days: [], is_individual: false })
       onCreated(data)
     } catch { show(t('groups.toast_create_fail'), 'error') }
     finally { setLoading(false) }
@@ -196,6 +203,31 @@ function CreateGroupModal({ open, onClose, onCreated }) {
               )
             })}
           </div>
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={labelStyle}>{t('groups.group_type')}</label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            {[false, true].map(val => {
+              const active = form.is_individual === val
+              return (
+                <button key={String(val)} type="button" onClick={() => setForm(f => ({ ...f, is_individual: val }))}
+                  style={{
+                    flex: 1, padding: '9px 12px', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s',
+                    border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                    background: active ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
+                    color: active ? 'var(--accent)' : 'var(--text-muted)',
+                    fontWeight: active ? 700 : 500, fontSize: 13, textAlign: 'center',
+                  }}>
+                  {val ? t('groups.type_individual') : t('groups.type_group')}
+                </button>
+              )
+            })}
+          </div>
+          {form.is_individual && (
+            <p style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+              {t('groups.individual_hint')}
+            </p>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={ghostBtn}>{t('groups.cancel')}</button>

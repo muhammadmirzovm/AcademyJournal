@@ -207,12 +207,20 @@ class GameStartView(APIView):
         random.shuffle(students)
 
         game.teams.all().delete()
-        shuffled_names = random.sample(TEAM_NAMES, min(game.team_count, len(TEAM_NAMES)))
-        while len(shuffled_names) < game.team_count:
-            shuffled_names.append(f'Team {len(shuffled_names) + 1}')
-        teams = [Team.objects.create(game=game, name=shuffled_names[i]) for i in range(game.team_count)]
-        for i, student in enumerate(students):
-            teams[i % game.team_count].members.add(student)
+
+        if group.is_individual:
+            student = students[0] if students else None
+            name = (f'{student.first_name} {student.last_name}'.strip() or student.username) if student else 'Student'
+            team = Team.objects.create(game=game, name=name)
+            if student:
+                team.members.add(student)
+        else:
+            shuffled_names = random.sample(TEAM_NAMES, min(game.team_count, len(TEAM_NAMES)))
+            while len(shuffled_names) < game.team_count:
+                shuffled_names.append(f'Team {len(shuffled_names) + 1}')
+            teams = [Team.objects.create(game=game, name=shuffled_names[i]) for i in range(game.team_count)]
+            for i, student in enumerate(students):
+                teams[i % game.team_count].members.add(student)
 
         questions = list(game.questions.all())
         if questions:
@@ -327,6 +335,61 @@ class GameResetView(APIView):
         game.current_question = None
         game.current_team     = None
         game.save()
+        return Response(game_response(game))
+
+
+class GameSwapMembersView(APIView):
+    permission_classes = [IsTeacher]
+
+    def post(self, request, group_pk, game_pk):
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        if not is_teacher:
+            return Response({'detail': 'Not allowed.'}, status=403)
+        game = get_object_or_404(Game, pk=game_pk, group=group)
+        if game.status != Game.ACTIVE:
+            return Response({'detail': 'Game not active.'}, status=400)
+        if game.rounds.exists():
+            return Response({'detail': 'Cannot swap after game has started.'}, status=400)
+
+        a_id = request.data.get('student_a')
+        b_id = request.data.get('student_b')
+        team_a = game.teams.filter(members__id=a_id).first()
+        team_b = game.teams.filter(members__id=b_id).first()
+
+        if not team_a or not team_b:
+            return Response({'detail': 'Student not found in any team.'}, status=400)
+        if team_a == team_b:
+            return Response({'detail': 'Students are in the same team.'}, status=400)
+
+        team_a.members.remove(a_id)
+        team_b.members.remove(b_id)
+        team_a.members.add(b_id)
+        team_b.members.add(a_id)
+        return Response(game_response(game))
+
+
+class GameReshuffleView(APIView):
+    permission_classes = [IsTeacher]
+
+    def post(self, request, group_pk, game_pk):
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        if not is_teacher:
+            return Response({'detail': 'Not allowed.'}, status=403)
+        game = get_object_or_404(Game, pk=game_pk, group=group)
+        if game.status != Game.ACTIVE:
+            return Response({'detail': 'Game not active.'}, status=400)
+        if game.rounds.exists():
+            return Response({'detail': 'Cannot reshuffle after game has started.'}, status=400)
+
+        students = list(User.objects.filter(memberships__group=group))
+        random.shuffle(students)
+        game.teams.all().delete()
+        shuffled_names = random.sample(TEAM_NAMES, min(game.team_count, len(TEAM_NAMES)))
+        while len(shuffled_names) < game.team_count:
+            shuffled_names.append(f'Team {len(shuffled_names) + 1}')
+        teams = [Team.objects.create(game=game, name=shuffled_names[i]) for i in range(game.team_count)]
+        for i, student in enumerate(students):
+            teams[i % game.team_count].members.add(student)
         return Response(game_response(game))
 
 

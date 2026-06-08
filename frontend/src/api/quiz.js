@@ -24,3 +24,5 @@ export const answerFinal        = (gid, gameId, data) => api.post(`/groups/${gid
 export const finishGame         = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/finish/`)
 export const resetGame          = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/reset/`)
 export const duplicateGame      = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/copy/`)
+export const swapTeamMembers    = (gid, gameId, data) => api.post(`/groups/${gid}/games/${gameId}/swap/`, data)
+export const reshuffleTeams     = (gid, gameId)       => api.post(`/groups/${gid}/games/${gameId}/reshuffle/`)
