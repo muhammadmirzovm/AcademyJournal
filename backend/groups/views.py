@@ -847,10 +847,10 @@ class UpcomingExamsView(APIView):
 
         if role == 'admin':
             ready_groups = Group.objects.filter(
-                academy=user.academy, exam_ready=True
+                teacher__academy=user.academy, exam_ready=True
             ).prefetch_related('memberships')
             active_exams = Exam.objects.filter(
-                group__academy=user.academy
+                group__teacher__academy=user.academy
             ).exclude(status=Exam.FINISHED).prefetch_related('results__student', 'group')
 
         elif role == 'teacher':
