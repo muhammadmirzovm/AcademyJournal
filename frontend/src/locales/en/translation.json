@@ -9,7 +9,8 @@
     "questions": "Questions",
     "settings": "Settings",
     "language": "Language",
-    "students": "Students"
+    "students": "Students",
+    "exams": "Exams"
   },
   "students": {
     "title": "All Students",
@@ -517,6 +518,8 @@
   },
   "common": {
     "groups": "Groups",
+    "group": "Group",
+    "open": "Open",
     "loading": "Loading…",
     "fail_load": "Failed to load."
   },
@@ -803,7 +806,23 @@
     "pass": "Passed",
     "fail": "Failed",
     "your_result": "Your result",
-    "q_short": "Q"
+    "q_short": "Q",
+    "page_title": "Exams",
+    "page_sub": "Upcoming and active exams",
+    "ready_groups_title": "Awaiting exam creation",
+    "teacher_marked_ready": "Teacher marked this group as ready",
+    "your_ready_groups": "Groups you marked ready",
+    "waiting_for_admin": "Waiting for admin to create an exam…",
+    "active_exams_title": "Active exams",
+    "your_exams": "Your exams",
+    "absent_btn": "Absent",
+    "present": "Present",
+    "absent_label": "Absent",
+    "absent_count": "absent",
+    "mark_absent": "Mark as absent",
+    "mark_present": "Mark as present",
+    "absent_student_msg": "You were absent from this exam.",
+    "admin_notified": "Admin has been notified. Waiting for them to create an exam."
   },
   "ann": {
     "tab": "Announcements",

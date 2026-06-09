@@ -805,19 +805,76 @@ class ExamSubmitView(APIView):
 
         for entry in results_data:
             student_id = entry.get('student')
-            scores     = entry.get('scores', [])
-            comments   = entry.get('comments', [])
-            if len(scores) != exam.question_count:
+            absent     = bool(entry.get('absent', False))
+            scores     = [] if absent else entry.get('scores', [])
+            comments   = [] if absent else entry.get('comments', [])
+            if not absent and len(scores) != exam.question_count:
                 return Response({'detail': f'Expected {exam.question_count} scores per student.'}, status=400)
             for s in scores:
                 if not (0 <= int(s) <= 5):
                     return Response({'detail': 'Each score must be 0–5.'}, status=400)
+            padded_scores   = [int(s) for s in scores] if not absent else [0] * exam.question_count
             padded_comments = list(comments) + [''] * (exam.question_count - len(comments))
             ExamResult.objects.update_or_create(
                 exam=exam, student_id=student_id,
-                defaults={'scores': [int(s) for s in scores], 'comments': padded_comments[:exam.question_count]},
+                defaults={
+                    'absent':   absent,
+                    'scores':   padded_scores,
+                    'comments': padded_comments[:exam.question_count],
+                },
             )
 
         exam.status = Exam.FINISHED
         exam.save(update_fields=['status'])
         return Response(ExamSerializer(exam).data)
+
+
+# ── Upcoming exams dashboard ──────────────────────────────────────────────────
+
+class UpcomingExamsView(APIView):
+    """
+    GET /exams/upcoming/
+    Returns:
+      - exam_ready_groups: groups waiting for an exam (admin sees all in academy,
+        teacher sees their own)
+      - active_exams: non-finished exams the user can see
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        user = request.user
+        role = user.role
+
+        if role == 'admin':
+            ready_groups = Group.objects.filter(
+                academy=user.academy, exam_ready=True
+            ).prefetch_related('memberships')
+            active_exams = Exam.objects.filter(
+                group__academy=user.academy
+            ).exclude(status=Exam.FINISHED).prefetch_related('results__student', 'group')
+
+        elif role == 'teacher':
+            ready_groups = Group.objects.filter(
+                teacher=user, exam_ready=True
+            ).prefetch_related('memberships')
+            active_exams = Exam.objects.filter(
+                group__teacher=user
+            ).exclude(status=Exam.FINISHED).prefetch_related('results__student', 'group')
+
+        else:  # student
+            ready_groups = Group.objects.none()
+            active_exams = Exam.objects.filter(
+                group__memberships__student=user
+            ).exclude(status=Exam.FINISHED).prefetch_related('results__student', 'group')
+
+        def group_data(g):
+            return {
+                'id':          g.id,
+                'name':        g.name,
+                'member_count': g.memberships.count(),
+            }
+
+        return Response({
+            'exam_ready_groups': [group_data(g) for g in ready_groups],
+            'active_exams':      ExamSerializer(active_exams, many=True).data,
+        })

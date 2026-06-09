@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX } from 'lucide-react'
 import { toggleExamReady, createExam, submitExam, getExams } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import Modal from './ui/Modal'
@@ -11,6 +11,8 @@ const PCT_COLOR = pct =>
   : pct >= 50 ? { color: '#D97706', bg: '#D9770612', border: '#D9770630' }
   : { color: '#DC2626', bg: '#DC262612', border: '#DC262630' }
 
+const ABSENT_STYLE = { color: '#64748B', bg: '#64748B10', border: '#64748B30' }
+
 // ── Scoring screen ────────────────────────────────────────────────────────────
 function ScoringScreen({ exam, members, groupId, onDone, t }) {
   const { show } = useToast()
@@ -18,15 +20,19 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
 
   const init = () =>
     members.map(m => ({
-      student: m.id,
-      name:    m.first_name ? `${m.first_name} ${m.last_name}`.trim() : m.username,
-      scores:  Array(qCount).fill(0),
+      student:  m.id,
+      name:     m.first_name ? `${m.first_name} ${m.last_name}`.trim() : m.username,
+      absent:   false,
+      scores:   Array(qCount).fill(0),
       comments: Array(qCount).fill(''),
-      open:    false,
+      open:     false,
     }))
 
   const [rows, setRows]     = useState(init)
   const [saving, setSaving] = useState(false)
+
+  const toggleAbsent = si =>
+    setRows(r => r.map((row, i) => i !== si ? row : { ...row, absent: !row.absent, open: row.absent ? row.open : false }))
 
   const setScore = (si, qi, val) =>
     setRows(r => r.map((row, i) => i !== si ? row : { ...row, scores: row.scores.map((s, j) => j !== qi ? s : val) }))
@@ -38,6 +44,7 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
     setRows(r => r.map((row, i) => i !== si ? row : { ...row, open: !row.open }))
 
   const pct = row => {
+    if (row.absent) return null
     const total = row.scores.reduce((a, b) => a + b, 0)
     return Math.round(total / (qCount * 5) * 100)
   }
@@ -45,19 +52,31 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
   const save = async () => {
     setSaving(true)
     try {
-      await submitExam(groupId, exam.id, { results: rows.map(r => ({ student: r.student, scores: r.scores, comments: r.comments })) })
+      await submitExam(groupId, exam.id, {
+        results: rows.map(r => ({
+          student:  r.student,
+          absent:   r.absent,
+          scores:   r.absent ? [] : r.scores,
+          comments: r.absent ? [] : r.comments,
+        })),
+      })
       show(t('exam.saved_toast'), 'success')
       onDone()
     } catch { show('Error saving results', 'error') }
     finally { setSaving(false) }
   }
 
+  const absentCount = rows.filter(r => r.absent).length
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h3 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>{exam.name}</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>{t('exam.scoring_title')} · {qCount} {t('exam.q_short')}</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
+            {t('exam.scoring_title')} · {qCount} {t('exam.q_short')}
+            {absentCount > 0 && <span style={{ marginLeft: 8, color: '#64748B', fontWeight: 600 }}>· {absentCount} {t('exam.absent_count')}</span>}
+          </p>
         </div>
         <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
           style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
@@ -69,27 +88,38 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {rows.map((row, si) => {
           const p   = pct(row)
-          const col = PCT_COLOR(p)
-          const total = row.scores.reduce((a, b) => a + b, 0)
+          const col = row.absent ? ABSENT_STYLE : PCT_COLOR(p ?? 0)
+          const total = row.absent ? 0 : row.scores.reduce((a, b) => a + b, 0)
           return (
-            <div key={row.student} style={{ border: `1.5px solid ${row.open ? col.border : 'var(--border)'}`, borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+            <div key={row.student} style={{ border: `1.5px solid ${row.open ? col.border : 'var(--border)'}`, borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.2s', opacity: row.absent ? 0.7 : 1 }}>
               {/* Student header */}
-              <button onClick={() => toggleOpen(si)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: row.open ? col.bg : 'var(--surface)', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${col.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, fontSize: 15, color: col.color }}>
-                  {row.name[0].toUpperCase()}
-                </div>
-                <div style={{ flex: 1, textAlign: 'left' }}>
-                  <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', margin: 0 }}>{row.name}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>
-                    {t('exam.total')}: {total}/{qCount * 5} · <span style={{ color: col.color, fontWeight: 700 }}>{p}%</span>
-                  </p>
-                </div>
-                {row.open ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                <button onClick={() => !row.absent && toggleOpen(si)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: row.open ? col.bg : row.absent ? '#64748B08' : 'var(--surface)', border: 'none', cursor: row.absent ? 'default' : 'pointer', transition: 'background 0.2s', textAlign: 'left' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${col.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, fontSize: 15, color: col.color }}>
+                    {row.absent ? <UserX size={16} /> : row.name[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', margin: 0 }}>{row.name}</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>
+                      {row.absent
+                        ? <span style={{ color: '#64748B', fontWeight: 700 }}>{t('exam.absent_label')}</span>
+                        : <>{t('exam.total')}: {total}/{qCount * 5} · <span style={{ color: col.color, fontWeight: 700 }}>{p}%</span></>}
+                    </p>
+                  </div>
+                  {!row.absent && (row.open ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />)}
+                </button>
+                {/* Absent toggle */}
+                <button onClick={() => toggleAbsent(si)} title={row.absent ? t('exam.mark_present') : t('exam.mark_absent')}
+                  style={{ padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: row.absent ? '#DC2626' : '#94A3B8', flexShrink: 0 }}>
+                  <UserX size={14} />
+                  {row.absent ? t('exam.present') : t('exam.absent_btn')}
+                </button>
+              </div>
 
               {/* Question rows */}
               <AnimatePresence>
-                {row.open && (
+                {row.open && !row.absent && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
                     <div style={{ padding: '12px 18px 16px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)' }}>
                       {Array.from({ length: qCount }, (_, qi) => (
@@ -98,7 +128,6 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
                             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', minWidth: 70 }}>
                               {t('exam.q_label', { n: qi + 1 })}
                             </span>
-                            {/* Score buttons 0–5 */}
                             <div style={{ display: 'flex', gap: 5 }}>
                               {[0,1,2,3,4,5].map(v => (
                                 <button key={v} onClick={() => setScore(si, qi, v)}
@@ -141,32 +170,45 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
 // ── Results view ──────────────────────────────────────────────────────────────
 function ResultsView({ exam, t }) {
   const [open, setOpen] = useState(null)
-  const sorted = [...exam.results].sort((a, b) => b.percentage - a.percentage)
+  const present = exam.results.filter(r => !r.absent).sort((a, b) => b.percentage - a.percentage)
+  const absent  = exam.results.filter(r => r.absent)
+  const sorted  = [...present, ...absent]
 
   return (
     <div>
       <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>{exam.name}</h3>
-      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 18 }}>{t('exam.result_title')} · {exam.question_count} {t('exam.q_short')}</p>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 18 }}>
+        {t('exam.result_title')} · {exam.question_count} {t('exam.q_short')}
+        {absent.length > 0 && <span style={{ marginLeft: 8, color: '#64748B' }}>· {absent.length} {t('exam.absent_count')}</span>}
+      </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {sorted.map((r, idx) => {
-          const col = PCT_COLOR(r.percentage)
+          const col = r.absent ? ABSENT_STYLE : PCT_COLOR(r.percentage)
           return (
-            <div key={r.id} style={{ border: `1.5px solid ${open === r.id ? col.border : 'var(--border)'}`, borderRadius: 14, overflow: 'hidden' }}>
-              <button onClick={() => setOpen(open === r.id ? null : r.id)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: open === r.id ? col.bg : 'var(--surface)', border: 'none', cursor: 'pointer' }}>
+            <div key={r.id} style={{ border: `1.5px solid ${open === r.id ? col.border : 'var(--border)'}`, borderRadius: 14, overflow: 'hidden', opacity: r.absent ? 0.65 : 1 }}>
+              <button onClick={() => !r.absent && setOpen(open === r.id ? null : r.id)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: open === r.id ? col.bg : 'var(--surface)', border: 'none', cursor: r.absent ? 'default' : 'pointer' }}>
                 <span style={{ width: 26, height: 26, borderRadius: '50%', background: col.bg, border: `1.5px solid ${col.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: col.color, flexShrink: 0 }}>
-                  {idx + 1}
+                  {r.absent ? <UserX size={12} /> : idx + 1}
                 </span>
                 <span style={{ flex: 1, fontWeight: 700, fontSize: 14, color: 'var(--text)', textAlign: 'left' }}>{r.student_name}</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: col.color, marginRight: 8 }}>{r.percentage}%</span>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: col.bg, color: col.color }}>
-                  {r.total}/{r.max_score}
-                </span>
-                {open === r.id ? <ChevronUp size={14} color="var(--text-muted)" /> : <ChevronDown size={14} color="var(--text-muted)" />}
+                {r.absent ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: ABSENT_STYLE.bg, color: ABSENT_STYLE.color }}>
+                    {t('exam.absent_label')}
+                  </span>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: col.color, marginRight: 8 }}>{r.percentage}%</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: col.bg, color: col.color }}>
+                      {r.total}/{r.max_score}
+                    </span>
+                  </>
+                )}
+                {!r.absent && (open === r.id ? <ChevronUp size={14} color="var(--text-muted)" /> : <ChevronDown size={14} color="var(--text-muted)" />)}
               </button>
 
               <AnimatePresence>
-                {open === r.id && (
+                {open === r.id && !r.absent && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} style={{ overflow: 'hidden' }}>
                     <div style={{ padding: '10px 16px 14px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {r.scores.map((sc, qi) => {
@@ -197,6 +239,20 @@ function ResultsView({ exam, t }) {
 function StudentResultView({ exam, userId, t }) {
   const result = exam.results.find(r => r.student === userId)
   if (!result) return <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: '32px 0' }}>{t('exam.no_exams')}</p>
+
+  if (result.absent) {
+    return (
+      <div>
+        <h3 style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{exam.name}</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>{t('exam.your_result')}</p>
+        <div style={{ padding: '32px 20px', borderRadius: 14, background: ABSENT_STYLE.bg, border: `2px solid ${ABSENT_STYLE.border}`, textAlign: 'center' }}>
+          <UserX size={36} color={ABSENT_STYLE.color} style={{ margin: '0 auto 12px', display: 'block' }} />
+          <p style={{ fontSize: 18, fontWeight: 800, color: ABSENT_STYLE.color, margin: 0 }}>{t('exam.absent_student_msg')}</p>
+        </div>
+      </div>
+    )
+  }
+
   const col = PCT_COLOR(result.percentage)
   return (
     <div>
@@ -225,17 +281,16 @@ function StudentResultView({ exam, userId, t }) {
 }
 
 // ── Main ExamsTab ─────────────────────────────────────────────────────────────
-export default function ExamsTab({ group, members, exams, setExams, isAdmin, isTeacher, userId, groupId, t }) {
+export default function ExamsTab({ group, members, exams, setExams, isAdmin, isTeacher, userId, groupId }) {
   const { show }  = useToast()
-  const { t: _t } = useTranslation()
-  const tt = t || _t
+  const { t }     = useTranslation()
 
-  const [examReady, setExamReady]   = useState(group.exam_ready)
+  const [examReady, setExamReady]       = useState(group.exam_ready)
   const [readyLoading, setReadyLoading] = useState(false)
-  const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm]             = useState({ name: '', question_count: 10 })
-  const [creating, setCreating]     = useState(false)
-  const [view, setView]             = useState(null) // { examId, mode: 'score'|'results'|'mine' }
+  const [showCreate, setShowCreate]     = useState(false)
+  const [form, setForm]                 = useState({ name: '', question_count: 10 })
+  const [creating, setCreating]         = useState(false)
+  const [view, setView]                 = useState(null) // { examId, mode: 'score'|'results'|'mine' }
 
   const activeExam = view ? exams.find(e => e.id === view.examId) : null
 
@@ -244,7 +299,7 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
     try {
       const { data } = await toggleExamReady(groupId)
       setExamReady(data.exam_ready)
-      if (data.exam_ready) show(tt('exam.ready_toast'), 'success')
+      if (data.exam_ready) show(t('exam.ready_toast'), 'success')
     } catch {}
     finally { setReadyLoading(false) }
   }
@@ -262,7 +317,6 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
     finally { setCreating(false) }
   }
 
-  // Scoring done
   const handleScored = () => {
     setView(null)
     getExams(groupId).then(r => setExams(r.data))
@@ -272,11 +326,11 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
     return (
       <div>
         <button onClick={() => setView(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 20, background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>
-          ← {tt('exam.tab')}
+          ← {t('exam.tab')}
         </button>
-        {view.mode === 'score'    && <ScoringScreen exam={activeExam} members={members} groupId={groupId} onDone={handleScored} t={tt} />}
-        {view.mode === 'results'  && <ResultsView exam={activeExam} t={tt} />}
-        {view.mode === 'mine'     && <StudentResultView exam={activeExam} userId={userId} t={tt} />}
+        {view.mode === 'score'   && <ScoringScreen exam={activeExam} members={members} groupId={groupId} onDone={handleScored} t={t} />}
+        {view.mode === 'results' && <ResultsView exam={activeExam} t={t} />}
+        {view.mode === 'mine'    && <StudentResultView exam={activeExam} userId={userId} t={t} />}
       </div>
     )
   }
@@ -295,22 +349,23 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
               fontWeight: 700, fontSize: 13, cursor: readyLoading ? 'not-allowed' : 'pointer',
             }}>
             <ClipboardList size={14} />
-            {examReady ? tt('exam.not_ready_btn') : tt('exam.ready_btn')}
+            {examReady ? t('exam.not_ready_btn') : t('exam.ready_btn')}
           </motion.button>
-          {examReady && <p style={{ fontSize: 12, color: '#D97706', marginTop: 8 }}>✓ Admin xabardor qilindi. Imtihon yaratilishini kuting.</p>}
+          {examReady && <p style={{ fontSize: 12, color: '#D97706', marginTop: 8 }}>✓ {t('exam.admin_notified')}</p>}
         </div>
       )}
 
-      {/* Admin: create exam button */}
+      {/* Admin: create exam button + ready notice */}
       {isAdmin && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           {examReady && (
             <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#D97706', fontWeight: 600 }}>
-              <ClipboardList size={14} /> O'qituvchi imtihonga tayyor deb belgiladi
+              <ClipboardList size={14} /> {t('exam.teacher_marked_ready')}
             </span>
           )}
-          <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreate(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-            <Plus size={14} /> {tt('exam.create_btn')}
+          <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreate(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            <Plus size={14} /> {t('exam.create_btn')}
           </motion.button>
         </div>
       )}
@@ -319,14 +374,15 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
       {exams.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
           <ClipboardList size={36} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
-          <p style={{ fontWeight: 600 }}>{tt('exam.no_exams')}</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>{isAdmin ? tt('exam.no_exams_sub_admin') : tt('exam.no_exams_sub')}</p>
+          <p style={{ fontWeight: 600 }}>{t('exam.no_exams')}</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>{isAdmin ? t('exam.no_exams_sub_admin') : t('exam.no_exams_sub')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {exams.map(ex => {
-            const finished = ex.status === 'finished'
-            const myResult = !isAdmin && !isTeacher ? ex.results?.find(r => r.student === userId) : null
+            const finished  = ex.status === 'finished'
+            const myResult  = !isAdmin && !isTeacher ? ex.results?.find(r => r.student === userId) : null
+            const absentCount = ex.results?.filter(r => r.absent).length ?? 0
             return (
               <div key={ex.id} style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 42, height: 42, borderRadius: 11, background: finished ? '#16A34A15' : 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -338,31 +394,37 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
                       background: finished ? '#16A34A15' : 'var(--accent-bg)',
                       color: finished ? '#16A34A' : 'var(--accent)' }}>
-                      {finished ? tt('exam.status_finished') : tt('exam.status_active')}
+                      {finished ? t('exam.status_finished') : t('exam.status_active')}
                     </span>
+                    {finished && absentCount > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: ABSENT_STYLE.bg, color: ABSENT_STYLE.color, display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <UserX size={10} /> {absentCount} {t('exam.absent_count')}
+                      </span>
+                    )}
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                    {ex.question_count} {tt('exam.q_short')} · {ex.created_by_name}
-                    {myResult && <span style={{ marginLeft: 10, fontWeight: 700, color: PCT_COLOR(myResult.percentage).color }}>{myResult.percentage}%</span>}
+                    {ex.question_count} {t('exam.q_short')} · {ex.created_by_name}
+                    {myResult && !myResult.absent && <span style={{ marginLeft: 10, fontWeight: 700, color: PCT_COLOR(myResult.percentage).color }}>{myResult.percentage}%</span>}
+                    {myResult?.absent && <span style={{ marginLeft: 10, fontWeight: 700, color: ABSENT_STYLE.color }}>{t('exam.absent_label')}</span>}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   {isAdmin && !finished && (
                     <button onClick={() => setView({ examId: ex.id, mode: 'score' })}
                       style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid var(--accent)', background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                      {tt('exam.score_btn')}
+                      {t('exam.score_btn')}
                     </button>
                   )}
                   {(isAdmin || isTeacher) && finished && (
                     <button onClick={() => setView({ examId: ex.id, mode: 'results' })}
                       style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #16A34A', background: '#16A34A15', color: '#16A34A', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                      {tt('exam.results_btn')}
+                      {t('exam.results_btn')}
                     </button>
                   )}
                   {!isAdmin && !isTeacher && myResult && (
                     <button onClick={() => setView({ examId: ex.id, mode: 'mine' })}
-                      style={{ padding: '7px 14px', borderRadius: 9, border: `1px solid ${PCT_COLOR(myResult.percentage).border}`, background: PCT_COLOR(myResult.percentage).bg, color: PCT_COLOR(myResult.percentage).color, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                      {tt('exam.results_btn')}
+                      style={{ padding: '7px 14px', borderRadius: 9, border: `1px solid ${myResult.absent ? ABSENT_STYLE.border : PCT_COLOR(myResult.percentage).border}`, background: myResult.absent ? ABSENT_STYLE.bg : PCT_COLOR(myResult.percentage).bg, color: myResult.absent ? ABSENT_STYLE.color : PCT_COLOR(myResult.percentage).color, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                      {t('exam.results_btn')}
                     </button>
                   )}
                 </div>
@@ -373,16 +435,16 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
       )}
 
       {/* Create exam modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={tt('exam.modal_title')}>
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('exam.modal_title')}>
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={labelStyle}>{tt('exam.name_label')}</label>
-            <input autoFocus placeholder={tt('exam.name_placeholder')} value={form.name}
+            <label style={labelStyle}>{t('exam.name_label')}</label>
+            <input autoFocus placeholder={t('exam.name_placeholder')} value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>{tt('exam.q_count_label')}</label>
+            <label style={labelStyle}>{t('exam.q_count_label')}</label>
             <input type="number" min={1} max={100} value={form.question_count}
               onChange={e => setForm(f => ({ ...f, question_count: Number(e.target.value) }))}
               style={{ ...inputStyle, width: 120 }} />
@@ -390,12 +452,12 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
             <button type="button" onClick={() => setShowCreate(false)}
               style={{ padding: '9px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-              {tt('exam.cancel')}
+              {t('exam.cancel')}
             </button>
             <motion.button type="submit" disabled={creating} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1 }}>
               {creating && <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} />}
-              {creating ? tt('exam.creating') : tt('exam.create')}
+              {creating ? t('exam.creating') : t('exam.create')}
             </motion.button>
           </div>
         </form>

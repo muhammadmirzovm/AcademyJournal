@@ -160,6 +160,7 @@ class ExamResult(models.Model):
     student  = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='exam_results')
     scores   = models.JSONField(default=list)    # [int, ...]  len == exam.question_count, each 0-5
     comments = models.JSONField(default=list)    # [str, ...]  len == exam.question_count, can be ''
+    absent   = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('exam', 'student')
@@ -174,11 +175,13 @@ class ExamResult(models.Model):
 
     @property
     def percentage(self):
-        if self.max_score == 0:
+        if self.absent or self.max_score == 0:
             return 0
         return round(self.total / self.max_score * 100)
 
     def __str__(self):
+        if self.absent:
+            return f'{self.student.username} — {self.exam.name}: Absent'
         return f'{self.student.username} — {self.exam.name}: {self.percentage}%'
 
 

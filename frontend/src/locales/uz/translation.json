@@ -9,7 +9,8 @@
     "questions": "Savollar",
     "settings": "Sozlamalar",
     "language": "Til",
-    "students": "O'quvchilar"
+    "students": "O'quvchilar",
+    "exams": "Imtihonlar"
   },
   "students": {
     "title": "Barcha o'quvchilar",
@@ -517,6 +518,8 @@
   },
   "common": {
     "groups": "Guruhlar",
+    "group": "Guruh",
+    "open": "Ochish",
     "loading": "Yuklanmoqda…",
     "fail_load": "Yuklashda xatolik."
   },
@@ -803,7 +806,23 @@
     "pass": "O'tdi",
     "fail": "O'tmadi",
     "your_result": "Sizning natijangiz",
-    "q_short": "s"
+    "q_short": "s",
+    "page_title": "Imtihonlar",
+    "page_sub": "Kelayotgan va faol imtihonlar",
+    "ready_groups_title": "Imtihon kutmoqda",
+    "teacher_marked_ready": "O'qituvchi imtihonga tayyor deb belgiladi",
+    "your_ready_groups": "Tayyor deb belgilangan guruhlaringiz",
+    "waiting_for_admin": "Admin imtihon yaratishini kutmoqda…",
+    "active_exams_title": "Faol imtihonlar",
+    "your_exams": "Sizning imtihonlaringiz",
+    "absent_btn": "Kelmadi",
+    "present": "Keldi",
+    "absent_label": "Kelmadi",
+    "absent_count": "kelmadi",
+    "mark_absent": "Kelmadi deb belgilash",
+    "mark_present": "Keldi deb belgilash",
+    "absent_student_msg": "Siz bu imtihonga kelmadingiz.",
+    "admin_notified": "Admin xabardor qilindi. Imtihon yaratilishini kuting."
   },
   "ann": {
     "tab": "E'lonlar",

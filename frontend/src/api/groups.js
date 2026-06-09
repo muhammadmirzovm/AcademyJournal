@@ -37,6 +37,7 @@ export const deleteAnnouncement         = (id)        => api.delete(`/announceme
 export const getGroupAnnouncements      = (gid)       => api.get(`/groups/${gid}/announcements/`)
 export const createGroupAnnouncement    = (gid, data) => api.post(`/groups/${gid}/announcements/`, data)
 
+export const getUpcomingExams = ()                  => api.get('/exams/upcoming/')
 export const toggleExamReady  = (gid)              => api.post(`/groups/${gid}/exam-ready/`)
 export const getExams         = (gid)              => api.get(`/groups/${gid}/exams/`)
 export const createExam       = (gid, data)        => api.post(`/groups/${gid}/exams/`, data)

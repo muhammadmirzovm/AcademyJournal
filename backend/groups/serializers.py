@@ -165,19 +165,22 @@ class ExamResultSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = ExamResult
-        fields = ('id', 'student', 'student_name', 'scores', 'comments', 'total', 'max_score', 'percentage')
+        fields = ('id', 'student', 'student_name', 'scores', 'comments', 'absent', 'total', 'max_score', 'percentage')
 
     def get_student_name(self, obj):
         return f'{obj.student.first_name} {obj.student.last_name}'.strip() or obj.student.username
 
 
 class ExamSerializer(serializers.ModelSerializer):
-    results      = ExamResultSerializer(many=True, read_only=True)
+    results         = ExamResultSerializer(many=True, read_only=True)
     created_by_name = serializers.SerializerMethodField()
+    group_id        = serializers.IntegerField(source='group.id', read_only=True)
+    group_name      = serializers.CharField(source='group.name', read_only=True)
 
     class Meta:
         model  = Exam
-        fields = ('id', 'name', 'question_count', 'status', 'created_by_name', 'results', 'created_at')
+        fields = ('id', 'name', 'question_count', 'status', 'created_by_name',
+                  'group_id', 'group_name', 'results', 'created_at')
         read_only_fields = ('status', 'created_at')
 
     def get_created_by_name(self, obj):

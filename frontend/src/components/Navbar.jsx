@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Sun, Moon, Menu, X, GraduationCap, LogOut, User, LayoutDashboard, Users, Globe, BookMarked, Settings } from 'lucide-react'
+import { Sun, Moon, Menu, X, GraduationCap, LogOut, User, LayoutDashboard, Users, Globe, BookMarked, Settings, ClipboardList } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -51,6 +51,7 @@ export default function Navbar() {
     ...(user.role === 'admin' || user.role === 'teacher'
       ? [{ to: '/students', label: t('nav.students'), icon: <GraduationCap size={15} /> }]
       : []),
+    { to: '/exams', label: t('nav.exams'), icon: <ClipboardList size={15} /> },
     ...(user.role === 'admin' || user.role === 'teacher'
       ? [{ to: '/settings', label: t('nav.settings'), icon: <Settings size={15} /> }]
       : []),

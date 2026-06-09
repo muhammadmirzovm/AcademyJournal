@@ -6,6 +6,7 @@ from .views import (
     MembershipDetailView, CoinView, EndLessonView,
     AcademyAnnouncementView, GroupAnnouncementView, AnnouncementDeleteView,
     GroupExamReadyView, ExamListCreateView, ExamDetailView, ExamSubmitView,
+    UpcomingExamsView,
 )
 
 urlpatterns = [
@@ -29,4 +30,5 @@ urlpatterns = [
     path('groups/<int:group_pk>/exams/',                                         ExamListCreateView.as_view(),       name='exam_list'),
     path('groups/<int:group_pk>/exams/<int:exam_pk>/',                           ExamDetailView.as_view(),           name='exam_detail'),
     path('groups/<int:group_pk>/exams/<int:exam_pk>/submit/',                    ExamSubmitView.as_view(),           name='exam_submit'),
+    path('exams/upcoming/',                                                      UpcomingExamsView.as_view(),        name='exams_upcoming'),
 ]

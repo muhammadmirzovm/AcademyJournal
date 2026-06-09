@@ -134,11 +134,13 @@ export default function GroupDetail() {
   const { show } = useToast()
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [group, setGroup]     = useState(null)
   const [members, setMembers] = useState([])
   const [lessons, setLessons] = useState([])
-  const [tab, setTab]         = useState('lessons')
+  const initialTab = new URLSearchParams(location.search).get('tab') || 'lessons'
+  const [tab, setTab]         = useState(initialTab)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied]   = useState(false)
 
