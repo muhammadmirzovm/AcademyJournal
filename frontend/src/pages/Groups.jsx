@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Plus, Users, Key, Copy, Check, LogIn, BookOpen, Loader2 } from 'lucide-react'
+import { Plus, Users, Key, Copy, Check, LogIn, BookOpen, Loader2, Search } from 'lucide-react'
 import { getGroups, createGroup, joinGroup } from '../api/groups'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -13,12 +13,15 @@ export default function Groups() {
   const { user } = useAuth()
   const { show } = useToast()
   const { t } = useTranslation()
-  const isTeacher = user?.role === 'teacher' || user?.role === 'admin'
+  const isAdmin   = user?.role === 'admin'
+  const isTeacher = user?.role === 'teacher' || isAdmin
 
   const [groups, setGroups]         = useState([])
   const [loading, setLoading]       = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin]     = useState(false)
+  const [search, setSearch]         = useState('')
+  const [teacherFilter, setTeacherFilter] = useState('all')
 
   const load = () => {
     setLoading(true)
@@ -26,12 +29,28 @@ export default function Groups() {
   }
   useEffect(load, [])
 
+  const teachers = useMemo(() => {
+    if (!isAdmin) return []
+    const map = {}
+    groups.forEach(g => { if (g.teacher_name) map[g.teacher] = g.teacher_name })
+    return Object.entries(map).map(([id, name]) => ({ id, name }))
+  }, [groups, isAdmin])
+
+  const visible = useMemo(() => groups.filter(g => {
+    const matchSearch  = !search || g.name.toLowerCase().includes(search.toLowerCase()) || g.teacher_name?.toLowerCase().includes(search.toLowerCase())
+    const matchTeacher = !isAdmin || teacherFilter === 'all' || String(g.teacher) === teacherFilter
+    return matchSearch && matchTeacher
+  }), [groups, search, teacherFilter, isAdmin])
+
+  const title = isAdmin ? t('groups.admin_title') : t('groups.title')
+  const sub   = isAdmin ? t('groups.admin_sub', { count: groups.length }) : isTeacher ? t('groups.teacher_sub') : t('groups.student_sub')
+
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{t('groups.title')}</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{isTeacher ? t('groups.teacher_sub') : t('groups.student_sub')}</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{title}</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{sub}</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {isTeacher ? (
@@ -46,15 +65,38 @@ export default function Groups() {
         </div>
       </div>
 
+      {/* Admin filters */}
+      {isAdmin && !loading && groups.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+            <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+            <input
+              placeholder={t('groups.search_placeholder')}
+              value={search} onChange={e => setSearch(e.target.value)}
+              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          {teachers.length > 1 && (
+            <select value={teacherFilter} onChange={e => setTeacherFilter(e.target.value)}
+              style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
+              <option value="all">{t('groups.all_teachers')}</option>
+              {teachers.map(tc => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
+            </select>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
           {[0,1,2,3].map(i => <CardSkeleton key={i} />)}
         </div>
-      ) : groups.length === 0 ? (
-        <EmptyState isTeacher={isTeacher} onAction={() => isTeacher ? setShowCreate(true) : setShowJoin(true)} />
+      ) : visible.length === 0 ? (
+        groups.length === 0
+          ? <EmptyState isTeacher={isTeacher} onAction={() => isTeacher ? setShowCreate(true) : setShowJoin(true)} />
+          : <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: '40px 0' }}>{t('groups.no_results')}</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
-          {groups.map((g, i) => <GroupCard key={g.id} group={g} index={i} isTeacher={isTeacher} />)}
+          {visible.map((g, i) => <GroupCard key={g.id} group={g} index={i} isTeacher={isTeacher} isAdmin={isAdmin} />)}
         </div>
       )}
 
@@ -67,7 +109,7 @@ export default function Groups() {
   )
 }
 
-function GroupCard({ group, index, isTeacher }) {
+function GroupCard({ group, index, isTeacher, isAdmin }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const copy = (e) => {
@@ -83,8 +125,19 @@ function GroupCard({ group, index, isTeacher }) {
       <div style={{ padding: '20px 20px 16px' }}>
         <Link to={`/groups/${group.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
           <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 6, color: 'var(--text)' }}>{group.name}</h3>
-          {group.description && <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 12 }}>{group.description}</p>}
+          {group.description && <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 8 }}>{group.description}</p>}
         </Link>
+
+        {/* Admin: show teacher badge prominently */}
+        {isAdmin && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'color-mix(in srgb, var(--accent) 20%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)' }}>{group.teacher_name?.[0]?.toUpperCase()}</span>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{group.teacher_name}</span>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
           {group.is_individual && (
             <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', letterSpacing: '0.04em' }}>
@@ -92,11 +145,13 @@ function GroupCard({ group, index, isTeacher }) {
             </span>
           )}
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: 'var(--text-muted)', marginBottom: isTeacher ? 14 : 0 }}>
           {!group.is_individual && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={13} />{group.member_count} {t('groups.students')}</span>}
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={13} />{t('groups.teacher')}: {group.teacher_name}</span>
+          {!isAdmin && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={13} />{t('groups.teacher')}: {group.teacher_name}</span>}
         </div>
-        {isTeacher && (
+
+        {isTeacher && !group.is_individual && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
               <Key size={12} />

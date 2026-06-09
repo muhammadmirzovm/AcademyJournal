@@ -4,12 +4,13 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum, Count
 from asgiref.sync import async_to_sync
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement, Exam, ExamResult
 from .serializers import (
     GroupSerializer, MemberSerializer, LessonSerializer,
     AttendanceSerializer, BulkAttendanceSerializer,
     ScoreSerializer, BulkScoreSerializer, JournalSerializer,
     HomeworkSubmissionSerializer, AnnouncementSerializer,
+    ExamSerializer, ExamResultSerializer,
 )
 
 
@@ -701,3 +702,122 @@ class AnnouncementDeleteView(APIView):
             return Response({'detail': 'No permission.'}, status=403)
         ann.delete()
         return Response(status=204)
+
+
+# ── Exam ready toggle (teacher) ───────────────────────────────────────────────
+
+class GroupExamReadyView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, group_pk):
+        group = get_object_or_404(Group, pk=group_pk)
+        if group.teacher != request.user:
+            return Response({'detail': 'Only the teacher of this group can toggle exam readiness.'}, status=403)
+        group.exam_ready = not group.exam_ready
+        group.save(update_fields=['exam_ready'])
+
+        if group.exam_ready:
+            _notify_exam_ready(group, request.user)
+
+        return Response({'exam_ready': group.exam_ready})
+
+
+def _notify_exam_ready(group, teacher):
+    import os, logging
+    import urllib.request, urllib.parse, json as _json
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not token:
+        return
+    teacher_name = f'{teacher.first_name} {teacher.last_name}'.strip() or teacher.username
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    admins = User.objects.filter(academy=teacher.academy, role='admin', telegram_id__isnull=False)
+    lang = group.language or 'uz'
+    if lang == 'ru':
+        text = f"📝 <b>Группа готова к экзамену</b>\n\n<b>{group.name}</b>\nУчитель: {teacher_name}\n\nПожалуйста, создайте экзамен в системе."
+    else:
+        text = f"📝 <b>Guruh imtihonga tayyor</b>\n\n<b>{group.name}</b>\nO'qituvchi: {teacher_name}\n\nIltimos, tizimda imtihon yarating."
+    for admin in admins:
+        url  = f'https://api.telegram.org/bot{token}/sendMessage'
+        data = urllib.parse.urlencode({'chat_id': admin.telegram_id, 'text': text, 'parse_mode': 'HTML'}).encode()
+        try:
+            urllib.request.urlopen(urllib.request.Request(url, data=data, method='POST'), timeout=8)
+        except Exception as exc:
+            logging.getLogger(__name__).error('exam_ready notify error: %s', exc)
+
+
+# ── Exams (admin creates, everyone reads) ────────────────────────────────────
+
+class ExamListCreateView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, group_pk):
+        group = get_object_or_404(Group, pk=group_pk)
+        is_admin   = request.user.role == 'admin'
+        is_teacher = group.teacher == request.user
+        is_member  = group.memberships.filter(student=request.user).exists()
+        if not (is_admin or is_teacher or is_member):
+            return Response({'detail': 'No access.'}, status=403)
+        exams = group.exams.prefetch_related('results__student').all()
+        return Response(ExamSerializer(exams, many=True).data)
+
+    def post(self, request, group_pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can create exams.'}, status=403)
+        group = get_object_or_404(Group, pk=group_pk)
+        ser = ExamSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        exam = ser.save(group=group, created_by=request.user, status=Exam.ACTIVE)
+        group.exam_ready = False
+        group.save(update_fields=['exam_ready'])
+        return Response(ExamSerializer(exam).data, status=201)
+
+
+class ExamDetailView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, group_pk, exam_pk):
+        exam = get_object_or_404(Exam, pk=exam_pk, group_id=group_pk)
+        return Response(ExamSerializer(exam).data)
+
+    def patch(self, request, group_pk, exam_pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin.'}, status=403)
+        exam = get_object_or_404(Exam, pk=exam_pk, group_id=group_pk)
+        if 'status' in request.data:
+            exam.status = request.data['status']
+            exam.save(update_fields=['status'])
+        return Response(ExamSerializer(exam).data)
+
+
+class ExamSubmitView(APIView):
+    """
+    POST /groups/{gid}/exams/{eid}/submit/
+    Body: { results: [{ student: id, scores: [0-5, ...] }, ...] }
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, group_pk, exam_pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can submit exam results.'}, status=403)
+        exam = get_object_or_404(Exam, pk=exam_pk, group_id=group_pk)
+        results_data = request.data.get('results', [])
+
+        for entry in results_data:
+            student_id = entry.get('student')
+            scores     = entry.get('scores', [])
+            comments   = entry.get('comments', [])
+            if len(scores) != exam.question_count:
+                return Response({'detail': f'Expected {exam.question_count} scores per student.'}, status=400)
+            for s in scores:
+                if not (0 <= int(s) <= 5):
+                    return Response({'detail': 'Each score must be 0–5.'}, status=400)
+            padded_comments = list(comments) + [''] * (exam.question_count - len(comments))
+            ExamResult.objects.update_or_create(
+                exam=exam, student_id=student_id,
+                defaults={'scores': [int(s) for s in scores], 'comments': padded_comments[:exam.question_count]},
+            )
+
+        exam.status = Exam.FINISHED
+        exam.save(update_fields=['status'])
+        return Response(ExamSerializer(exam).data)

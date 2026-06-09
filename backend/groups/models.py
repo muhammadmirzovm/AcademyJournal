@@ -20,6 +20,7 @@ class Group(models.Model):
     telegram_chat_id  = models.BigIntegerField(null=True, blank=True)
     language          = models.CharField(max_length=2, default='uz', choices=[('uz', 'Uzbek'), ('ru', 'Russian')])
     is_individual     = models.BooleanField(default=False)
+    exam_ready        = models.BooleanField(default=False)
     created_at        = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -132,6 +133,53 @@ class CoinTransaction(models.Model):
 
     def __str__(self):
         return f'{self.student.username} {self.amount:+d} coins in {self.group.name}'
+
+
+class Exam(models.Model):
+    DRAFT    = 'draft'
+    ACTIVE   = 'active'
+    FINISHED = 'finished'
+    STATUS_CHOICES = [(DRAFT, 'Draft'), (ACTIVE, 'Active'), (FINISHED, 'Finished')]
+
+    group          = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='exams')
+    name           = models.CharField(max_length=200)
+    question_count = models.PositiveIntegerField()
+    status         = models.CharField(max_length=10, choices=STATUS_CHOICES, default=DRAFT)
+    created_by     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_exams')
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.group.name} — {self.name}'
+
+
+class ExamResult(models.Model):
+    exam     = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='results')
+    student  = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='exam_results')
+    scores   = models.JSONField(default=list)    # [int, ...]  len == exam.question_count, each 0-5
+    comments = models.JSONField(default=list)    # [str, ...]  len == exam.question_count, can be ''
+
+    class Meta:
+        unique_together = ('exam', 'student')
+
+    @property
+    def total(self):
+        return sum(self.scores)
+
+    @property
+    def max_score(self):
+        return self.exam.question_count * 5
+
+    @property
+    def percentage(self):
+        if self.max_score == 0:
+            return 0
+        return round(self.total / self.max_score * 100)
+
+    def __str__(self):
+        return f'{self.student.username} — {self.exam.name}: {self.percentage}%'
 
 
 auditlog.register(Group)

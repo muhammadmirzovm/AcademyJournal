@@ -36,3 +36,9 @@ export const createAcademyAnnouncement  = (data)      => api.post('/announcement
 export const deleteAnnouncement         = (id)        => api.delete(`/announcements/${id}/`)
 export const getGroupAnnouncements      = (gid)       => api.get(`/groups/${gid}/announcements/`)
 export const createGroupAnnouncement    = (gid, data) => api.post(`/groups/${gid}/announcements/`, data)
+
+export const toggleExamReady  = (gid)              => api.post(`/groups/${gid}/exam-ready/`)
+export const getExams         = (gid)              => api.get(`/groups/${gid}/exams/`)
+export const createExam       = (gid, data)        => api.post(`/groups/${gid}/exams/`, data)
+export const submitExam       = (gid, eid, data)   => api.post(`/groups/${gid}/exams/${eid}/submit/`, data)
+export const finishExam       = (gid, eid)         => api.patch(`/groups/${gid}/exams/${eid}/`, { status: 'finished' })

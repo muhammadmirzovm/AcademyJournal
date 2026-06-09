@@ -281,34 +281,60 @@ function AcademyTab({ academy, onUpdated }) {
         </div>
       </div>
 
-      {/* Daily Report Time */}
+      {/* Reports section */}
       <div>
         <label style={labelStyle}>
           <Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          {t('settings.report_time')}
+          {t('settings.reports_section')}
         </label>
-        <input
-          type="time"
-          style={{ ...inputStyle(false), width: 'auto', minWidth: 140 }}
-          value={form.report_time}
-          onChange={e => setForm(f => ({ ...f, report_time: e.target.value }))}
-        />
-        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t('settings.report_time_hint')}</p>
-      </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-      {/* Weekly Parent Report Time */}
-      <div>
-        <label style={labelStyle}>
-          <Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-          {t('settings.weekly_report_time')}
-        </label>
-        <input
-          type="time"
-          style={{ ...inputStyle(false), width: 'auto', minWidth: 140 }}
-          value={form.weekly_report_time}
-          onChange={e => setForm(f => ({ ...f, weekly_report_time: e.target.value }))}
-        />
-        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t('settings.weekly_report_time_hint')}</p>
+          {/* Daily report card */}
+          <div style={{ border: '1.5px solid #F59E0B44', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#F59E0B0D' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: '#F59E0B22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Shield size={16} color="#F59E0B" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('settings.daily_report_title')}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{t('settings.daily_report_desc')}</p>
+              </div>
+              <input
+                type="time"
+                style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid #F59E0B55', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, fontWeight: 600, outline: 'none', width: 120, flexShrink: 0 }}
+                value={form.report_time}
+                onChange={e => setForm(f => ({ ...f, report_time: e.target.value }))}
+              />
+            </div>
+            <div style={{ padding: '8px 16px', background: '#F59E0B08', borderTop: '1px solid #F59E0B22' }}>
+              <p style={{ fontSize: 11, color: '#92400E', margin: 0 }}>📋 {t('settings.daily_report_recipients')}</p>
+            </div>
+          </div>
+
+          {/* Weekly report card */}
+          <div style={{ border: '1.5px solid #EC489944', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#EC48990D' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: '#EC489922', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Users size={16} color="#EC4899" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('settings.weekly_report_title')}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{t('settings.weekly_report_desc')}</p>
+              </div>
+              <input
+                type="time"
+                style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid #EC489955', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, fontWeight: 600, outline: 'none', width: 120, flexShrink: 0 }}
+                value={form.weekly_report_time}
+                onChange={e => setForm(f => ({ ...f, weekly_report_time: e.target.value }))}
+              />
+            </div>
+            <div style={{ padding: '8px 16px', background: '#EC489908', borderTop: '1px solid #EC489922' }}>
+              <p style={{ fontSize: 11, color: '#9D174D', margin: 0 }}>👨‍👩‍👧 {t('settings.weekly_report_recipients')}</p>
+            </div>
+          </div>
+
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>{t('settings.reports_tz_hint')}</p>
       </div>
 
       {/* Telegram groups */}

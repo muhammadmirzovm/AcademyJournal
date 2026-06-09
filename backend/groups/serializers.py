@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement, Exam, ExamResult
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -52,7 +52,7 @@ class GroupSerializer(serializers.ModelSerializer):
         model  = Group
         fields = ('id', 'name', 'description', 'join_key', 'teacher', 'teacher_name',
                   'member_count', 'is_member', 'coin_threshold', 'class_days',
-                  'telegram_chat_id', 'language', 'is_individual', 'created_at')
+                  'telegram_chat_id', 'language', 'is_individual', 'exam_ready', 'created_at')
         read_only_fields = ('join_key', 'teacher')
 
     def get_teacher_name(self, obj):
@@ -155,3 +155,32 @@ class JournalSerializer(serializers.ModelSerializer):
 
     def get_student_name(self, obj):
         return f'{obj.student.first_name} {obj.student.last_name}'.strip() or obj.student.username
+
+
+class ExamResultSerializer(serializers.ModelSerializer):
+    student_name = serializers.SerializerMethodField()
+    total        = serializers.IntegerField(read_only=True)
+    max_score    = serializers.IntegerField(read_only=True)
+    percentage   = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model  = ExamResult
+        fields = ('id', 'student', 'student_name', 'scores', 'comments', 'total', 'max_score', 'percentage')
+
+    def get_student_name(self, obj):
+        return f'{obj.student.first_name} {obj.student.last_name}'.strip() or obj.student.username
+
+
+class ExamSerializer(serializers.ModelSerializer):
+    results      = ExamResultSerializer(many=True, read_only=True)
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = Exam
+        fields = ('id', 'name', 'question_count', 'status', 'created_by_name', 'results', 'created_at')
+        read_only_fields = ('status', 'created_at')
+
+    def get_created_by_name(self, obj):
+        if not obj.created_by:
+            return ''
+        return f'{obj.created_by.first_name} {obj.created_by.last_name}'.strip() or obj.created_by.username

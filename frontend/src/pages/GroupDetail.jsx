@@ -6,9 +6,10 @@ import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRigh
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
-  getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement,
+  getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement, getExams,
 } from '../api/groups'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
+import ExamsTab from '../components/ExamsTab'
 import { getGames, createGame, deleteGame, getTopics, duplicateGame } from '../api/quiz'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -150,18 +151,20 @@ export default function GroupDetail() {
   const [showNewGame,       setShowNewGame]        = useState(false)
   const [announcements,     setAnnouncements]      = useState([])
   const [memberFilter,      setMemberFilter]       = useState('all')
+  const [exams,             setExams]              = useState([])
 
-  const isTeacher = (user?.role === 'teacher' && group?.teacher === user?.id) || user?.role === 'admin'
+  const isAdmin   = user?.role === 'admin'
+  const isTeacher = (user?.role === 'teacher' && group?.teacher === user?.id) || isAdmin
 
   const load = async () => {
     setLoading(true)
     try {
-      const [g, m, l, gm, anns] = await Promise.all([
+      const [g, m, l, gm, anns, ex] = await Promise.all([
         getGroup(id), getMembers(id), getLessons(id), getGames(id),
-        getGroupAnnouncements(id),
+        getGroupAnnouncements(id), getExams(id),
       ])
       setGroup(g.data); setMembers(m.data); setLessons(l.data); setGames(gm.data)
-      setAnnouncements(anns.data)
+      setAnnouncements(anns.data); setExams(ex.data)
     } catch { show(t('group_detail.toast_load_fail'), 'error') }
     finally { setLoading(false) }
   }
@@ -274,6 +277,7 @@ export default function GroupDetail() {
           ...(!group.is_individual ? [{ key: 'members', label: t('group_detail.tab_members') }] : []),
           { key: 'games',         label: t('quiz.games') },
           { key: 'announcements', label: t('ann.tab') },
+          { key: 'exams',         label: t('exam.tab') },
         ].map(item => (
           <button key={item.key} className="tab-btn" onClick={() => setTab(item.key)} style={{
             padding: '8px 18px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, textTransform: 'capitalize', whiteSpace: 'nowrap',
@@ -390,6 +394,20 @@ export default function GroupDetail() {
           canPost={isTeacher}
           onPost={handlePostGroupAnn}
           onDelete={handleDeleteGroupAnn}
+        />
+      )}
+
+      {/* Exams tab */}
+      {tab === 'exams' && (
+        <ExamsTab
+          group={group}
+          members={members}
+          exams={exams}
+          setExams={setExams}
+          isAdmin={isAdmin}
+          isTeacher={isTeacher && !isAdmin}
+          userId={user?.id}
+          groupId={id}
         />
       )}
 
