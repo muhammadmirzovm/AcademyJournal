@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 _scheduler = BackgroundScheduler(timezone='UTC')
 
 
-def _run(academy_id):
+def _run_daily(academy_id):
     from academies.models import Academy
     from .management.commands.send_daily_report import run_report_for_academy
     try:
@@ -17,27 +17,53 @@ def _run(academy_id):
         logger.error('Daily report failed for academy %s: %s', academy_id, exc)
 
 
+def _run_weekly(academy_id):
+    from academies.models import Academy
+    from .management.commands.send_weekly_report import run_weekly_report_for_academy
+    try:
+        academy = Academy.objects.get(id=academy_id)
+        run_weekly_report_for_academy(academy)
+    except Exception as exc:
+        logger.error('Weekly report failed for academy %s: %s', academy_id, exc)
+
+
 def _load_all():
     from academies.models import Academy
-    for academy in Academy.objects.filter(report_time__isnull=False):
+    for academy in Academy.objects.all():
         reschedule(academy)
     logger.info('Loaded %d academy report schedules', len(_scheduler.get_jobs()))
 
 
 def reschedule(academy):
-    job_id = f'daily_report_{academy.id}'
-    if _scheduler.get_job(job_id):
-        _scheduler.remove_job(job_id)
+    # Daily report
+    daily_id = f'daily_report_{academy.id}'
+    if _scheduler.get_job(daily_id):
+        _scheduler.remove_job(daily_id)
     if academy.report_time:
         _scheduler.add_job(
-            _run,
+            _run_daily,
             CronTrigger(hour=academy.report_time.hour, minute=academy.report_time.minute),
-            id=job_id,
+            id=daily_id,
             args=[academy.id],
         )
-        logger.info('Scheduled report for academy %s at %s UTC', academy.name, academy.report_time)
-    else:
-        logger.info('Removed report schedule for academy %s', academy.name)
+        logger.info('Scheduled daily report for academy %s at %s UTC', academy.name, academy.report_time)
+
+    # Weekly parent report — runs every Sunday
+    weekly_id = f'weekly_report_{academy.id}'
+    if _scheduler.get_job(weekly_id):
+        _scheduler.remove_job(weekly_id)
+    if academy.weekly_report_time:
+        _scheduler.add_job(
+            _run_weekly,
+            CronTrigger(
+                day_of_week='sun',
+                hour=academy.weekly_report_time.hour,
+                minute=academy.weekly_report_time.minute,
+            ),
+            id=weekly_id,
+            args=[academy.id],
+        )
+        logger.info('Scheduled weekly report for academy %s at Sun %s UTC', academy.name, academy.weekly_report_time)
 
 
 def start():
