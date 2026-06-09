@@ -183,7 +183,7 @@ function uztToUtc(hhmm) {
 function AcademyTab({ academy, onUpdated }) {
   const { t } = useTranslation()
   const { show }  = useToast()
-  const [form, setForm]       = useState({ name: academy.name, primary_color: academy.primary_color, report_time: utcToUzt(academy.report_time) })
+  const [form, setForm]       = useState({ name: academy.name, primary_color: academy.primary_color, report_time: utcToUzt(academy.report_time), weekly_report_time: utcToUzt(academy.weekly_report_time) })
   const [loading, setLoading] = useState(false)
   const [saved, setSaved]     = useState(false)
 
@@ -223,7 +223,7 @@ function AcademyTab({ academy, onUpdated }) {
     e.preventDefault()
     setLoading(true)
     try {
-      const payload = { ...form, report_time: uztToUtc(form.report_time) || null }
+      const payload = { ...form, report_time: uztToUtc(form.report_time) || null, weekly_report_time: uztToUtc(form.weekly_report_time) || null }
       const { data } = await api.patch('/academy/', payload)
       onUpdated(data)
       setSaved(true)
@@ -294,6 +294,21 @@ function AcademyTab({ academy, onUpdated }) {
           onChange={e => setForm(f => ({ ...f, report_time: e.target.value }))}
         />
         <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t('settings.report_time_hint')}</p>
+      </div>
+
+      {/* Weekly Parent Report Time */}
+      <div>
+        <label style={labelStyle}>
+          <Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          {t('settings.weekly_report_time')}
+        </label>
+        <input
+          type="time"
+          style={{ ...inputStyle(false), width: 'auto', minWidth: 140 }}
+          value={form.weekly_report_time}
+          onChange={e => setForm(f => ({ ...f, weekly_report_time: e.target.value }))}
+        />
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t('settings.weekly_report_time_hint')}</p>
       </div>
 
       {/* Telegram groups */}
