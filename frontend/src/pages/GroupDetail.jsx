@@ -153,7 +153,6 @@ export default function GroupDetail() {
   const [games,             setGames]             = useState([])
   const [showNewGame,       setShowNewGame]        = useState(false)
   const [announcements,     setAnnouncements]      = useState([])
-  const [memberFilter,      setMemberFilter]       = useState('all')
   const [exams,             setExams]              = useState([])
   const [showAddStudent,    setShowAddStudent]      = useState(false)
 
@@ -343,49 +342,14 @@ export default function GroupDetail() {
           {members.length === 0 ? (
             <EmptyTab icon={Users} text={t('group_detail.no_students')} sub={t('group_detail.no_students_sub')} />
           ) : (
-            <>
-              {isTeacher && (
-                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                  {[
-                    { key: 'all',         label: t('group_detail.filter_all'),         icon: null },
-                    { key: 'with_parent', label: t('group_detail.filter_with_parent'), icon: <UserCheck size={12} /> },
-                    { key: 'no_parent',   label: t('group_detail.filter_no_parent'),   icon: null },
-                  ].map(f => (
-                    <button key={f.key} onClick={() => setMemberFilter(f.key)} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                      cursor: 'pointer', border: '1px solid',
-                      borderColor: memberFilter === f.key ? 'var(--accent)' : 'var(--border)',
-                      background:  memberFilter === f.key ? 'var(--accent-bg)' : 'transparent',
-                      color:       memberFilter === f.key ? 'var(--accent)' : 'var(--text-muted)',
-                      transition: 'all 0.15s',
-                    }}>
-                      {f.icon}{f.label}
-                      {f.key === 'with_parent' && (
-                        <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: 10, lineHeight: '16px' }}>
-                          {members.filter(m => m.has_parent).length}
-                        </span>
-                      )}
-                      {f.key === 'no_parent' && (
-                        <span style={{ background: 'var(--danger)', color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: 10, lineHeight: '16px' }}>
-                          {members.filter(m => !m.has_parent).length}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {rankMembers(members)
-                  .filter(m => memberFilter === 'with_parent' ? m.has_parent : memberFilter === 'no_parent' ? !m.has_parent : true)
-                  .map((m, i) => (
-                    <MemberRow key={m.membership_id} member={m} index={i} isTeacher={isTeacher}
-                      onEditJoinDate={() => setEditingMembership(m)}
-                      onRemove={() => handleRemoveMember(m.membership_id)}
-                      onCoin={(amount) => handleCoin(m.id, m.membership_id, amount)} />
-                  ))}
-              </div>
-            </>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {rankMembers(members).map((m, i) => (
+                <MemberRow key={m.membership_id} member={m} index={i} isTeacher={isTeacher}
+                  onEditJoinDate={() => setEditingMembership(m)}
+                  onRemove={() => handleRemoveMember(m.membership_id)}
+                  onCoin={(amount) => handleCoin(m.id, m.membership_id, amount)} />
+              ))}
+            </div>
           )}
         </div>
       )}
