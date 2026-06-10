@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, ReferenceLine,
@@ -44,8 +45,13 @@ export default function ScoreLineChart({ data }) {
   const dotR = chartData.length > 30 ? 2.5 : 4
   const tickInterval = chartData.length > 20 ? Math.floor(chartData.length / 10) : 0
 
+  const scrollRef = useRef(null)
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
+  }, [data])
+
   return (
-    <div style={{ overflowX: 'auto', width: '100%' }}>
+    <div ref={scrollRef} style={{ overflowX: 'auto', width: '100%' }}>
       <div style={{ minWidth, width: '100%' }}>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
