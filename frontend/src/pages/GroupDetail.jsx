@@ -237,6 +237,23 @@ export default function GroupDetail() {
             )}
           </div>
           {group.description && <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 8 }}>{group.description}</p>}
+          {group.is_individual && members.length > 0 && (() => {
+            const s = members[0]
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: 10, padding: '8px 14px', marginBottom: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', flexShrink: 0 }}>
+                  {(s.first_name?.[0] || s.username?.[0] || '?').toUpperCase()}
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{s.first_name} {s.last_name}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>@{s.username}</p>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', borderRadius: 6, padding: '2px 8px' }}>
+                  {t('group_detail.connected_student')}
+                </span>
+              </div>
+            )
+          })()}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
             {!group.is_individual && <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Users size={14} />{members.length} {t('group_detail.students_count')}</span>}
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><BookOpen size={14} />{lessons.length} {t('group_detail.lessons_count')}</span>
@@ -264,7 +281,7 @@ export default function GroupDetail() {
                   </motion.button>
                 </div>
               )}
-              {group.is_individual && (
+              {group.is_individual && members.length === 0 && (
                 <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowAddStudent(true)} style={primaryBtn}>
                   <UserPlus size={13} /> {t('group_detail.add_student')}
                 </motion.button>

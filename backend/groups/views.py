@@ -74,6 +74,9 @@ class JoinGroupView(APIView):
         if GroupMembership.objects.filter(group=group, student=request.user).exists():
             return Response({'detail': 'Already a member.'}, status=400)
 
+        if group.is_individual and group.memberships.exists():
+            return Response({'detail': 'Individual group already has a student.'}, status=400)
+
         GroupMembership.objects.create(group=group, student=request.user)
 
         for lesson in group.lessons.all():
@@ -346,6 +349,9 @@ class AddMemberDirectView(APIView):
         student = get_object_or_404(User, pk=user_id, role='student')
         if GroupMembership.objects.filter(group=group, student=student).exists():
             return Response({'detail': 'Already a member.'}, status=400)
+
+        if group.is_individual and group.memberships.exists():
+            return Response({'detail': 'Individual group already has a student.'}, status=400)
 
         GroupMembership.objects.create(group=group, student=student)
         return Response({'detail': 'Added.'}, status=201)

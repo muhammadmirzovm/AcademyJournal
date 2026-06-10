@@ -316,6 +316,7 @@
     "search_student_hint": "Введите имя ученика…",
     "no_students_found": "Ученики не найдены.",
     "toast_student_added": "Ученик добавлен!",
+    "connected_student": "Подключённый ученик",
     "add_lesson": "Добавить урок",
     "no_lessons": "Уроков пока нет.",
     "no_lessons_teacher": "Добавьте первый урок выше.",

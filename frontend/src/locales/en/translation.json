@@ -316,6 +316,7 @@
     "search_student_hint": "Type a student's name…",
     "no_students_found": "No students found.",
     "toast_student_added": "Student added!",
+    "connected_student": "Connected student",
     "add_lesson": "Add lesson",
     "no_lessons": "No lessons yet.",
     "no_lessons_teacher": "Add your first lesson above.",
