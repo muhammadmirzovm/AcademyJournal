@@ -332,19 +332,25 @@ export default function Profile() {
         )}
       </motion.div>
 
-      {/* Sticker shelf — students only */}
-      {profile.role === 'student' && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginBottom: 24, boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-            <div style={{ ...chartIconWrap, background: 'rgba(217,119,6,0.1)' }}>
-              <Star size={16} color="#D97706" fill="#D97706" />
+      {/* Sticker showcase — students only */}
+      {profile.role === 'student' && (() => {
+        const stickerCount = stats?.total_stickers || 0
+        const lvl = getLevel(stickerCount)
+        const headerColor = lvl?.color || '#D97706'
+        const headerBg    = lvl?.bg    || 'rgba(217,119,6,0.1)'
+        return (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
+            style={{ background: 'var(--surface)', border: `1px solid ${lvl ? lvl.border : 'var(--border)'}`, borderRadius: 14, padding: 24, marginBottom: 24, boxShadow: lvl ? `0 0 0 0px ${lvl.glow}, var(--shadow-sm)` : 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+              <div style={{ ...chartIconWrap, background: headerBg }}>
+                <Star size={16} color={headerColor} fill={headerColor} />
+              </div>
+              <p style={{ fontWeight: 700, fontSize: 14 }}>{t('profile.stickers')}</p>
             </div>
-            <p style={{ fontWeight: 700, fontSize: 14 }}>{t('profile.stickers')}</p>
-          </div>
-          <StickerShelf count={stats?.total_stickers || 0} t={t} />
-        </motion.div>
-      )}
+            <StickerShowcase count={stickerCount} t={t} />
+          </motion.div>
+        )
+      })()}
 
       {/* Groups */}
       {groups.length > 0 && (
@@ -490,31 +496,113 @@ export default function Profile() {
   )
 }
 
-const MAX_VISIBLE_STICKERS = 20
+const STICKER_LEVELS = [
+  { key: 'bronze',   threshold: 1,  next: 6,    color: '#CD7F32', glow: 'rgba(205,127,50,0.25)',  bg: 'rgba(205,127,50,0.1)',  border: 'rgba(205,127,50,0.3)',  emoji: '🥉' },
+  { key: 'silver',   threshold: 6,  next: 16,   color: '#94A3B8', glow: 'rgba(148,163,184,0.25)', bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.3)', emoji: '🥈' },
+  { key: 'gold',     threshold: 16, next: 31,   color: '#F59E0B', glow: 'rgba(245,158,11,0.3)',   bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.3)',  emoji: '🥇' },
+  { key: 'platinum', threshold: 31, next: null, color: '#818CF8', glow: 'rgba(129,140,248,0.3)',  bg: 'rgba(129,140,248,0.1)', border: 'rgba(129,140,248,0.3)', emoji: '💎' },
+]
 
-function StickerShelf({ count, t }) {
-  if (count === 0) {
-    return <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('profile.no_stickers')}</p>
+const STAR_ROTATIONS = [-6, 4, -3, 7, -5, 3, -8, 5, -2, 6]
+
+function getLevel(count) {
+  for (let i = STICKER_LEVELS.length - 1; i >= 0; i--) {
+    if (count >= STICKER_LEVELS[i].threshold) return STICKER_LEVELS[i]
   }
-  const visible = Math.min(count, MAX_VISIBLE_STICKERS)
-  const overflow = count - visible
+  return null
+}
+
+function StickerShowcase({ count, t }) {
+  const level = getLevel(count)
+
+  if (count === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '16px 0' }}>
+        <div style={{ fontSize: 36, marginBottom: 8 }}>⭐</div>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('profile.no_stickers')}</p>
+      </div>
+    )
+  }
+
+  const progress = level.next ? (count - level.threshold) / (level.next - level.threshold) : 1
+  const toNext   = level.next ? level.next - count : 0
+  const visibleStars = Math.min(count, 10)
+
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-      {Array.from({ length: visible }).map((_, i) => (
-        <motion.div key={i}
-          initial={{ scale: 0, rotate: -20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 18, delay: i * 0.035 }}
-          style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(217,119,6,0.08)', border: '1.5px solid rgba(217,119,6,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Star size={18} color="#D97706" fill="#D97706" />
-        </motion.div>
-      ))}
-      {overflow > 0 && (
-        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(217,119,6,0.08)', border: '1.5px solid rgba(217,119,6,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#D97706' }}>
-          +{overflow}
+    <div>
+      {/* Count + level badge */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div>
+          <motion.p
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 20 }}
+            style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, color: level.color, fontFamily: 'var(--font-display)', letterSpacing: '-2px' }}
+          >
+            {count}
+          </motion.p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontWeight: 500 }}>{t('profile.stickers')}</p>
         </div>
-      )}
+
+        <motion.div
+          initial={{ scale: 0, rotate: -12 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.12 }}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+            background: level.bg, border: `1.5px solid ${level.border}`,
+            borderRadius: 16, padding: '14px 22px',
+            boxShadow: `0 0 24px ${level.glow}`,
+          }}
+        >
+          <span style={{ fontSize: 34, lineHeight: 1 }}>{level.emoji}</span>
+          <span style={{ fontSize: 10, fontWeight: 800, color: level.color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            {t(`profile.sticker_level_${level.key}`)}
+          </span>
+        </motion.div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 6 }}>
+          <span style={{ color: 'var(--text-muted)' }}>{count} / {level.next ?? '∞'}</span>
+          <span style={{ color: level.color, fontWeight: 700 }}>
+            {level.next ? t('profile.sticker_to_next', { n: toNext }) : t('profile.sticker_max_level')}
+          </span>
+        </div>
+        <div style={{ height: 8, borderRadius: 99, background: 'var(--border)', overflow: 'hidden' }}>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(progress * 100, 100)}%` }}
+            transition={{ duration: 0.9, ease: 'easeOut', delay: 0.18 }}
+            style={{ height: '100%', borderRadius: 99, background: `linear-gradient(90deg, ${level.color}cc, ${level.color})`, boxShadow: `0 0 8px ${level.glow}` }}
+          />
+        </div>
+      </div>
+
+      {/* Decorative star row */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {Array.from({ length: visibleStars }).map((_, i) => (
+          <motion.div key={i}
+            initial={{ scale: 0, rotate: -20 }}
+            animate={{ scale: 1, rotate: STAR_ROTATIONS[i % STAR_ROTATIONS.length] }}
+            transition={{ type: 'spring', stiffness: 380, damping: 16, delay: 0.28 + i * 0.04 }}
+            whileHover={{ scale: 1.25, rotate: 0 }}
+            style={{ width: 34, height: 34, borderRadius: 9, background: level.bg, border: `1.5px solid ${level.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'default' }}
+          >
+            <Star size={16} color={level.color} fill={level.color} />
+          </motion.div>
+        ))}
+        {count > 10 && (
+          <motion.div
+            initial={{ scale: 0 }} animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 16, delay: 0.7 }}
+            style={{ width: 34, height: 34, borderRadius: 9, background: level.bg, border: `1.5px solid ${level.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: level.color }}
+          >
+            +{count - 10}
+          </motion.div>
+        )}
+      </div>
     </div>
   )
 }
