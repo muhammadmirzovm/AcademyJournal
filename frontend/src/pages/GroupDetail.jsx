@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
   getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement, getExams,
+  addMemberDirect, searchStudents,
 } from '../api/groups'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
 import ExamsTab from '../components/ExamsTab'
@@ -154,6 +155,7 @@ export default function GroupDetail() {
   const [announcements,     setAnnouncements]      = useState([])
   const [memberFilter,      setMemberFilter]       = useState('all')
   const [exams,             setExams]              = useState([])
+  const [showAddStudent,    setShowAddStudent]      = useState(false)
 
   const isAdmin   = user?.role === 'admin'
   const isTeacher = (user?.role === 'teacher' && group?.teacher === user?.id) || isAdmin
@@ -261,6 +263,11 @@ export default function GroupDetail() {
                     {copied ? t('group_detail.copied') : t('group_detail.copy_key')}
                   </motion.button>
                 </div>
+              )}
+              {group.is_individual && (
+                <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowAddStudent(true)} style={primaryBtn}>
+                  <UserPlus size={13} /> {t('group_detail.add_student')}
+                </motion.button>
               )}
               <button onClick={() => setShowEditGroup(true)} style={ghostBtn}><Pencil size={13} /> {t('group_detail.edit_group')}</button>
               <button onClick={() => setShowDeleteGroup(true)} style={dangerOutlineBtn}><Trash2 size={13} /> {t('group_detail.delete_group')}</button>
@@ -425,6 +432,8 @@ export default function GroupDetail() {
         onUpdated={u => { setMembers(ms => ms.map(m => m.membership_id === u.membership_id ? { ...m, ...u } : m)); setEditingMembership(null); show(t('group_detail.toast_join_updated'), 'success') }} />
       <NewGameModal open={showNewGame} onClose={() => setShowNewGame(false)} groupId={id}
         onCreated={g => { setGames(gs => [g, ...gs]); setShowNewGame(false); show(t('quiz.toast_game_created'), 'success') }} />
+      <AddStudentModal open={showAddStudent} onClose={() => setShowAddStudent(false)} groupId={id}
+        onAdded={m => { setMembers(ms => [...ms, m]); show(t('group_detail.toast_student_added'), 'success') }} />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
@@ -818,6 +827,102 @@ function EditJoinDateModal({ open, onClose, onUpdated, membership, groupId }) {
           </motion.button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+// ── Add Student Modal (individual groups) ─────────────────────────────────────
+
+function AddStudentModal({ open, onClose, groupId, onAdded }) {
+  const { show } = useToast(); const { t } = useTranslation()
+  const [query,   setQuery]   = useState('')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [adding,  setAdding]  = useState(null)
+
+  useEffect(() => {
+    if (!open) { setQuery(''); setResults([]) }
+  }, [open])
+
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); return }
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const { data } = await searchStudents(query)
+        setResults(data.results || data)
+      } catch {} finally { setLoading(false) }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  const handleAdd = async (student) => {
+    setAdding(student.id)
+    try {
+      await addMemberDirect(groupId, student.id)
+      onAdded({
+        id: student.id,
+        username: student.username,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        membership_id: null,
+        comprehension: null,
+        coin_balance: 0,
+        sticker_count: 0,
+        rank: 99,
+        has_parent: false,
+        joined_at: new Date().toISOString(),
+      })
+      onClose()
+    } catch (err) {
+      show(err?.response?.data?.detail || t('group_detail.toast_member_fail'), 'error')
+    } finally { setAdding(null) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={t('group_detail.add_student')}>
+      <div style={{ position: 'relative', marginBottom: 16 }}>
+        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <input
+          autoFocus
+          placeholder={t('group_detail.search_student_placeholder')}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+        />
+      </div>
+
+      <div style={{ minHeight: 120, maxHeight: 300, overflowY: 'auto' }}>
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+            <Loader2 size={20} color="var(--accent)" style={{ animation: 'spin 0.7s linear infinite' }} />
+          </div>
+        )}
+        {!loading && query && results.length === 0 && (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: 24 }}>{t('group_detail.no_students_found')}</p>
+        )}
+        {!loading && !query && (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: 24 }}>{t('group_detail.search_student_hint')}</p>
+        )}
+        {results.map(s => (
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: 'var(--accent)', flexShrink: 0 }}>
+              {(s.first_name?.[0] || s.username?.[0] || '?').toUpperCase()}
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>{s.first_name} {s.last_name}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>@{s.username}</p>
+            </div>
+            <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.95 }}
+              onClick={() => handleAdd(s)}
+              disabled={adding === s.id}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: adding === s.id ? 'not-allowed' : 'pointer', opacity: adding === s.id ? 0.7 : 1 }}>
+              {adding === s.id ? <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} /> : <UserPlus size={12} />}
+              {t('group_detail.add_btn')}
+            </motion.button>
+          </div>
+        ))}
+      </div>
     </Modal>
   )
 }

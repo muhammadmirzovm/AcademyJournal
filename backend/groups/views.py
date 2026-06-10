@@ -326,6 +326,31 @@ class HomeworkView(APIView):
 
 # ── Membership ────────────────────────────────────────────────────────────────
 
+class AddMemberDirectView(APIView):
+    """POST /groups/<pk>/members/add/  { user_id: int }
+    Admin or the group's teacher adds a student directly (no join key needed).
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only teacher or admin.'}, status=403)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'detail': 'user_id required.'}, status=400)
+
+        student = get_object_or_404(User, pk=user_id, role='student')
+        if GroupMembership.objects.filter(group=group, student=student).exists():
+            return Response({'detail': 'Already a member.'}, status=400)
+
+        GroupMembership.objects.create(group=group, student=student)
+        return Response({'detail': 'Added.'}, status=201)
+
+
 class MembershipDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 

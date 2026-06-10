@@ -6,7 +6,7 @@ from .views import (
     MembershipDetailView, CoinView, EndLessonView,
     AcademyAnnouncementView, GroupAnnouncementView, AnnouncementDeleteView,
     GroupExamReadyView, ExamListCreateView, ExamDetailView, ExamSubmitView,
-    UpcomingExamsView,
+    UpcomingExamsView, AddMemberDirectView,
 )
 
 urlpatterns = [
@@ -14,6 +14,7 @@ urlpatterns = [
     path('groups/<int:pk>/',                                                    GroupDetailView.as_view(),      name='group_detail'),
     path('groups/join/',                                                        JoinGroupView.as_view(),        name='group_join'),
     path('groups/<int:pk>/members/',                                            GroupMembersView.as_view(),     name='group_members'),
+    path('groups/<int:pk>/members/add/',                                        AddMemberDirectView.as_view(),  name='group_member_add'),
     path('groups/<int:pk>/members/<int:member_pk>/',                            MembershipDetailView.as_view(), name='membership_detail'),
     path('groups/<int:pk>/coins/',                                              CoinView.as_view(),             name='group_coins'),
     path('groups/<int:group_pk>/lessons/',                                      LessonListCreateView.as_view(), name='lesson_list'),

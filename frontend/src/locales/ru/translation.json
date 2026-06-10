@@ -311,6 +311,11 @@
   "group_detail": {
     "tab_lessons": "уроки",
     "tab_members": "участники",
+    "add_student": "Добавить ученика",
+    "search_student_placeholder": "Поиск по имени или username…",
+    "search_student_hint": "Введите имя ученика…",
+    "no_students_found": "Ученики не найдены.",
+    "toast_student_added": "Ученик добавлен!",
     "add_lesson": "Добавить урок",
     "no_lessons": "Уроков пока нет.",
     "no_lessons_teacher": "Добавьте первый урок выше.",

@@ -311,6 +311,11 @@
   "group_detail": {
     "tab_lessons": "darslar",
     "tab_members": "a'zolar",
+    "add_student": "O'quvchi qo'shish",
+    "search_student_placeholder": "Ism yoki username bo'yicha qidirish…",
+    "search_student_hint": "O'quvchi ismini yozing…",
+    "no_students_found": "O'quvchi topilmadi.",
+    "toast_student_added": "O'quvchi qo'shildi!",
     "add_lesson": "Dars qo'shish",
     "no_lessons": "Hali darslar yo'q.",
     "no_lessons_teacher": "Yuqorida birinchi darsingizni qo'shing.",

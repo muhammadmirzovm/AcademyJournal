@@ -311,6 +311,11 @@
   "group_detail": {
     "tab_lessons": "lessons",
     "tab_members": "members",
+    "add_student": "Add student",
+    "search_student_placeholder": "Search by name or username…",
+    "search_student_hint": "Type a student's name…",
+    "no_students_found": "No students found.",
+    "toast_student_added": "Student added!",
     "add_lesson": "Add lesson",
     "no_lessons": "No lessons yet.",
     "no_lessons_teacher": "Add your first lesson above.",
