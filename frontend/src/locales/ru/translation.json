@@ -168,7 +168,7 @@
     "confirm_password": "Подтвердите пароль",
     "create_btn": "Создать аккаунт",
     "creating": "Создаём аккаунт…",
-    "welcome_back": "С возвращением",
+    "welcome_back": "Добро пожаловать",
     "no_account": "Нет аккаунта?",
     "create_one": "Создать",
     "sign_in_btn": "Войти",
@@ -228,7 +228,7 @@
     "cancel": "Отмена"
   },
   "dashboard": {
-    "welcome": "С возвращением, {{name}}",
+    "welcome": "Добро пожаловать, {{name}}",
     "teacher_sub": "Управляйте группами и следите за прогрессом учеников.",
     "student_sub": "Просматривайте группы, оценки и посещаемость.",
     "admin_sub": "Управляйте академией, участниками и настройками.",
@@ -273,6 +273,7 @@
     "no_groups_student": "Попросите учителя дать вам ключ для вступления.",
     "create_group": "Создать группу",
     "students": "учеников",
+    "graduated": "ВЫПУСКНИКИ",
     "teacher": "Учитель",
     "copy": "Копировать",
     "copied": "Скопировано",
@@ -283,6 +284,7 @@
     "description_optional": "(необязательно)",
     "description_placeholder": "Чему будут учиться студенты?",
     "class_days": "Дни занятий",
+    "class_time": "Время занятий",
     "cancel": "Отмена",
     "creating": "Создаём…",
     "create_btn": "Создать группу",
@@ -384,7 +386,13 @@
     "badge_has_parent": "Родитель подключён",
     "badge_no_parent": "Родитель не подключён",
     "badge_tg_yes": "Telegram подключён",
-    "badge_tg_no": "Telegram не подключён"
+    "badge_tg_no": "Telegram не подключён",
+    "graduated": "ВЫПУСКНИКИ",
+    "graduate": "Отметить как выпускников",
+    "ungraduate": "Восстановить",
+    "toast_graduated": "Группа отмечена как выпускники.",
+    "toast_ungraduated": "Группа восстановлена.",
+    "toast_graduate_fail": "Произошла ошибка."
   },
   "lesson": {
     "tab_attendance": "посещаемость",

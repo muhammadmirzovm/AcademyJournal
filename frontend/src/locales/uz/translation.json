@@ -273,6 +273,7 @@
     "no_groups_student": "Qo'shilish kaliti uchun o'qituvchingizdan so'rang.",
     "create_group": "Guruh yaratish",
     "students": "o'quvchi",
+    "graduated": "BITIRUVCHI",
     "teacher": "O'qituvchi",
     "copy": "Nusxa",
     "copied": "Nusxalandi",
@@ -283,6 +284,7 @@
     "description_optional": "(ixtiyoriy)",
     "description_placeholder": "O'quvchilar nima o'rganadilar?",
     "class_days": "Dars kunlari",
+    "class_time": "Dars vaqti",
     "cancel": "Bekor qilish",
     "creating": "Yaratilmoqda…",
     "create_btn": "Guruh yaratish",
@@ -384,7 +386,13 @@
     "badge_has_parent": "Ota-ona ulangan",
     "badge_no_parent": "Ota-ona ulanmagan",
     "badge_tg_yes": "Telegram ulangan",
-    "badge_tg_no": "Telegram yo'q"
+    "badge_tg_no": "Telegram yo'q",
+    "graduated": "BITIRUVCHI",
+    "graduate": "Bitirdi deb belgilash",
+    "ungraduate": "Qayta faollashtirish",
+    "toast_graduated": "Guruh bitiruvchi deb belgilandi.",
+    "toast_ungraduated": "Guruh qayta faollashtirildi.",
+    "toast_graduate_fail": "Xatolik yuz berdi."
   },
   "lesson": {
     "tab_attendance": "davomat",

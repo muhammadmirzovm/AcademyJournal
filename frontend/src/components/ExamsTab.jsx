@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX } from 'lucide-react'
+import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toggleExamReady, createExam, submitExam, getExams } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import Modal from './ui/Modal'
@@ -282,10 +282,14 @@ function StudentResultView({ exam, userId, t }) {
 }
 
 // ── Main ExamsTab ─────────────────────────────────────────────────────────────
-export default function ExamsTab({ group, members, exams, setExams, isAdmin, isTeacher, userId, groupId }) {
+export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, groupId }) {
   const { show }  = useToast()
   const { t }     = useTranslation()
 
+  const [exams, setExams]               = useState([])
+  const [page, setPage]                 = useState(1)
+  const [totalPages, setTotalPages]     = useState(1)
+  const [loadingExams, setLoadingExams] = useState(true)
   const [examReady, setExamReady]       = useState(group.exam_ready)
   const [readyLoading, setReadyLoading] = useState(false)
   const [showCreate, setShowCreate]     = useState(false)
@@ -294,6 +298,19 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
   const [view, setView]                 = useState(null) // { examId, mode: 'score'|'results'|'mine' }
 
   const activeExam = view ? exams.find(e => e.id === view.examId) : null
+
+  const fetchExams = useCallback(async (p = page) => {
+    setLoadingExams(true)
+    try {
+      const { data } = await getExams(groupId, p)
+      setExams(data.results)
+      setTotalPages(data.pages)
+      setPage(data.page)
+    } catch {}
+    finally { setLoadingExams(false) }
+  }, [groupId])
+
+  useEffect(() => { fetchExams(1) }, [fetchExams])
 
   const handleToggleReady = async () => {
     setReadyLoading(true)
@@ -310,17 +327,17 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
     if (!form.name.trim() || !form.question_count) return
     setCreating(true)
     try {
-      const { data } = await createExam(groupId, form)
-      setExams(prev => [data, ...prev])
+      await createExam(groupId, form)
       setShowCreate(false)
       setForm({ name: '', question_count: 10 })
+      fetchExams(1)
     } catch { show('Error creating exam', 'error') }
     finally { setCreating(false) }
   }
 
   const handleScored = () => {
     setView(null)
-    getExams(groupId).then(r => setExams(r.data))
+    fetchExams(page)
   }
 
   if (view && activeExam) {
@@ -372,67 +389,90 @@ export default function ExamsTab({ group, members, exams, setExams, isAdmin, isT
       )}
 
       {/* Exam list */}
-      {exams.length === 0 ? (
+      {loadingExams ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+          <Loader2 size={24} color="var(--accent)" style={{ animation: 'spin 0.7s linear infinite' }} />
+        </div>
+      ) : exams.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
           <ClipboardList size={36} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
           <p style={{ fontWeight: 600 }}>{t('exam.no_exams')}</p>
           <p style={{ fontSize: 13, marginTop: 4 }}>{isAdmin ? t('exam.no_exams_sub_admin') : t('exam.no_exams_sub')}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {exams.map(ex => {
-            const finished  = ex.status === 'finished'
-            const myResult  = !isAdmin && !isTeacher ? ex.results?.find(r => r.student === userId) : null
-            const absentCount = ex.results?.filter(r => r.absent).length ?? 0
-            return (
-              <div key={ex.id} style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 11, background: finished ? '#16A34A15' : 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <ClipboardList size={20} color={finished ? '#16A34A' : 'var(--accent)'} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{ex.name}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                      background: finished ? '#16A34A15' : 'var(--accent-bg)',
-                      color: finished ? '#16A34A' : 'var(--accent)' }}>
-                      {finished ? t('exam.status_finished') : t('exam.status_active')}
-                    </span>
-                    {finished && absentCount > 0 && (
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: ABSENT_STYLE.bg, color: ABSENT_STYLE.color, display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <UserX size={10} /> {absentCount} {t('exam.absent_count')}
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {exams.map(ex => {
+              const finished  = ex.status === 'finished'
+              const myResult  = !isAdmin && !isTeacher ? ex.results?.find(r => r.student === userId) : null
+              const absentCount = ex.results?.filter(r => r.absent).length ?? 0
+              return (
+                <div key={ex.id} style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 11, background: finished ? '#16A34A15' : 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <ClipboardList size={20} color={finished ? '#16A34A' : 'var(--accent)'} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{ex.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                        background: finished ? '#16A34A15' : 'var(--accent-bg)',
+                        color: finished ? '#16A34A' : 'var(--accent)' }}>
+                        {finished ? t('exam.status_finished') : t('exam.status_active')}
                       </span>
+                      {finished && absentCount > 0 && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: ABSENT_STYLE.bg, color: ABSENT_STYLE.color, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <UserX size={10} /> {absentCount} {t('exam.absent_count')}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                      {ex.question_count} {t('exam.q_short')} · {ex.created_by_name}
+                      {myResult && !myResult.absent && <span style={{ marginLeft: 10, fontWeight: 700, color: PCT_COLOR(myResult.percentage).color }}>{myResult.percentage}%</span>}
+                      {myResult?.absent && <span style={{ marginLeft: 10, fontWeight: 700, color: ABSENT_STYLE.color }}>{t('exam.absent_label')}</span>}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    {isAdmin && !finished && (
+                      <button onClick={() => setView({ examId: ex.id, mode: 'score' })}
+                        style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid var(--accent)', background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                        {t('exam.score_btn')}
+                      </button>
+                    )}
+                    {(isAdmin || isTeacher) && finished && (
+                      <button onClick={() => setView({ examId: ex.id, mode: 'results' })}
+                        style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #16A34A', background: '#16A34A15', color: '#16A34A', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                        {t('exam.results_btn')}
+                      </button>
+                    )}
+                    {!isAdmin && !isTeacher && myResult && (
+                      <button onClick={() => setView({ examId: ex.id, mode: 'mine' })}
+                        style={{ padding: '7px 14px', borderRadius: 9, border: `1px solid ${myResult.absent ? ABSENT_STYLE.border : PCT_COLOR(myResult.percentage).border}`, background: myResult.absent ? ABSENT_STYLE.bg : PCT_COLOR(myResult.percentage).bg, color: myResult.absent ? ABSENT_STYLE.color : PCT_COLOR(myResult.percentage).color, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                        {t('exam.results_btn')}
+                      </button>
                     )}
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                    {ex.question_count} {t('exam.q_short')} · {ex.created_by_name}
-                    {myResult && !myResult.absent && <span style={{ marginLeft: 10, fontWeight: 700, color: PCT_COLOR(myResult.percentage).color }}>{myResult.percentage}%</span>}
-                    {myResult?.absent && <span style={{ marginLeft: 10, fontWeight: 700, color: ABSENT_STYLE.color }}>{t('exam.absent_label')}</span>}
-                  </p>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                  {isAdmin && !finished && (
-                    <button onClick={() => setView({ examId: ex.id, mode: 'score' })}
-                      style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid var(--accent)', background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                      {t('exam.score_btn')}
-                    </button>
-                  )}
-                  {(isAdmin || isTeacher) && finished && (
-                    <button onClick={() => setView({ examId: ex.id, mode: 'results' })}
-                      style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #16A34A', background: '#16A34A15', color: '#16A34A', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                      {t('exam.results_btn')}
-                    </button>
-                  )}
-                  {!isAdmin && !isTeacher && myResult && (
-                    <button onClick={() => setView({ examId: ex.id, mode: 'mine' })}
-                      style={{ padding: '7px 14px', borderRadius: 9, border: `1px solid ${myResult.absent ? ABSENT_STYLE.border : PCT_COLOR(myResult.percentage).border}`, background: myResult.absent ? ABSENT_STYLE.bg : PCT_COLOR(myResult.percentage).bg, color: myResult.absent ? ABSENT_STYLE.color : PCT_COLOR(myResult.percentage).color, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                      {t('exam.results_btn')}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 20 }}>
+              <button onClick={() => { const p = page - 1; setPage(p); fetchExams(p) }} disabled={page <= 1}
+                style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}>
+                <ChevronLeft size={16} color="var(--text-muted)" />
+              </button>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+                {page} / {totalPages}
+              </span>
+              <button onClick={() => { const p = page + 1; setPage(p); fetchExams(p) }} disabled={page >= totalPages}
+                style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.4 : 1 }}>
+                <ChevronRight size={16} color="var(--text-muted)" />
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Create exam modal */}

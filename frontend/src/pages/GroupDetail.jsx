@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
-  getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement, getExams,
-  addMemberDirect, searchStudents,
+  getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement,
+  addMemberDirect, searchStudents, toggleGraduate,
 } from '../api/groups'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
 import ExamsTab from '../components/ExamsTab'
@@ -153,21 +153,21 @@ export default function GroupDetail() {
   const [games,             setGames]             = useState([])
   const [showNewGame,       setShowNewGame]        = useState(false)
   const [announcements,     setAnnouncements]      = useState([])
-  const [exams,             setExams]              = useState([])
   const [showAddStudent,    setShowAddStudent]      = useState(false)
 
-  const isAdmin   = user?.role === 'admin'
-  const isTeacher = (user?.role === 'teacher' && group?.teacher === user?.id) || isAdmin
+  const isAdmin    = user?.role === 'admin'
+  const isTeacher  = (user?.role === 'teacher' && group?.teacher === user?.id) || isAdmin
+  const isReadOnly = !!group?.is_graduated
 
   const load = async () => {
     setLoading(true)
     try {
-      const [g, m, l, gm, anns, ex] = await Promise.all([
+      const [g, m, l, gm, anns] = await Promise.all([
         getGroup(id), getMembers(id), getLessons(id), getGames(id),
-        getGroupAnnouncements(id), getExams(id),
+        getGroupAnnouncements(id),
       ])
       setGroup(g.data); setMembers(m.data); setLessons(l.data); setGames(gm.data)
-      setAnnouncements(anns.data); setExams(ex.data)
+      setAnnouncements(anns.data)
     } catch { show(t('group_detail.toast_load_fail'), 'error') }
     finally { setLoading(false) }
   }
@@ -212,6 +212,14 @@ export default function GroupDetail() {
     } catch { show(t('group_detail.toast_coin_fail'), 'error') }
   }
 
+  const handleGraduate = async () => {
+    try {
+      const { data } = await toggleGraduate(id)
+      setGroup(g => ({ ...g, is_graduated: data.is_graduated }))
+      show(data.is_graduated ? t('group_detail.toast_graduated') : t('group_detail.toast_ungraduated'), 'success')
+    } catch { show(t('group_detail.toast_graduate_fail'), 'error') }
+  }
+
   if (loading) return <Spinner />
   if (!group) return <p style={{ color: 'var(--text-muted)' }}>{t('group_detail.toast_load_fail')}</p>
 
@@ -232,6 +240,11 @@ export default function GroupDetail() {
             {group.is_individual && (
               <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', letterSpacing: '0.05em', flexShrink: 0 }}>
                 INDIVIDUAL
+              </span>
+            )}
+            {group.is_graduated && (
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: 'color-mix(in srgb, #10B981 15%, transparent)', color: '#10B981', letterSpacing: '0.05em', flexShrink: 0 }}>
+                {t('group_detail.graduated')}
               </span>
             )}
           </div>
@@ -256,6 +269,16 @@ export default function GroupDetail() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
             {!group.is_individual && <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Users size={14} />{members.length} {t('group_detail.students_count')}</span>}
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><BookOpen size={14} />{lessons.length} {t('group_detail.lessons_count')}</span>
+            {(group.class_days?.length > 0 || group.class_time) && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Clock size={14} />
+                {group.class_days?.length > 0
+                  ? group.class_days.map(d => ['Mo','Tu','We','Th','Fr','Sa','Su'][d]).join(', ')
+                  : ''}
+                {group.class_days?.length > 0 && group.class_time && ' — '}
+                {group.class_time || ''}
+              </span>
+            )}
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Star size={14} />{group.coin_threshold} {t('group_detail.coins')} = 1 {t('group_detail.stickers')}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5,
               color: group.telegram_chat_id ? '#0EA5E9' : 'var(--text-muted)',
@@ -269,7 +292,7 @@ export default function GroupDetail() {
         <div className="group-detail-hd-btns" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
           {isTeacher && (
             <>
-              {!group.is_individual && (
+              {!isReadOnly && !group.is_individual && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 16px' }}>
                   <Key size={14} color="var(--accent)" />
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, letterSpacing: '0.12em', fontWeight: 600 }}>{group.join_key}</span>
@@ -280,12 +303,20 @@ export default function GroupDetail() {
                   </motion.button>
                 </div>
               )}
-              {group.is_individual && members.length === 0 && (
+              {!isReadOnly && group.is_individual && members.length === 0 && (
                 <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowAddStudent(true)} style={primaryBtn}>
                   <UserPlus size={13} /> {t('group_detail.add_student')}
                 </motion.button>
               )}
               <button onClick={() => setShowEditGroup(true)} style={ghostBtn}><Pencil size={13} /> {t('group_detail.edit_group')}</button>
+              <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleGraduate}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
+                  background: group.is_graduated ? 'color-mix(in srgb, #10B981 15%, transparent)' : 'color-mix(in srgb, #10B981 10%, transparent)',
+                  color: '#10B981',
+                }}>
+                {group.is_graduated ? t('group_detail.ungraduate') : t('group_detail.graduate')}
+              </motion.button>
               <button onClick={() => setShowDeleteGroup(true)} style={dangerOutlineBtn}><Trash2 size={13} /> {t('group_detail.delete_group')}</button>
             </>
           )}
@@ -316,7 +347,7 @@ export default function GroupDetail() {
       {/* Lessons tab */}
       {tab === 'lessons' && (
         <div>
-          {isTeacher && (
+          {isTeacher && !isReadOnly && (
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
               <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowAddLesson(true)} style={primaryBtn}>
                 <Plus size={14} /> {t('group_detail.add_lesson')}
@@ -328,7 +359,7 @@ export default function GroupDetail() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {lessons.map((l, i) => (
-                <LessonRow key={l.id} lesson={l} groupId={id} index={i} isTeacher={isTeacher}
+                <LessonRow key={l.id} lesson={l} groupId={id} index={i} isTeacher={isTeacher && !isReadOnly}
                   onEdit={() => setEditingLesson(l)} onDelete={() => handleDeleteLesson(l.id)} />
               ))}
             </div>
@@ -344,7 +375,7 @@ export default function GroupDetail() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {rankMembers(members).map((m, i) => (
-                <MemberRow key={m.membership_id} member={m} index={i} isTeacher={isTeacher}
+                <MemberRow key={m.membership_id} member={m} index={i} isTeacher={isTeacher && !isReadOnly}
                   onEditJoinDate={() => setEditingMembership(m)}
                   onRemove={() => handleRemoveMember(m.membership_id)}
                   onCoin={(amount) => handleCoin(m.id, m.membership_id, amount)} />
@@ -357,7 +388,7 @@ export default function GroupDetail() {
       {/* Games tab */}
       {tab === 'games' && (
         <div>
-          {isTeacher && (
+          {isTeacher && !isReadOnly && (
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
               <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowNewGame(true)} style={primaryBtn}>
                 <Plus size={14} /> {t('quiz.new_game')}
@@ -381,7 +412,7 @@ export default function GroupDetail() {
         <AnnouncementsSection
           announcements={announcements}
           loading={false}
-          canPost={isTeacher}
+          canPost={isTeacher && !isReadOnly}
           onPost={handlePostGroupAnn}
           onDelete={handleDeleteGroupAnn}
         />
@@ -392,10 +423,8 @@ export default function GroupDetail() {
         <ExamsTab
           group={group}
           members={members}
-          exams={exams}
-          setExams={setExams}
-          isAdmin={isAdmin}
-          isTeacher={isTeacher && !isAdmin}
+          isAdmin={isAdmin && !isReadOnly}
+          isTeacher={isTeacher && !isAdmin && !isReadOnly}
           userId={user?.id}
           groupId={id}
         />
@@ -650,7 +679,7 @@ const WEEKDAYS = [
 function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
   const { show } = useToast(); const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [], telegram_chat_id: '', language: 'uz' })
+  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [], class_time: '', telegram_chat_id: '', language: 'uz' })
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -659,6 +688,7 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
       description: group.description || '',
       coin_threshold: group.coin_threshold || 10,
       class_days: Array.isArray(group.class_days) ? group.class_days : [],
+      class_time: group.class_time || '',
       telegram_chat_id: group.telegram_chat_id ?? '',
       language: group.language || 'uz',
     })
@@ -702,7 +732,7 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
           <input type="number" min={1} max={100} style={{ ...inputStyle(false), marginTop: 6 }}
             value={form.coin_threshold} onChange={e => setForm(f => ({ ...f, coin_threshold: Number(e.target.value) }))} />
         </div>
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>{t('groups.class_days')}</label>
           <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
             {WEEKDAYS.map(day => {
@@ -721,6 +751,11 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
               )
             })}
           </div>
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={labelStyle}>{t('groups.class_time')}</label>
+          <input type="time" style={{ ...inputStyle(false), marginTop: 6, maxWidth: 160 }}
+            value={form.class_time} onChange={e => setForm(f => ({ ...f, class_time: e.target.value }))} />
         </div>
         <div style={{ marginBottom: 24, padding: '14px 16px', background: 'rgba(14,165,233,0.06)', borderRadius: 10, border: '1px solid rgba(14,165,233,0.15)' }}>
           <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>

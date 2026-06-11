@@ -144,6 +144,11 @@ function GroupCard({ group, index, isTeacher, isAdmin }) {
               INDIVIDUAL
             </span>
           )}
+          {group.is_graduated && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'color-mix(in srgb, #10B981 15%, transparent)', color: '#10B981', letterSpacing: '0.04em' }}>
+              {t('groups.graduated')}
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: 'var(--text-muted)', marginBottom: isTeacher ? 14 : 0 }}>
@@ -151,7 +156,7 @@ function GroupCard({ group, index, isTeacher, isAdmin }) {
           {!isAdmin && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={13} />{t('groups.teacher')}: {group.teacher_name}</span>}
         </div>
 
-        {isTeacher && !group.is_individual && (
+        {isTeacher && !group.is_individual && !group.is_graduated && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
               <Key size={12} />
@@ -201,7 +206,7 @@ function CreateGroupModal({ open, onClose, onCreated }) {
   const { show } = useToast()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', class_days: [], is_individual: false })
+  const [form, setForm] = useState({ name: '', description: '', class_days: [], class_time: '', is_individual: false })
   const [error, setError] = useState('')
 
   const toggleDay = day => {
@@ -219,7 +224,7 @@ function CreateGroupModal({ open, onClose, onCreated }) {
     setLoading(true)
     try {
       const { data } = await createGroup(form)
-      setForm({ name: '', description: '', class_days: [], is_individual: false })
+      setForm({ name: '', description: '', class_days: [], class_time: '', is_individual: false })
       onCreated(data)
     } catch { show(t('groups.toast_create_fail'), 'error') }
     finally { setLoading(false) }
@@ -240,7 +245,7 @@ function CreateGroupModal({ open, onClose, onCreated }) {
             placeholder={t('groups.description_placeholder')} value={form.description}
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
         </div>
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>{t('groups.class_days')}</label>
           <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
             {WEEKDAYS.map(day => {
@@ -258,6 +263,11 @@ function CreateGroupModal({ open, onClose, onCreated }) {
               )
             })}
           </div>
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={labelStyle}>{t('groups.class_time')}</label>
+          <input type="time" style={{ ...inputStyle(false), marginTop: 6, maxWidth: 160 }}
+            value={form.class_time} onChange={e => setForm(f => ({ ...f, class_time: e.target.value }))} />
         </div>
         <div style={{ marginBottom: 24 }}>
           <label style={labelStyle}>{t('groups.group_type')}</label>

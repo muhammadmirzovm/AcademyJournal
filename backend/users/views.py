@@ -692,15 +692,20 @@ class TeacherLeaderboardView(APIView):
         results = []
         for sid, data in student_map.items():
             comp = round(data['total_score'] / data['total_possible'] * 100) if data['total_possible'] > 0 else None
-            total   = Attendance.objects.filter(student_id=sid, lesson__group__teacher=request.user).count()
-            present = Attendance.objects.filter(student_id=sid, lesson__group__teacher=request.user, present=True).count()
+            total_att   = 0
+            present_att = 0
+            for m in [m for m in memberships if m.student.id == sid]:
+                join_date  = m.joined_at.date()
+                lesson_ids = list(m.group.lessons.filter(date__gte=join_date).values_list('id', flat=True))
+                total_att   += Attendance.objects.filter(lesson_id__in=lesson_ids, student_id=sid).count()
+                present_att += Attendance.objects.filter(lesson_id__in=lesson_ids, student_id=sid, present=True).count()
             results.append({
                 'id':           data['id'],
                 'display_name': data['display_name'],
                 'username':     data['username'],
                 'groups':       sorted(data['groups']),
                 'avg_score':    comp,
-                'attendance':   round(present / total * 100) if total else None,
+                'attendance':   round(present_att / total_att * 100) if total_att else None,
             })
 
         results.sort(key=lambda x: (x['avg_score'] is None, -(x['avg_score'] or 0)))
@@ -821,5 +826,64 @@ class UserNotifyView(APIView):
             sent += 1
 
         return Response({'ok': True, 'sent': sent})
+
+
+# ── Web Push ───────────────────────────────────────────────────────────────────
+
+def send_push_notification(user_ids, title, body):
+    from .models import PushSubscription
+    from django.conf import settings
+    from pywebpush import webpush, WebPushException
+    import json as _json
+
+    private_key = settings.VAPID_PRIVATE_KEY
+    if not private_key:
+        return
+
+    subs = PushSubscription.objects.filter(user_id__in=user_ids)
+    stale = []
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    'endpoint': sub.endpoint,
+                    'keys': {'p256dh': sub.p256dh, 'auth': sub.auth},
+                },
+                data=_json.dumps({'title': title, 'body': body}),
+                vapid_private_key=private_key,
+                vapid_claims={'sub': f'mailto:{settings.VAPID_CLAIMS_EMAIL}'},
+            )
+        except WebPushException as ex:
+            if ex.response is not None and ex.response.status_code in (404, 410):
+                stale.append(sub.id)
+        except Exception:
+            pass
+
+    if stale:
+        PushSubscription.objects.filter(id__in=stale).delete()
+
+
+class PushSubscribeView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        from .models import PushSubscription
+        endpoint = request.data.get('endpoint')
+        p256dh   = request.data.get('p256dh')
+        auth     = request.data.get('auth')
+        if not (endpoint and p256dh and auth):
+            return Response({'detail': 'endpoint, p256dh, auth required.'}, status=400)
+        PushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            defaults={'user': request.user, 'p256dh': p256dh, 'auth': auth},
+        )
+        return Response({'ok': True})
+
+    def delete(self, request):
+        from .models import PushSubscription
+        endpoint = request.data.get('endpoint')
+        if endpoint:
+            PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
+        return Response(status=204)
 
 

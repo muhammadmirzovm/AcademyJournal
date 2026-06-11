@@ -79,7 +79,9 @@ class JoinGroupView(APIView):
 
         GroupMembership.objects.create(group=group, student=request.user)
 
-        for lesson in group.lessons.all():
+        from datetime import date
+        today = date.today()
+        for lesson in group.lessons.filter(date__gte=today):
             Attendance.objects.get_or_create(lesson=lesson, student=request.user, defaults={'present': False})
 
         return Response(GroupSerializer(group, context={'request': request}).data, status=201)
@@ -125,25 +127,14 @@ class GroupMembersView(generics.ListAPIView):
         )
         coin_map = {row['student']: max(0, row['total'] or 0) for row in coin_rows}
 
-        # ── Attendance rate (bulk) ────────────────────────────────────────────
-        present_rows = (
-            Attendance.objects
-            .filter(lesson__group=group, student_id__in=student_ids, present=True)
-            .values('student').annotate(n=Count('id'))
-        )
-        total_rows = (
-            Attendance.objects
-            .filter(lesson__group=group, student_id__in=student_ids)
-            .values('student').annotate(n=Count('id'))
-        )
-        present_map = {r['student']: r['n'] for r in present_rows}
-        total_map   = {r['student']: r['n'] for r in total_rows}
-
+        # ── Attendance rate (per-student join-date scoped) ────────────────────
         attendance_map = {}
-        for sid in student_ids:
-            total   = total_map.get(sid, 0)
-            present = present_map.get(sid, 0)
-            attendance_map[sid] = round(present / total * 100) if total > 0 else None
+        for membership in memberships:
+            join_date  = membership.joined_at.date()
+            lesson_ids = list(group.lessons.filter(date__gte=join_date).values_list('id', flat=True))
+            total   = Attendance.objects.filter(lesson_id__in=lesson_ids, student=membership.student).count()
+            present = Attendance.objects.filter(lesson_id__in=lesson_ids, student=membership.student, present=True).count()
+            attendance_map[membership.student.id] = round(present / total * 100) if total > 0 else None
 
         from users.models import ParentStudent
         from django.contrib.auth import get_user_model
@@ -375,6 +366,12 @@ class MembershipDetailView(APIView):
                     joined_at=datetime.combine(d.date(), time_.min)
                 )
                 membership.refresh_from_db()
+                # Remove attendance records for lessons before the new join date
+                Attendance.objects.filter(
+                    lesson__group=group,
+                    lesson__date__lt=d.date(),
+                    student=membership.student
+                ).delete()
             except ValueError:
                 return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
 
@@ -390,8 +387,14 @@ class MembershipDetailView(APIView):
             )
             comprehension = round(score_sum / (lesson_count * 5) * 100)
 
+        lesson_ids  = list(lessons_since.values_list('id', flat=True))
+        total_att   = Attendance.objects.filter(lesson_id__in=lesson_ids, student=membership.student).count()
+        present_att = Attendance.objects.filter(lesson_id__in=lesson_ids, student=membership.student, present=True).count()
+        attendance_rate = round(present_att / total_att * 100) if total_att > 0 else None
+
         data = MemberSerializer(membership).data
-        data['comprehension'] = comprehension
+        data['comprehension']  = comprehension
+        data['attendance_rate'] = attendance_rate
         return Response(data)
 
     def delete(self, request, pk, member_pk):
@@ -674,6 +677,28 @@ def _notify_announcement(ann, recipients):
                 logging.getLogger(__name__).error('Announcement group chat send error: %s', ex)
 
 
+def _broadcast_academy_ann_to_group_chats(ann, academy):
+    import logging
+    from users.telegram_bot import send_notification
+    active_groups = Group.objects.filter(
+        teacher__academy=academy,
+        is_graduated=False,
+        telegram_chat_id__isnull=False,
+    )
+    for group in active_groups:
+        lang = group.language or 'uz'
+        try:
+            async_to_sync(send_notification)(
+                group.telegram_chat_id,
+                'announcement',
+                lang,
+                title=ann.title,
+                body=ann.body[:500] if ann.body else ann.title,
+            )
+        except Exception as ex:
+            logging.getLogger(__name__).error('Broadcast to group chat %s failed: %s', group.id, ex)
+
+
 class AcademyAnnouncementView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -689,8 +714,31 @@ class AcademyAnnouncementView(APIView):
         ann = ser.save(author=request.user, group=None)
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        recipients = list(User.objects.filter(academy=request.user.academy).exclude(id=request.user.id))
+        # Only notify members and teachers of active (non-graduated) groups
+        active_student_ids = set(
+            GroupMembership.objects.filter(
+                group__teacher__academy=request.user.academy,
+                group__is_graduated=False,
+            ).values_list('student_id', flat=True)
+        )
+        active_teacher_ids = set(
+            Group.objects.filter(
+                teacher__academy=request.user.academy,
+                is_graduated=False,
+            ).values_list('teacher_id', flat=True)
+        )
+        recipients = list(
+            User.objects.filter(
+                id__in=active_student_ids | active_teacher_ids,
+                academy=request.user.academy,
+            ).exclude(id=request.user.id)
+        )
         _notify_announcement(ann, recipients)
+        if ann.is_pinned:
+            _broadcast_academy_ann_to_group_chats(ann, request.user.academy)
+            from users.views import send_push_notification
+            recipient_ids = [u.id for u in recipients]
+            send_push_notification(recipient_ids, ann.title, ann.body[:200] if ann.body else ann.title)
         return Response(ser.data, status=201)
 
 
@@ -735,6 +783,20 @@ class AnnouncementDeleteView(APIView):
         return Response(status=204)
 
 
+# ── Graduate toggle (teacher or admin) ───────────────────────────────────────
+
+class GroupGraduateView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, group_pk):
+        group = get_object_or_404(Group, pk=group_pk)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can graduate this group.'}, status=403)
+        group.is_graduated = not group.is_graduated
+        group.save(update_fields=['is_graduated'])
+        return Response({'is_graduated': group.is_graduated})
+
+
 # ── Exam ready toggle (teacher) ───────────────────────────────────────────────
 
 class GroupExamReadyView(APIView):
@@ -764,10 +826,27 @@ def _notify_exam_ready(group, teacher):
     User = get_user_model()
     admins = User.objects.filter(academy=teacher.academy, role='admin', telegram_id__isnull=False)
     lang = group.language or 'uz'
+
+    # Build schedule string
+    DAY_UZ = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']
+    DAY_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+    day_names = DAY_RU if lang == 'ru' else DAY_UZ
+    days_str = ', '.join(day_names[d] for d in sorted(group.class_days)) if group.class_days else '—'
+    time_str = group.class_time if group.class_time else '—'
+    schedule = f"{days_str} — {time_str}"
+
     if lang == 'ru':
-        text = f"📝 <b>Группа готова к экзамену</b>\n\n<b>{group.name}</b>\nУчитель: {teacher_name}\n\nПожалуйста, создайте экзамен в системе."
+        text = (f"📝 <b>Группа готова к экзамену</b>\n\n"
+                f"<b>{group.name}</b>\n"
+                f"Учитель: {teacher_name}\n"
+                f"Расписание: {schedule}\n\n"
+                f"Пожалуйста, создайте экзамен в системе.")
     else:
-        text = f"📝 <b>Guruh imtihonga tayyor</b>\n\n<b>{group.name}</b>\nO'qituvchi: {teacher_name}\n\nIltimos, tizimda imtihon yarating."
+        text = (f"📝 <b>Guruh imtihonga tayyor</b>\n\n"
+                f"<b>{group.name}</b>\n"
+                f"O'qituvchi: {teacher_name}\n"
+                f"Dars jadvali: {schedule}\n\n"
+                f"Iltimos, tizimda imtihon yarating.")
     for admin in admins:
         url  = f'https://api.telegram.org/bot{token}/sendMessage'
         data = urllib.parse.urlencode({'chat_id': admin.telegram_id, 'text': text, 'parse_mode': 'HTML'}).encode()
@@ -789,8 +868,19 @@ class ExamListCreateView(APIView):
         is_member  = group.memberships.filter(student=request.user).exists()
         if not (is_admin or is_teacher or is_member):
             return Response({'detail': 'No access.'}, status=403)
-        exams = group.exams.prefetch_related('results__student').all()
-        return Response(ExamSerializer(exams, many=True).data)
+        qs        = group.exams.prefetch_related('results__student').order_by('-created_at')
+        page      = max(1, int(request.query_params.get('page', 1)))
+        page_size = max(1, min(50, int(request.query_params.get('page_size', 10))))
+        total     = qs.count()
+        pages     = max(1, (total + page_size - 1) // page_size)
+        page      = min(page, pages)
+        exams     = qs[(page - 1) * page_size : page * page_size]
+        return Response({
+            'results': ExamSerializer(exams, many=True).data,
+            'total':   total,
+            'pages':   pages,
+            'page':    page,
+        })
 
     def post(self, request, group_pk):
         if request.user.role != 'admin':

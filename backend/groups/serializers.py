@@ -51,8 +51,8 @@ class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Group
         fields = ('id', 'name', 'description', 'join_key', 'teacher', 'teacher_name',
-                  'member_count', 'is_member', 'coin_threshold', 'class_days',
-                  'telegram_chat_id', 'language', 'is_individual', 'exam_ready', 'created_at')
+                  'member_count', 'is_member', 'coin_threshold', 'class_days', 'class_time',
+                  'telegram_chat_id', 'language', 'is_individual', 'is_graduated', 'exam_ready', 'created_at')
         read_only_fields = ('join_key', 'teacher')
 
     def get_teacher_name(self, obj):

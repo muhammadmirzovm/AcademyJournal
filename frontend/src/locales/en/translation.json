@@ -168,7 +168,7 @@
     "confirm_password": "Confirm password",
     "create_btn": "Create account",
     "creating": "Creating account…",
-    "welcome_back": "Welcome back",
+    "welcome_back": "Welcome",
     "no_account": "No account?",
     "create_one": "Create one",
     "sign_in_btn": "Sign in",
@@ -228,7 +228,7 @@
     "cancel": "Cancel"
   },
   "dashboard": {
-    "welcome": "Welcome back, {{name}}",
+    "welcome": "Welcome, {{name}}",
     "teacher_sub": "Manage your groups and track student progress.",
     "student_sub": "View your groups, scores, and attendance below.",
     "admin_sub": "Manage your academy, members, and settings.",
@@ -273,6 +273,7 @@
     "no_groups_student": "Ask your teacher for a join key.",
     "create_group": "Create group",
     "students": "students",
+    "graduated": "GRADUATED",
     "teacher": "Teacher",
     "copy": "Copy",
     "copied": "Copied",
@@ -283,6 +284,7 @@
     "description_optional": "(optional)",
     "description_placeholder": "What will students learn?",
     "class_days": "Class Days",
+    "class_time": "Class Time",
     "cancel": "Cancel",
     "creating": "Creating…",
     "create_btn": "Create group",
@@ -384,7 +386,13 @@
     "badge_has_parent": "Parent connected",
     "badge_no_parent": "Parent not connected",
     "badge_tg_yes": "Telegram connected",
-    "badge_tg_no": "No Telegram"
+    "badge_tg_no": "No Telegram",
+    "graduated": "GRADUATED",
+    "graduate": "Mark as graduated",
+    "ungraduate": "Reactivate",
+    "toast_graduated": "Group marked as graduated.",
+    "toast_ungraduated": "Group reactivated.",
+    "toast_graduate_fail": "An error occurred."
   },
   "lesson": {
     "tab_attendance": "attendance",
