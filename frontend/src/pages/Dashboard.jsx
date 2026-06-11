@@ -40,6 +40,8 @@ export default function Dashboard() {
   const [loading,    setLoading]    = useState(true)
 
   const [leaderboard, setLeaderboard] = useState([])
+  const [lbPage,      setLbPage]      = useState(1)
+  const LB_PAGE_SIZE = 20
 
   const [showJoin, setShowJoin] = useState(false)
   const [joinKey,  setJoinKey]  = useState('')
@@ -363,28 +365,63 @@ export default function Dashboard() {
                 </div>
 
                 {/* Full ranking */}
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)', marginBottom: 24 }}>
-                  {leaderboard.map((s, i) => (
-                    <motion.div key={s.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: i < leaderboard.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                      <span style={{ width: 26, height: 26, borderRadius: '50%', background: i < 3 ? ['rgba(245,158,11,0.15)','rgba(148,163,184,0.15)','rgba(205,127,50,0.15)'][i] : 'var(--bg)', border: '1px solid var(--border)', color: i < 3 ? ['#F59E0B','#94A3B8','#CD7F32'][i] : 'var(--text-muted)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {i + 1}
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <Link to={`/profile/${s.id}`} style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display_name}</Link>
-                        <p className="lb-group" style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.groups?.join(', ')}</p>
+                {(() => {
+                  const lbPageCount = Math.ceil(leaderboard.length / LB_PAGE_SIZE)
+                  const safeLbPage  = Math.min(lbPage, lbPageCount)
+                  const visible     = leaderboard.slice((safeLbPage - 1) * LB_PAGE_SIZE, safeLbPage * LB_PAGE_SIZE)
+                  const globalOffset = (safeLbPage - 1) * LB_PAGE_SIZE
+                  return (
+                    <>
+                      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)', marginBottom: lbPageCount > 1 ? 0 : 24 }}>
+                        {visible.map((s, i) => {
+                          const gi = globalOffset + i
+                          return (
+                            <motion.div key={s.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: i < visible.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                              <span style={{ width: 26, height: 26, borderRadius: '50%', background: gi < 3 ? ['rgba(245,158,11,0.15)','rgba(148,163,184,0.15)','rgba(205,127,50,0.15)'][gi] : 'var(--bg)', border: '1px solid var(--border)', color: gi < 3 ? ['#F59E0B','#94A3B8','#CD7F32'][gi] : 'var(--text-muted)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                {gi + 1}
+                              </span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <Link to={`/profile/${s.id}`} style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display_name}</Link>
+                                <p className="lb-group" style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.groups?.join(', ')}</p>
+                              </div>
+                              {s.attendance != null && (
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{s.attendance}% att.</span>
+                              )}
+                              <span style={{ fontSize: 13, fontWeight: 700, color: s.avg_score == null ? 'var(--text-muted)' : s.avg_score >= 80 ? '#14B8A8' : s.avg_score >= 60 ? '#F59E0B' : '#EF4444', flexShrink: 0, minWidth: 40, textAlign: 'right' }}>
+                                {s.avg_score != null ? `${s.avg_score}%` : '—'}
+                              </span>
+                            </motion.div>
+                          )
+                        })}
                       </div>
-                      {s.attendance != null && (
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
-                          {s.attendance}% att.
-                        </span>
+
+                      {lbPageCount > 1 && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 14px 14px', marginBottom: 24 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {(safeLbPage - 1) * LB_PAGE_SIZE + 1}–{Math.min(safeLbPage * LB_PAGE_SIZE, leaderboard.length)} / {leaderboard.length}
+                          </span>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button onClick={() => setLbPage(p => Math.max(1, p - 1))} disabled={safeLbPage === 1}
+                              style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: safeLbPage === 1 ? 'default' : 'pointer', opacity: safeLbPage === 1 ? 0.4 : 1 }}>
+                              ← Oldingi
+                            </button>
+                            {Array.from({ length: lbPageCount }, (_, i) => i + 1).map(p => (
+                              <button key={p} onClick={() => setLbPage(p)}
+                                style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${p === safeLbPage ? 'var(--accent)' : 'var(--border)'}`, background: p === safeLbPage ? 'var(--accent)' : 'transparent', color: p === safeLbPage ? '#fff' : 'var(--text-muted)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                {p}
+                              </button>
+                            ))}
+                            <button onClick={() => setLbPage(p => Math.min(lbPageCount, p + 1))} disabled={safeLbPage === lbPageCount}
+                              style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: safeLbPage === lbPageCount ? 'default' : 'pointer', opacity: safeLbPage === lbPageCount ? 0.4 : 1 }}>
+                              Keyingi →
+                            </button>
+                          </div>
+                        </div>
                       )}
-                      <span style={{ fontSize: 13, fontWeight: 700, color: s.avg_score == null ? 'var(--text-muted)' : s.avg_score >= 80 ? '#14B8A8' : s.avg_score >= 60 ? '#F59E0B' : '#EF4444', flexShrink: 0, minWidth: 40, textAlign: 'right' }}>
-                        {s.avg_score != null ? `${s.avg_score}%` : '—'}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
+                    </>
+                  )
+                })()}
 
                 {/* At-risk students */}
                 {leaderboard.filter(s => s.avg_score != null && s.avg_score < 80).length > 0 && (
