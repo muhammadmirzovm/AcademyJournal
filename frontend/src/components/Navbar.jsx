@@ -74,14 +74,14 @@ export default function Navbar() {
         transition: 'background 0.25s, border-color 0.25s, backdrop-filter 0.25s',
         height: 60,
       }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="nav-inner" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 8 }}>
 
           {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0, marginRight: 8 }}>
             <div style={{ width: 32, height: 32, background: 'var(--accent)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 12px rgba(16,185,129,0.35)' }}>
               <GraduationCap size={17} color="#fff" />
             </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, letterSpacing: '-0.3px' }}>
+            <span className="nav-brand-text" style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, letterSpacing: '-0.3px' }}>
               <span style={{ color: '#fff' }}>Academy </span>
               <span style={{ color: '#14B8A8' }}>Journal</span>
             </span>
@@ -269,6 +269,11 @@ export default function Navbar() {
         @media (max-width: 720px) {
           .desktop-nav { display: none !important; }
           .mobile-nav  { display: flex !important; }
+          .nav-inner   { padding: 0 16px !important; }
+        }
+        @media (max-width: 400px) {
+          .nav-brand-text { display: none !important; }
+          .nav-inner      { padding: 0 12px !important; }
         }
       `}</style>
     </>
