@@ -47,12 +47,12 @@ export default function Groups() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+      <div className="page-section-hd" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{title}</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{sub}</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="page-section-hd-btns" style={{ display: 'flex', gap: 10 }}>
           {isTeacher ? (
             <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreate(true)} style={primaryBtn}>
               <Plus size={15} /> {t('groups.new_group')}

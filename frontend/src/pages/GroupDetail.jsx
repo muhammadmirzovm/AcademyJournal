@@ -225,7 +225,7 @@ export default function GroupDetail() {
       </div>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 28 }}>
+      <div className="group-detail-hd" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 28 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, margin: 0 }}>{group.name}</h2>
@@ -266,7 +266,7 @@ export default function GroupDetail() {
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+        <div className="group-detail-hd-btns" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
           {isTeacher && (
             <>
               {!group.is_individual && (

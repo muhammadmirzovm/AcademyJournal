@@ -33,7 +33,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 480 }
                 <X size={18} color="var(--text-muted)" />
               </button>
             </div>
-            <div style={{ padding: 24 }}>{children}</div>
+            <div className="modal-body" style={{ padding: 24, overflowY: 'auto', maxHeight: 'calc(90vh - 70px)' }}>{children}</div>
           </motion.div>
           </div>
         </>

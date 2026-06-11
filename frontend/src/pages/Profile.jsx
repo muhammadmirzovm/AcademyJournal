@@ -211,7 +211,7 @@ export default function Profile() {
           <div style={{ marginTop: 16 }}>
             {editing ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="name-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>{t('profile.first_name')}</label>
                     <input value={editForm.first_name} onChange={e => setField('first_name', e.target.value)}

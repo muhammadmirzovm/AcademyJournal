@@ -70,7 +70,7 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div className="exam-scoring-hd" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h3 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>{exam.name}</h3>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
@@ -124,13 +124,14 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
                     <div style={{ padding: '12px 18px 16px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)' }}>
                       {Array.from({ length: qCount }, (_, qi) => (
                         <div key={qi}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                          <div className="exam-q-score-row" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
                             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', minWidth: 70 }}>
                               {t('exam.q_label', { n: qi + 1 })}
                             </span>
-                            <div style={{ display: 'flex', gap: 5 }}>
+                            <div className="exam-q-score-btns" style={{ display: 'flex', gap: 5 }}>
                               {[0,1,2,3,4,5].map(v => (
                                 <button key={v} onClick={() => setScore(si, qi, v)}
+                                  className="exam-q-score-btn"
                                   style={{
                                     width: 34, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13,
                                     background: row.scores[qi] === v

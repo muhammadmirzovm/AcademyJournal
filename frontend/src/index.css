@@ -157,4 +157,42 @@ a { transition: color 0.15s, opacity 0.15s; }
 
   /* Score buttons: smaller */
   .score-btn { width: 30px !important; height: 30px !important; font-size: 12px !important; }
+
+  /* Exam scoring screen header: stack title + save button */
+  .exam-scoring-hd { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+  .exam-scoring-hd > button { width: 100% !important; justify-content: center !important; }
+
+  /* Exam hub card rows: wrap buttons below content */
+  .exam-hub-card { flex-wrap: wrap !important; row-gap: 10px !important; }
+  .exam-hub-card-btns { width: 100% !important; justify-content: flex-end !important; flex-shrink: unset !important; }
+
+  /* Page section headers (Groups, GroupDetail) */
+  .page-section-hd { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+  .page-section-hd-btns { width: 100% !important; flex-wrap: wrap !important; }
+  .page-section-hd-btns > button, .page-section-hd-btns > a { flex: 1 !important; justify-content: center !important; }
+
+  /* GroupDetail header */
+  .group-detail-hd { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+  .group-detail-hd-btns { width: 100% !important; flex-wrap: wrap !important; }
+  .group-detail-hd-btns > button, .group-detail-hd-btns > a, .group-detail-hd-btns > div { flex: 1 !important; justify-content: center !important; }
+
+  /* Form 2-column grids collapse */
+  .form-grid-2 { grid-template-columns: 1fr !important; }
+
+  /* Member row: allow wrapping on very small screens */
+  .member-row-inner { flex-wrap: wrap !important; }
+
+  /* Exam result student card: wrap */
+  .exam-result-student { flex-wrap: wrap !important; gap: 8px !important; }
+}
+
+/* ── Very small screens (≤ 420px) ─────────────── */
+@media (max-width: 420px) {
+  /* ExamsTab per-question score buttons: shrink to fit */
+  .exam-q-score-row { flex-wrap: wrap !important; gap: 6px !important; }
+  .exam-q-score-btns { gap: 3px !important; }
+  .exam-q-score-btn { width: 28px !important; height: 28px !important; font-size: 11px !important; border-radius: 6px !important; }
+
+  /* Lesson score buttons */
+  .score-btn { width: 28px !important; height: 28px !important; font-size: 11px !important; }
 }

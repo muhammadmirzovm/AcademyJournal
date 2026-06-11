@@ -98,17 +98,18 @@ export default function Exams() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {exam_ready_groups.map((g, i) => (
               <motion.div key={g.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                className="exam-hub-card"
                 style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 12, border: '1.5px solid #D9770630', background: '#D9770608' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: '#D9770620', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <ClipboardList size={18} color="#D97706" />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0 }}>{g.name}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                     {g.member_count} {t('group_detail.students_count')} · {t('exam.teacher_marked_ready')}
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <div className="exam-hub-card-btns" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <Link to={`/groups/${g.id}?tab=exams`}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
                     {t('common.open')} <ChevronRight size={13} />
@@ -137,18 +138,21 @@ export default function Exams() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {exam_ready_groups.map((g, i) => (
               <motion.div key={g.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                className="exam-hub-card"
                 style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 12, border: '1.5px solid var(--accent)30', background: 'var(--accent-bg)' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <ClipboardList size={18} color="var(--accent)" />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0 }}>{g.name}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t('exam.waiting_for_admin')}</p>
                 </div>
-                <Link to={`/groups/${g.id}?tab=exams`}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                  {t('common.open')} <ChevronRight size={13} />
-                </Link>
+                <div className="exam-hub-card-btns" style={{ display: 'flex', flexShrink: 0 }}>
+                  <Link to={`/groups/${g.id}?tab=exams`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                    {t('common.open')} <ChevronRight size={13} />
+                  </Link>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -170,6 +174,7 @@ export default function Exams() {
               const col = myResult ? PCT_COLOR(myResult.percentage) : null
               return (
                 <motion.div key={ex.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                  className="exam-hub-card"
                   style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' }}>
                   <div style={{ width: 42, height: 42, borderRadius: 11, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <ClipboardList size={20} color="var(--accent)" />
