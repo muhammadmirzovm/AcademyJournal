@@ -2,11 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, Loader2, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ClipboardList, Loader2, ChevronRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getUpcomingExams, createExam } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
+
+const DAY_SHORT = ['Mo','Tu','We','Th','Fr','Sa','Su']
+const scheduleStr = g => {
+  const days = (g.class_days || []).map(d => DAY_SHORT[d]).join(', ')
+  const time = g.class_time ? g.class_time.replace('-', ' — ') : ''
+  return [days, time].filter(Boolean).join(' · ')
+}
 
 const PCT_COLOR = pct =>
   pct >= 80 ? { color: '#16A34A', bg: '#16A34A12', border: '#16A34A30' }
@@ -108,6 +115,11 @@ export default function Exams() {
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                     {g.member_count} {t('group_detail.students_count')} · {t('exam.teacher_marked_ready')}
                   </p>
+                  {scheduleStr(g) && (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Clock size={11} /> {scheduleStr(g)}
+                    </p>
+                  )}
                 </div>
                 <div className="exam-hub-card-btns" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <Link to={`/groups/${g.id}?tab=exams`}
@@ -146,6 +158,11 @@ export default function Exams() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0 }}>{g.name}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t('exam.waiting_for_admin')}</p>
+                  {scheduleStr(g) && (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Clock size={11} /> {scheduleStr(g)}
+                    </p>
+                  )}
                 </div>
                 <div className="exam-hub-card-btns" style={{ display: 'flex', flexShrink: 0 }}>
                   <Link to={`/groups/${g.id}?tab=exams`}

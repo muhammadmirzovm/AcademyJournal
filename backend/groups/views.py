@@ -990,9 +990,11 @@ class UpcomingExamsView(APIView):
 
         def group_data(g):
             return {
-                'id':          g.id,
-                'name':        g.name,
+                'id':           g.id,
+                'name':         g.name,
                 'member_count': g.memberships.count(),
+                'class_days':   g.class_days or [],
+                'class_time':   g.class_time or '',
             }
 
         return Response({
