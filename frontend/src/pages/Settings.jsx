@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   Building2, Link2, Plus, Copy, Check, Trash2,
   Loader2, Users, GraduationCap,
   Clock, Hash, Shield, Sparkles, AlertCircle, UserX, Send,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -435,20 +436,41 @@ const ROLE_BADGE = {
 function MembersTab({ userRole }) {
   const { t } = useTranslation()
   const { show } = useToast()
-  const [members, setMembers]     = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [removing, setRemoving]   = useState(null)
-  const [search, setSearch]       = useState('')
-  const [linking, setLinking]     = useState(null)   // parent member id being linked
+  const [members, setMembers]         = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [page, setPage]               = useState(1)
+  const [totalPages, setTotalPages]   = useState(1)
+  const [total, setTotal]             = useState(0)
+  const [removing, setRemoving]       = useState(null)
+  const [search, setSearch]           = useState('')
+  const [linking, setLinking]         = useState(null)
+  const [allStudents, setAllStudents] = useState([])
   const [linkStudent, setLinkStudent] = useState('')
   const [linkSaving, setLinkSaving]   = useState(false)
+  const searchTimer = useRef(null)
 
-  useEffect(() => {
-    api.get('/academy/members/')
-      .then(r => setMembers(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+  const fetchPage = useCallback(async (p, q) => {
+    setLoading(true)
+    try {
+      const params = { page: p, page_size: 20 }
+      if (q) params.search = q
+      const { data } = await api.get('/academy/members/', { params })
+      setMembers(data.results)
+      setTotalPages(data.pages)
+      setTotal(data.total)
+      setPage(data.page)
+    } catch {}
+    finally { setLoading(false) }
   }, [])
+
+  useEffect(() => { fetchPage(1, '') }, [fetchPage])
+
+  const handleSearch = e => {
+    const q = e.target.value
+    setSearch(q)
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => fetchPage(1, q), 350)
+  }
 
   const removeMember = async (member) => {
     const name = member.first_name || member.username
@@ -456,7 +478,7 @@ function MembersTab({ userRole }) {
     setRemoving(member.id)
     try {
       await api.delete(`/academy/members/${member.id}/`)
-      setMembers(prev => prev.filter(m => m.id !== member.id))
+      fetchPage(page, search)
       show(t('settings.member_removed'), 'success')
     } catch (err) {
       show(err.response?.data?.detail || t('settings.err_remove_member'), 'error')
@@ -466,7 +488,16 @@ function MembersTab({ userRole }) {
   const canRemove = (member) => {
     if (member.role === 'admin') return userRole === 'admin'
     if (member.role === 'teacher') return userRole === 'admin'
-    return true // student/parent: both admin and teacher can remove
+    return true
+  }
+
+  const openLink = async (memberId) => {
+    setLinking(memberId)
+    setLinkStudent('')
+    if (allStudents.length === 0) {
+      const { data } = await api.get('/academy/members/', { params: { role: 'student' } })
+      setAllStudents(Array.isArray(data) ? data : data.results || [])
+    }
   }
 
   const linkChild = async (parentId) => {
@@ -482,136 +513,151 @@ function MembersTab({ userRole }) {
     } finally { setLinkSaving(false) }
   }
 
-  const filtered = members.filter(m =>
-    `${m.first_name} ${m.last_name} ${m.username} ${m.email}`.toLowerCase().includes(search.toLowerCase())
-  )
-
-  if (loading) return (
-    <div style={{ textAlign: 'center', padding: 40 }}>
-      <Loader2 size={24} style={{ color: '#14B8A8', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
-    </div>
-  )
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Search */}
-      <input
-        placeholder={t('settings.search_members')}
-        value={search} onChange={e => setSearch(e.target.value)}
-        style={{ ...inputStyle(false), fontSize: 14 }}
-      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <input
+          placeholder={t('settings.search_members')}
+          value={search} onChange={handleSearch}
+          style={{ ...inputStyle(false), fontSize: 14, flex: 1 }}
+        />
+        {total > 0 && (
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', fontWeight: 600 }}>
+            {total}
+          </span>
+        )}
+      </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <Loader2 size={24} style={{ color: '#14B8A8', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
+        </div>
+      ) : members.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
           <Users size={36} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
           <p style={{ fontWeight: 600 }}>{search ? t('settings.no_results') : t('settings.no_members')}</p>
           <p style={{ fontSize: 13, marginTop: 4 }}>{t('settings.no_members_sub')}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtered.map(m => {
-            const badge = ROLE_BADGE[m.role] || ROLE_BADGE.student
-            const initials = (m.first_name?.[0] || m.username?.[0] || '?').toUpperCase()
-            return (
-              <motion.div key={m.id} layout
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '12px 16px', borderRadius: 14,
-                  border: '1px solid var(--border)',
-                  background: 'var(--card)',
-                }}>
-                {/* Avatar */}
-                <div style={{
-                  width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                  background: `linear-gradient(135deg, ${badge.color}, ${badge.color}bb)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 15, fontWeight: 800, color: '#fff',
-                }}>
-                  {initials}
-                </div>
-
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-                      {m.first_name ? `${m.first_name} ${m.last_name}` : m.username}
-                    </span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                      background: badge.bg, color: badge.color,
-                    }}>
-                      {t(`settings.role_${m.role}`, { defaultValue: m.role })}
-                    </span>
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {members.map(m => {
+              const badge = ROLE_BADGE[m.role] || ROLE_BADGE.student
+              const initials = (m.first_name?.[0] || m.username?.[0] || '?').toUpperCase()
+              return (
+                <motion.div key={m.id} layout
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 16px', borderRadius: 14,
+                    border: '1px solid var(--border)',
+                    background: 'var(--card)',
+                  }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                    background: `linear-gradient(135deg, ${badge.color}, ${badge.color}bb)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 15, fontWeight: 800, color: '#fff',
+                  }}>
+                    {initials}
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                    @{m.username}
-                    {m.invited_by && (
-                      <span> · {t('settings.invited_by')} <strong>{m.invited_by.first_name || m.invited_by.username}</strong></span>
-                    )}
-                  </p>
-                </div>
 
-                {/* Joined date */}
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0, marginRight: 8 }}>
-                  {new Date(m.date_joined).toLocaleDateString()}
-                </div>
-
-                {/* Link child button (parents only) */}
-                {m.role === 'parent' && (
-                  linking === m.id ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <select value={linkStudent} onChange={e => setLinkStudent(e.target.value)}
-                        style={{ fontSize: 12, padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', maxWidth: 140 }}>
-                        <option value="">{t('settings.pick_student')}</option>
-                        {members.filter(s => s.role === 'student').map(s => (
-                          <option key={s.id} value={s.id}>{s.first_name ? `${s.first_name} ${s.last_name}` : s.username}</option>
-                        ))}
-                      </select>
-                      <button onClick={() => linkChild(m.id)} disabled={!linkStudent || linkSaving}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: 'none', background: '#EC4899', color: '#fff', fontSize: 12, fontWeight: 700, cursor: (!linkStudent || linkSaving) ? 'not-allowed' : 'pointer', opacity: (!linkStudent || linkSaving) ? 0.6 : 1 }}>
-                        {linkSaving ? <Loader2 size={11} style={{ animation: 'spin 0.7s linear infinite' }} /> : t('settings.link')}
-                      </button>
-                      <button onClick={() => { setLinking(null); setLinkStudent('') }}
-                        style={{ display: 'flex', alignItems: 'center', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
-                        ✕
-                      </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                        {m.first_name ? `${m.first_name} ${m.last_name}` : m.username}
+                      </span>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                        background: badge.bg, color: badge.color,
+                      }}>
+                        {t(`settings.role_${m.role}`, { defaultValue: m.role })}
+                      </span>
                     </div>
-                  ) : (
-                    <button onClick={() => { setLinking(m.id); setLinkStudent('') }}
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      @{m.username}
+                      {m.invited_by && (
+                        <span> · {t('settings.invited_by')} <strong>{m.invited_by.first_name || m.invited_by.username}</strong></span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0, marginRight: 8 }}>
+                    {new Date(m.date_joined).toLocaleDateString()}
+                  </div>
+
+                  {m.role === 'parent' && (
+                    linking === m.id ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <select value={linkStudent} onChange={e => setLinkStudent(e.target.value)}
+                          style={{ fontSize: 12, padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', maxWidth: 140 }}>
+                          <option value="">{t('settings.pick_student')}</option>
+                          {allStudents.map(s => (
+                            <option key={s.id} value={s.id}>{s.first_name ? `${s.first_name} ${s.last_name}` : s.username}</option>
+                          ))}
+                        </select>
+                        <button onClick={() => linkChild(m.id)} disabled={!linkStudent || linkSaving}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, border: 'none', background: '#EC4899', color: '#fff', fontSize: 12, fontWeight: 700, cursor: (!linkStudent || linkSaving) ? 'not-allowed' : 'pointer', opacity: (!linkStudent || linkSaving) ? 0.6 : 1 }}>
+                          {linkSaving ? <Loader2 size={11} style={{ animation: 'spin 0.7s linear infinite' }} /> : t('settings.link')}
+                        </button>
+                        <button onClick={() => { setLinking(null); setLinkStudent('') }}
+                          style={{ display: 'flex', alignItems: 'center', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => openLink(m.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
+                          borderRadius: 9, border: '1px solid rgba(236,72,153,0.25)',
+                          background: 'rgba(236,72,153,0.07)', color: '#EC4899',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
+                        }}>
+                        + {t('settings.link_child')}
+                      </button>
+                    )
+                  )}
+
+                  {canRemove(m) && (
+                    <button onClick={() => removeMember(m)} disabled={removing === m.id}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
-                        borderRadius: 9, border: '1px solid rgba(236,72,153,0.25)',
-                        background: 'rgba(236,72,153,0.07)', color: '#EC4899',
-                        fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
-                      }}>
-                      + {t('settings.link_child')}
+                        borderRadius: 9, border: '1px solid rgba(239,68,68,0.2)',
+                        background: 'rgba(239,68,68,0.06)', color: '#EF4444',
+                        fontSize: 12, fontWeight: 600, cursor: removing === m.id ? 'not-allowed' : 'pointer',
+                        flexShrink: 0, transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)' }}>
+                      {removing === m.id
+                        ? <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} />
+                        : <UserX size={12} />
+                      }
+                      {t('settings.remove')}
                     </button>
-                  )
-                )}
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
 
-                {/* Remove button */}
-                {canRemove(m) && (
-                  <button onClick={() => removeMember(m)} disabled={removing === m.id}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
-                      borderRadius: 9, border: '1px solid rgba(239,68,68,0.2)',
-                      background: 'rgba(239,68,68,0.06)', color: '#EF4444',
-                      fontSize: 12, fontWeight: 600, cursor: removing === m.id ? 'not-allowed' : 'pointer',
-                      flexShrink: 0, transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)' }}>
-                    {removing === m.id
-                      ? <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} />
-                      : <UserX size={12} />
-                    }
-                    {t('settings.remove')}
-                  </button>
-                )}
-              </motion.div>
-            )
-          })}
-        </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 4 }}>
+              <button onClick={() => fetchPage(page - 1, search)} disabled={page <= 1}
+                style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}>
+                <ChevronLeft size={16} color="var(--text-muted)" />
+              </button>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+                {page} / {totalPages}
+              </span>
+              <button onClick={() => fetchPage(page + 1, search)} disabled={page >= totalPages}
+                style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.4 : 1 }}>
+                <ChevronRight size={16} color="var(--text-muted)" />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

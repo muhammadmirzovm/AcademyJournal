@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.text import slugify
+from django.db.models import Q
 from datetime import timedelta
 from .models import Academy, InviteToken, AcademyTelegramGroup
 from .serializers import AcademySerializer, AcademyBrandSerializer, InviteTokenSerializer, AcademyTelegramGroupSerializer
@@ -51,9 +52,22 @@ class AcademyMembersView(APIView):
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
-        members = User.objects.filter(academy=user.academy).exclude(pk=user.pk).select_related('academy')
+        qs = User.objects.filter(academy=user.academy).exclude(pk=user.pk).select_related('academy')
 
-        # Build invited_by map: user_id → inviter username
+        search = request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(first_name__icontains=search) | Q(last_name__icontains=search) |
+                Q(username__icontains=search) | Q(email__icontains=search)
+            )
+
+        role_filter = request.query_params.get('role', '').strip()
+        if role_filter:
+            qs = qs.filter(role=role_filter)
+
+        qs = qs.order_by('first_name', 'last_name', 'username')
+
+        # Build invited_by map for these members
         invites = InviteToken.objects.filter(academy=user.academy).prefetch_related('used_by')
         invited_by = {}
         for inv in invites:
@@ -65,20 +79,33 @@ class AcademyMembersView(APIView):
                         'role':       inv.created_by.role,
                     }
 
+        # If role filter requested without pagination, return flat list (for dropdowns)
+        if role_filter and not request.query_params.get('page'):
+            data = [{'id': m.id, 'username': m.username, 'first_name': m.first_name,
+                     'last_name': m.last_name, 'role': m.role} for m in qs]
+            return Response(data)
+
+        page      = max(1, int(request.query_params.get('page', 1)))
+        page_size = max(1, min(100, int(request.query_params.get('page_size', 20))))
+        total     = qs.count()
+        pages     = max(1, (total + page_size - 1) // page_size)
+        page      = min(page, pages)
+        members   = qs[(page - 1) * page_size : page * page_size]
+
         data = []
         for m in members:
             data.append({
-                'id':         m.id,
-                'username':   m.username,
-                'first_name': m.first_name,
-                'last_name':  m.last_name,
-                'email':      m.email,
-                'role':       m.role,
+                'id':          m.id,
+                'username':    m.username,
+                'first_name':  m.first_name,
+                'last_name':   m.last_name,
+                'email':       m.email,
+                'role':        m.role,
                 'date_joined': m.date_joined,
-                'invited_by': invited_by.get(m.id),
+                'invited_by':  invited_by.get(m.id),
             })
 
-        return Response(data)
+        return Response({'results': data, 'total': total, 'pages': pages, 'page': page})
 
     def delete(self, request, member_id):
         user = request.user
