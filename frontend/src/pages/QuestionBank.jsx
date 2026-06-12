@@ -137,10 +137,10 @@ export default function QuestionBank() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+      <div className="qb-layout" style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
         {/* Topic sidebar */}
-        <div style={{ width: 200, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, position: 'sticky', top: 80 }}>
+        <div className="qb-sidebar" style={{ width: 200, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, position: 'sticky', top: 80 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{t('quiz.topics')}</p>
 
           <button onClick={() => setSelTopic(null)}
@@ -349,6 +349,10 @@ export default function QuestionBank() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 900px) {
           .question-form-panel { width: 100% !important; }
+        }
+        @media (max-width: 640px) {
+          .qb-layout { flex-direction: column !important; flex-wrap: nowrap !important; }
+          .qb-sidebar { width: 100% !important; position: static !important; box-sizing: border-box; }
         }
       `}</style>
     </div>

@@ -125,8 +125,9 @@ export default function Students() {
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
               onClick={() => navigate(`/profile/${s.id}`)}
+              className="student-row"
               style={{
-                display: 'flex', alignItems: 'center', gap: 16,
+                display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
                 padding: '14px 18px', borderRadius: 14,
                 background: 'var(--card)', border: '1.5px solid rgba(0,0,0,0.07)',
                 cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -158,7 +159,7 @@ export default function Students() {
               </div>
 
               {/* Stats */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <div className="student-stats" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
                 <StatBadge value={s.attendance_pct} color="#10B981" label={t('students.attendance')} />
                 <StatBadge value={s.avg_score_pct}  color="#8B5CF6" label={t('students.score')} />
                 <span title="Telegram" style={{
@@ -184,6 +185,14 @@ export default function Students() {
           ))}
         </div>
       )}
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 580px) {
+          .student-row { gap: 10px !important; padding: 12px 14px !important; }
+          .student-stats { width: 100%; }
+        }
+      `}</style>
 
       {/* Pagination */}
       {pages > 1 && (

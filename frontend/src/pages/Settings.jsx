@@ -292,11 +292,11 @@ function AcademyTab({ academy, onUpdated }) {
 
           {/* Daily report card */}
           <div style={{ border: '1.5px solid #F59E0B44', borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#F59E0B0D' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#F59E0B0D', flexWrap: 'wrap' }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: '#F59E0B22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Shield size={16} color="#F59E0B" />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 120 }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('settings.daily_report_title')}</p>
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{t('settings.daily_report_desc')}</p>
               </div>
@@ -314,11 +314,11 @@ function AcademyTab({ academy, onUpdated }) {
 
           {/* Weekly report card */}
           <div style={{ border: '1.5px solid #EC489944', borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#EC48990D' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#EC48990D', flexWrap: 'wrap' }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: '#EC489922', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Users size={16} color="#EC4899" />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 120 }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('settings.weekly_report_title')}</p>
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{t('settings.weekly_report_desc')}</p>
               </div>
@@ -547,8 +547,9 @@ function MembersTab({ userRole }) {
               const initials = (m.first_name?.[0] || m.username?.[0] || '?').toUpperCase()
               return (
                 <motion.div key={m.id} layout
+                  className="member-row"
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
+                    display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
                     padding: '12px 16px', borderRadius: 14,
                     border: '1px solid var(--border)',
                     background: 'var(--card)',
@@ -582,7 +583,7 @@ function MembersTab({ userRole }) {
                     </p>
                   </div>
 
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0, marginRight: 8 }}>
+                  <div className="member-date" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0, marginRight: 8 }}>
                     {new Date(m.date_joined).toLocaleDateString()}
                   </div>
 
@@ -742,7 +743,7 @@ function InvitesTab({ academy, userRole }) {
               {/* Role picker */}
               <div>
                 <label style={labelStyle}>{t('settings.role')}</label>
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${allowedRoleDefs.length}, 1fr)`, gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
                   {allowedRoleDefs.map(r => (
                     <button key={r.value} type="button" onClick={() => setForm(f => ({ ...f, role: r.value }))}
                       style={{
@@ -951,7 +952,7 @@ export default function Settings() {
   const TABS = ALL_TABS.filter(t => t.roles.includes(user.role))
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px' }}>
+    <div className="settings-page" style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px' }}>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6 }}>
@@ -994,7 +995,7 @@ export default function Settings() {
       </div>
 
       {/* Tab content */}
-      <div style={{ background: 'var(--card)', borderRadius: 20, border: '1px solid var(--border)', padding: 28, boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+      <div className="settings-tab-content" style={{ background: 'var(--card)', borderRadius: 20, border: '1px solid var(--border)', padding: 28, boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
         <AnimatePresence mode="wait">
           {activeTab === 'academy' && (
             <motion.div key="academy" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
@@ -1020,7 +1021,15 @@ export default function Settings() {
           )}
         </AnimatePresence>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 580px) {
+          .settings-page { padding: 16px 12px !important; }
+          .member-row { padding: 10px 12px !important; gap: 8px !important; }
+          .member-date { display: none !important; }
+          .settings-tab-content { padding: 16px !important; border-radius: 14px !important; }
+        }
+      `}</style>
     </div>
   )
 }
