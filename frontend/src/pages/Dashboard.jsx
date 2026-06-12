@@ -330,19 +330,66 @@ export default function Dashboard() {
         <div className="fade-up-3">
 
           {/* Quick access */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+          <div className="teacher-quick-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 32 }}>
             {[
-              { to: '/exams',     icon: ClipboardList, label: t('nav.exams'),     color: '#F59E0B' },
-              { to: '/students',  icon: GraduationCap, label: t('nav.students'),  color: '#14B8A8' },
-              { to: '/questions', icon: BookMarked,    label: t('nav.questions'), color: '#8B5CF6' },
-            ].map(({ to, icon: Icon, label, color }) => (
+              {
+                to: '/exams',
+                icon: ClipboardList,
+                label: t('nav.exams'),
+                desc: t('dashboard.quick_exams_desc'),
+                color: '#F59E0B',
+                grad: 'linear-gradient(135deg, #F59E0B22, #F59E0B08)',
+                border: '#F59E0B33',
+                glow: '#F59E0B',
+              },
+              {
+                to: '/students',
+                icon: GraduationCap,
+                label: t('nav.students'),
+                desc: t('dashboard.quick_students_desc'),
+                color: '#14B8A8',
+                grad: 'linear-gradient(135deg, #14B8A822, #14B8A808)',
+                border: '#14B8A833',
+                glow: '#14B8A8',
+              },
+              {
+                to: '/questions',
+                icon: BookMarked,
+                label: t('nav.questions'),
+                desc: t('dashboard.quick_questions_desc'),
+                color: '#8B5CF6',
+                grad: 'linear-gradient(135deg, #8B5CF622, #8B5CF608)',
+                border: '#8B5CF633',
+                glow: '#8B5CF6',
+              },
+            ].map(({ to, icon: Icon, label, desc, color, grad, border, glow }) => (
               <Link key={to} to={to} style={{ textDecoration: 'none' }}>
-                <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '18px 12px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon size={20} color={color} />
+                <motion.div
+                  whileHover={{ y: -4, boxShadow: `0 12px 32px ${glow}28` }}
+                  whileTap={{ scale: 0.97 }}
+                  style={{
+                    position: 'relative', overflow: 'hidden',
+                    padding: '20px 18px', borderRadius: 16,
+                    background: grad,
+                    border: `1.5px solid ${border}`,
+                    boxShadow: `0 2px 12px ${glow}10`,
+                    cursor: 'pointer', transition: 'box-shadow 0.2s',
+                    display: 'flex', flexDirection: 'column', gap: 14,
+                  }}>
+                  {/* Decorative circle */}
+                  <div style={{ position: 'absolute', top: -18, right: -18, width: 80, height: 80, borderRadius: '50%', background: `${color}12`, pointerEvents: 'none' }} />
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}20`, border: `1.5px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon size={22} color={color} />
+                    </div>
+                    <ArrowRight size={15} color={color} style={{ opacity: 0.6 }} />
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{label}</span>
+
+                  <div>
+                    <p style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>{label}</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>{desc}</p>
+                  </div>
                 </motion.div>
               </Link>
             ))}
@@ -594,7 +641,12 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 560px) {
+          .teacher-quick-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   )
 }
