@@ -17,7 +17,7 @@ class Group(models.Model):
     join_key = models.CharField(max_length=8, unique=True, default=generate_join_key)
     coin_threshold    = models.PositiveIntegerField(default=10)
     class_days        = models.JSONField(default=list, blank=True, help_text='List of weekday ints: 0=Mon … 6=Sun')
-    class_time        = models.CharField(max_length=5, blank=True, help_text='HH:MM lesson start time')
+    class_time        = models.CharField(max_length=11, blank=True, help_text='HH:MM-HH:MM lesson time range')
     telegram_chat_id  = models.BigIntegerField(null=True, blank=True)
     language          = models.CharField(max_length=2, default='uz', choices=[('uz', 'Uzbek'), ('ru', 'Russian')])
     is_individual     = models.BooleanField(default=False)

@@ -276,7 +276,7 @@ export default function GroupDetail() {
                   ? group.class_days.map(d => ['Mo','Tu','We','Th','Fr','Sa','Su'][d]).join(', ')
                   : ''}
                 {group.class_days?.length > 0 && group.class_time && ' — '}
-                {group.class_time || ''}
+                {group.class_time ? group.class_time.replace('-', ' — ') : ''}
               </span>
             )}
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Star size={14} />{group.coin_threshold} {t('group_detail.coins')} = 1 {t('group_detail.stickers')}</span>
@@ -679,19 +679,23 @@ const WEEKDAYS = [
 function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
   const { show } = useToast(); const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [], class_time: '', telegram_chat_id: '', language: 'uz' })
+  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [], class_time_start: '', class_time_end: '', telegram_chat_id: '', language: 'uz' })
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (group) setForm({
-      name: group.name,
-      description: group.description || '',
-      coin_threshold: group.coin_threshold || 10,
-      class_days: Array.isArray(group.class_days) ? group.class_days : [],
-      class_time: group.class_time || '',
-      telegram_chat_id: group.telegram_chat_id ?? '',
-      language: group.language || 'uz',
-    })
+    if (group) {
+      const parts = (group.class_time || '').split('-')
+      setForm({
+        name: group.name,
+        description: group.description || '',
+        coin_threshold: group.coin_threshold || 10,
+        class_days: Array.isArray(group.class_days) ? group.class_days : [],
+        class_time_start: parts[0] || '',
+        class_time_end: parts[1] || '',
+        telegram_chat_id: group.telegram_chat_id ?? '',
+        language: group.language || 'uz',
+      })
+    }
   }, [group])
 
   const toggleDay = day => setForm(f => ({
@@ -705,9 +709,11 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
     e.preventDefault()
     if (!form.name.trim()) { setError(t('groups.err_name_required')); return }
     setLoading(true)
+    const { class_time_start, class_time_end, ...rest } = form
     const payload = {
-      ...form,
-      telegram_chat_id: form.telegram_chat_id !== '' ? Number(form.telegram_chat_id) : null,
+      ...rest,
+      class_time: class_time_start && class_time_end ? `${class_time_start}-${class_time_end}` : '',
+      telegram_chat_id: rest.telegram_chat_id !== '' ? Number(rest.telegram_chat_id) : null,
     }
     try { const { data } = await updateGroup(groupId, payload); onUpdated(data) }
     catch { show(t('group_detail.toast_group_update_fail'), 'error') } finally { setLoading(false) }
@@ -754,8 +760,13 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
         </div>
         <div style={{ marginBottom: 24 }}>
           <label style={labelStyle}>{t('groups.class_time')}</label>
-          <input type="time" style={{ ...inputStyle(false), marginTop: 6, maxWidth: 160 }}
-            value={form.class_time} onChange={e => setForm(f => ({ ...f, class_time: e.target.value }))} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+            <input type="time" style={{ ...inputStyle(false), maxWidth: 140 }}
+              value={form.class_time_start} onChange={e => setForm(f => ({ ...f, class_time_start: e.target.value }))} />
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>—</span>
+            <input type="time" style={{ ...inputStyle(false), maxWidth: 140 }}
+              value={form.class_time_end} onChange={e => setForm(f => ({ ...f, class_time_end: e.target.value }))} />
+          </div>
         </div>
         <div style={{ marginBottom: 24, padding: '14px 16px', background: 'rgba(14,165,233,0.06)', borderRadius: 10, border: '1px solid rgba(14,165,233,0.15)' }}>
           <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>

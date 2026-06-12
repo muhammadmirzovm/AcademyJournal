@@ -206,7 +206,7 @@ function CreateGroupModal({ open, onClose, onCreated }) {
   const { show } = useToast()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', class_days: [], class_time: '', is_individual: false })
+  const [form, setForm] = useState({ name: '', description: '', class_days: [], class_time_start: '', class_time_end: '', is_individual: false })
   const [error, setError] = useState('')
 
   const toggleDay = day => {
@@ -223,8 +223,10 @@ function CreateGroupModal({ open, onClose, onCreated }) {
     if (!form.name.trim()) { setError(t('groups.err_name_required')); return }
     setLoading(true)
     try {
-      const { data } = await createGroup(form)
-      setForm({ name: '', description: '', class_days: [], class_time: '', is_individual: false })
+      const { class_time_start, class_time_end, ...rest } = form
+      const payload = { ...rest, class_time: class_time_start && class_time_end ? `${class_time_start}-${class_time_end}` : '' }
+      const { data } = await createGroup(payload)
+      setForm({ name: '', description: '', class_days: [], class_time_start: '', class_time_end: '', is_individual: false })
       onCreated(data)
     } catch { show(t('groups.toast_create_fail'), 'error') }
     finally { setLoading(false) }
@@ -266,8 +268,13 @@ function CreateGroupModal({ open, onClose, onCreated }) {
         </div>
         <div style={{ marginBottom: 24 }}>
           <label style={labelStyle}>{t('groups.class_time')}</label>
-          <input type="time" style={{ ...inputStyle(false), marginTop: 6, maxWidth: 160 }}
-            value={form.class_time} onChange={e => setForm(f => ({ ...f, class_time: e.target.value }))} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+            <input type="time" style={{ ...inputStyle(false), maxWidth: 140 }}
+              value={form.class_time_start} onChange={e => setForm(f => ({ ...f, class_time_start: e.target.value }))} />
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>—</span>
+            <input type="time" style={{ ...inputStyle(false), maxWidth: 140 }}
+              value={form.class_time_end} onChange={e => setForm(f => ({ ...f, class_time_end: e.target.value }))} />
+          </div>
         </div>
         <div style={{ marginBottom: 24 }}>
           <label style={labelStyle}>{t('groups.group_type')}</label>
