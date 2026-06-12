@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star, MessageCircle, AlertTriangle } from 'lucide-react'
+import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star, MessageCircle, AlertTriangle, BookMarked, ClipboardList } from 'lucide-react'
 import { getGroups, joinGroup, getAcademyAnnouncements, createAcademyAnnouncement, deleteAnnouncement } from '../api/groups'
 import { getAdminStats, getTeacherLeaderboard } from '../api/users'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
@@ -328,6 +328,25 @@ export default function Dashboard() {
         </div>
       ) : role === 'teacher' ? (
         <div className="fade-up-3">
+
+          {/* Quick access */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+            {[
+              { to: '/exams',     icon: ClipboardList, label: t('nav.exams'),     color: '#F59E0B' },
+              { to: '/students',  icon: GraduationCap, label: t('nav.students'),  color: '#14B8A8' },
+              { to: '/questions', icon: BookMarked,    label: t('nav.questions'), color: '#8B5CF6' },
+            ].map(({ to, icon: Icon, label, color }) => (
+              <Link key={to} to={to} style={{ textDecoration: 'none' }}>
+                <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '18px 12px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon size={20} color={color} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{label}</span>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
 
           {/* Podium */}
           {!loading && leaderboard.length >= 3 && (() => {
