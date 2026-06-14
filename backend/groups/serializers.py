@@ -52,9 +52,8 @@ class GroupSerializer(serializers.ModelSerializer):
         model  = Group
         fields = ('id', 'name', 'description', 'join_key', 'teacher', 'teacher_name',
                   'member_count', 'is_member', 'coin_threshold', 'class_days', 'class_time',
-                  'telegram_chat_id', 'language', 'is_individual', 'is_graduated', 'exam_ready',
-                  'exam_ready_at', 'exam_ready_note', 'created_at')
-        read_only_fields = ('join_key', 'teacher', 'exam_ready_at', 'exam_ready_note')
+                  'telegram_chat_id', 'language', 'is_individual', 'is_graduated', 'exam_ready', 'created_at')
+        read_only_fields = ('join_key', 'teacher')
 
     def get_teacher_name(self, obj):
         return f'{obj.teacher.first_name} {obj.teacher.last_name}'.strip() or obj.teacher.username
