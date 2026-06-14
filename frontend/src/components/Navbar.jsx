@@ -42,17 +42,8 @@ export default function Navbar() {
 
   const navLinks = user ? [
     { to: '/dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard size={15} /> },
-    ...(user.role === 'admin'
+    ...(user.role === 'admin' || user.role === 'teacher'
       ? [{ to: '/groups', label: t('nav.groups'), icon: <Users size={15} /> }]
-      : []),
-    ...(user.role === 'teacher'
-      ? [{ to: '/groups', label: t('nav.groups'), icon: <Users size={15} /> }]
-      : []),
-    ...(user.role === 'admin'
-      ? [{ to: '/students', label: t('nav.students'), icon: <GraduationCap size={15} /> }]
-      : []),
-    ...(user.role === 'admin'
-      ? [{ to: '/exams', label: t('nav.exams'), icon: <ClipboardList size={15} /> }]
       : []),
     ...(user.role === 'student'
       ? [{ to: '/exams', label: t('nav.exams'), icon: <ClipboardList size={15} /> }]
