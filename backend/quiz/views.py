@@ -46,6 +46,8 @@ class TopicDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsTeacher]
 
     def get_queryset(self):
+        if self.request.user.role == 'admin':
+            return Topic.objects.all()
         return Topic.objects.filter(created_by=self.request.user)
 
 
@@ -74,6 +76,8 @@ class QuestionDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsTeacher]
 
     def get_queryset(self):
+        if self.request.user.role == 'admin':
+            return Question.objects.all()
         return Question.objects.filter(created_by=self.request.user)
 
 
@@ -107,7 +111,7 @@ class QuestionBankListView(APIView):
 def get_group_and_check_teacher(group_pk, user):
     from groups.models import Group
     group = get_object_or_404(Group, pk=group_pk)
-    is_teacher = group.teacher == user
+    is_teacher = group.teacher == user or user.role == 'admin'
     return group, is_teacher
 
 

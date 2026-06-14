@@ -47,6 +47,8 @@ export const createExam       = (gid, data)        => api.post(`/groups/${gid}/e
 export const submitExam       = (gid, eid, data)   => api.post(`/groups/${gid}/exams/${eid}/submit/`, data)
 export const finishExam       = (gid, eid)         => api.patch(`/groups/${gid}/exams/${eid}/`, { status: 'finished' })
 
+export const getAcademyTeachers = () => api.get('/academy/members/', { params: { role: 'teacher', page_size: 100 } })
+
 export const exportExcel = async (gid, groupName) => {
   const res = await api.get(`/groups/${gid}/export/excel/`, { responseType: 'blob' })
   const url  = window.URL.createObjectURL(new Blob([res.data]))

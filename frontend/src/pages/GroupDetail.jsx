@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
   getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement,
-  addMemberDirect, searchStudents, toggleGraduate, exportExcel,
+  addMemberDirect, searchStudents, toggleGraduate, exportExcel, getAcademyTeachers,
 } from '../api/groups'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
 import ExamsTab from '../components/ExamsTab'
@@ -153,8 +153,12 @@ export default function GroupDetail() {
   const [games,             setGames]             = useState([])
   const [showNewGame,       setShowNewGame]        = useState(false)
   const [announcements,     setAnnouncements]      = useState([])
-  const [showAddStudent,    setShowAddStudent]      = useState(false)
-  const [exportLoading,     setExportLoading]       = useState(false)
+  const [showAddStudent,       setShowAddStudent]       = useState(false)
+  const [exportLoading,        setExportLoading]        = useState(false)
+  const [showChangeTeacher,    setShowChangeTeacher]    = useState(false)
+  const [teachersList,         setTeachersList]         = useState([])
+  const [selectedTeacherId,    setSelectedTeacherId]    = useState(null)
+  const [changeTeacherLoading, setChangeTeacherLoading] = useState(false)
 
   const isAdmin    = user?.role === 'admin'
   const isTeacher  = (user?.role === 'teacher' && group?.teacher === user?.id) || isAdmin
@@ -219,6 +223,28 @@ export default function GroupDetail() {
       setGroup(g => ({ ...g, is_graduated: data.is_graduated }))
       show(data.is_graduated ? t('group_detail.toast_graduated') : t('group_detail.toast_ungraduated'), 'success')
     } catch { show(t('group_detail.toast_graduate_fail'), 'error') }
+  }
+
+  const openChangeTeacher = async () => {
+    setSelectedTeacherId(group.teacher)
+    setShowChangeTeacher(true)
+    try {
+      const { data } = await getAcademyTeachers()
+      setTeachersList(data.results || data)
+    } catch { show('O\'qituvchilar ro\'yxatini yuklab bo\'lmadi', 'error') }
+  }
+
+  const handleChangeTeacher = async () => {
+    if (!selectedTeacherId) return
+    setChangeTeacherLoading(true)
+    try {
+      const { data } = await updateGroup(id, { teacher: selectedTeacherId })
+      setGroup(g => ({ ...g, teacher: data.teacher, teacher_name: data.teacher_name }))
+      setShowChangeTeacher(false)
+      show('O\'qituvchi o\'zgartirildi', 'success')
+    } catch (err) {
+      show(err?.response?.data?.detail || 'Xatolik yuz berdi', 'error')
+    } finally { setChangeTeacherLoading(false) }
   }
 
   const handleExport = async () => {
@@ -319,6 +345,12 @@ export default function GroupDetail() {
                 </motion.button>
               )}
               <button onClick={() => setShowEditGroup(true)} style={ghostBtn}><Pencil size={13} /> {t('group_detail.edit_group')}</button>
+              {isAdmin && (
+                <button onClick={openChangeTeacher}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #8B5CF633', background: 'rgba(139,92,246,0.07)', color: '#8B5CF6', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <UserCog size={13} /> O'qituvchi
+                </button>
+              )}
               <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleExport} disabled={exportLoading}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #10B98133', background: 'rgba(16,185,129,0.07)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: exportLoading ? 'not-allowed' : 'pointer', opacity: exportLoading ? 0.7 : 1 }}>
                 {exportLoading ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <FileDown size={13} />}
@@ -459,6 +491,39 @@ export default function GroupDetail() {
         onCreated={g => { setGames(gs => [g, ...gs]); setShowNewGame(false); show(t('quiz.toast_game_created'), 'success') }} />
       <AddStudentModal open={showAddStudent} onClose={() => setShowAddStudent(false)} groupId={id}
         onAdded={m => { setMembers(ms => [...ms, m]); show(t('group_detail.toast_student_added'), 'success') }} />
+
+      {/* Change Teacher modal (admin only) */}
+      <Modal open={showChangeTeacher} onClose={() => setShowChangeTeacher(false)} title="Guruh o'qituvchisini o'zgartirish">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto', marginBottom: 16 }}>
+          {teachersList.length === 0 && (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Yuklanmoqda...</p>
+          )}
+          {teachersList.map(teacher => (
+            <button key={teacher.id} onClick={() => setSelectedTeacherId(teacher.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${selectedTeacherId === teacher.id ? '#8B5CF6' : 'var(--border)'}`, background: selectedTeacherId === teacher.id ? 'rgba(139,92,246,0.08)' : 'var(--surface)', cursor: 'pointer', textAlign: 'left' }}>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: selectedTeacherId === teacher.id ? 'rgba(139,92,246,0.15)' : 'var(--accent-bg)', border: `1.5px solid ${selectedTeacherId === teacher.id ? '#8B5CF6' : 'var(--accent)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: selectedTeacherId === teacher.id ? '#8B5CF6' : 'var(--accent)', flexShrink: 0 }}>
+                {(teacher.first_name?.[0] || teacher.username?.[0] || '?').toUpperCase()}
+              </div>
+              <div>
+                <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{teacher.first_name} {teacher.last_name}</p>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>@{teacher.username}</p>
+              </div>
+              {group.teacher === teacher.id && (
+                <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#10B981', background: 'rgba(16,185,129,0.1)', borderRadius: 6, padding: '2px 7px' }}>Joriy</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={() => setShowChangeTeacher(false)} style={ghostBtn}>Bekor</button>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={handleChangeTeacher}
+            disabled={changeTeacherLoading || !selectedTeacherId || selectedTeacherId === group.teacher}
+            style={{ ...primaryBtn, opacity: (changeTeacherLoading || selectedTeacherId === group.teacher) ? 0.6 : 1 }}>
+            {changeTeacherLoading ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <UserCog size={13} />}
+            Saqlash
+          </motion.button>
+        </div>
+      </Modal>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

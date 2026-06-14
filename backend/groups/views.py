@@ -57,6 +57,17 @@ class GroupDetailView(generics.RetrieveUpdateDestroyAPIView):
         group = self.get_object()
         if group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher or admin can edit this group.'}, status=403)
+        if request.user.role == 'admin' and 'teacher' in request.data:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                new_teacher = User.objects.get(pk=request.data['teacher'], academy=request.user.academy, role='teacher')
+                group.teacher = new_teacher
+                group.save(update_fields=['teacher'])
+            except User.DoesNotExist:
+                return Response({'detail': 'Teacher not found in this academy.'}, status=400)
+            if list(request.data.keys()) == ['teacher']:
+                return Response(GroupSerializer(group, context={'request': request}).data)
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
