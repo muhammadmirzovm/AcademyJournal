@@ -23,6 +23,8 @@ class Group(models.Model):
     is_individual     = models.BooleanField(default=False)
     is_graduated      = models.BooleanField(default=False)
     exam_ready        = models.BooleanField(default=False)
+    exam_ready_at     = models.DateTimeField(null=True, blank=True)
+    exam_ready_note   = models.TextField(blank=True, default='')
     created_at        = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -113,12 +113,22 @@ export default function Exams() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0 }}>{g.name}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                    {g.member_count} {t('group_detail.students_count')} · {t('exam.teacher_marked_ready')}
+                    {g.member_count} {t('group_detail.students_count')}
+                    {g.teacher_name && <> · {g.teacher_name}</>}
                   </p>
                   {scheduleStr(g) && (
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Clock size={11} /> {scheduleStr(g)}
                     </p>
+                  )}
+                  {g.exam_ready_at && (
+                    <p style={{ fontSize: 12, color: '#D97706', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Clock size={11} />
+                      {new Date(g.exam_ready_at).toLocaleString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                  {g.exam_ready_note && (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontStyle: 'italic' }}>"{g.exam_ready_note}"</p>
                   )}
                 </div>
                 <div className="exam-hub-card-btns" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>

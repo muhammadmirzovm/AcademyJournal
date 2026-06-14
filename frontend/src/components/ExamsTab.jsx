@@ -291,7 +291,11 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
   const [totalPages, setTotalPages]     = useState(1)
   const [loadingExams, setLoadingExams] = useState(true)
   const [examReady, setExamReady]       = useState(group.exam_ready)
+  const [examReadyAt, setExamReadyAt]   = useState(group.exam_ready_at || null)
+  const [examReadyNote, setExamReadyNote] = useState(group.exam_ready_note || '')
   const [readyLoading, setReadyLoading] = useState(false)
+  const [showNoteModal, setShowNoteModal] = useState(false)
+  const [noteInput, setNoteInput]       = useState('')
   const [showCreate, setShowCreate]     = useState(false)
   const [form, setForm]                 = useState({ name: '', question_count: 10 })
   const [creating, setCreating]         = useState(false)
@@ -312,11 +316,23 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
 
   useEffect(() => { fetchExams(1) }, [fetchExams])
 
-  const handleToggleReady = async () => {
+  const handleToggleReady = () => {
+    if (!examReady) {
+      setNoteInput('')
+      setShowNoteModal(true)
+    } else {
+      confirmToggleReady('')
+    }
+  }
+
+  const confirmToggleReady = async (note) => {
+    setShowNoteModal(false)
     setReadyLoading(true)
     try {
-      const { data } = await toggleExamReady(groupId)
+      const { data } = await toggleExamReady(groupId, note)
       setExamReady(data.exam_ready)
+      setExamReadyAt(data.exam_ready_at || null)
+      setExamReadyNote(data.exam_ready_note || '')
       if (data.exam_ready) show(t('exam.ready_toast'), 'success')
     } catch {}
     finally { setReadyLoading(false) }
@@ -369,7 +385,17 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
             <ClipboardList size={14} />
             {examReady ? t('exam.not_ready_btn') : t('exam.ready_btn')}
           </motion.button>
-          {examReady && <p style={{ fontSize: 12, color: '#D97706', marginTop: 8 }}>✓ {t('exam.admin_notified')}</p>}
+          {examReady && (
+            <div style={{ marginTop: 8 }}>
+              <p style={{ fontSize: 12, color: '#D97706', margin: 0 }}>
+                ✓ {t('exam.admin_notified')}
+                {examReadyAt && ` — ${new Date(examReadyAt).toLocaleString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+              </p>
+              {examReadyNote && (
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0', fontStyle: 'italic' }}>"{examReadyNote}"</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -377,9 +403,19 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
       {isAdmin && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           {examReady && (
-            <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#D97706', fontWeight: 600 }}>
-              <ClipboardList size={14} /> {t('exam.teacher_marked_ready')}
-            </span>
+            <div style={{ flex: 1 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#D97706', fontWeight: 600 }}>
+                <ClipboardList size={14} /> {t('exam.teacher_marked_ready')}
+                {examReadyAt && (
+                  <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>
+                    · {new Date(examReadyAt).toLocaleString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </span>
+              {examReadyNote && (
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0', fontStyle: 'italic' }}>"{examReadyNote}"</p>
+              )}
+            </div>
           )}
           <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreate(true)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
@@ -474,6 +510,33 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
           )}
         </>
       )}
+
+      {/* Note modal (teacher marks group ready) */}
+      <Modal open={showNoteModal} onClose={() => setShowNoteModal(false)} title="Imtihonga tayyor — izoh">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+            Admin uchun qisqacha izoh yozing (ixtiyoriy). U Telegram xabariga ham qo'shiladi.
+          </p>
+          <textarea
+            autoFocus
+            rows={3}
+            placeholder="Masalan: O'quvchilar 6-mavzugacha tayyor, 20 ta savol bo'lsin..."
+            value={noteInput}
+            onChange={e => setNoteInput(e.target.value)}
+            style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+          />
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowNoteModal(false)}
+              style={{ padding: '9px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+              Bekor
+            </button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => confirmToggleReady(noteInput)}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 10, border: 'none', background: '#D97706', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              <ClipboardList size={13} /> Yuborish
+            </motion.button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create exam modal */}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('exam.modal_title')}>
