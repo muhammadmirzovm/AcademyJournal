@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
   getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement,
-  addMemberDirect, searchStudents, toggleGraduate,
+  addMemberDirect, searchStudents, toggleGraduate, exportExcel,
 } from '../api/groups'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
 import ExamsTab from '../components/ExamsTab'
@@ -154,6 +154,7 @@ export default function GroupDetail() {
   const [showNewGame,       setShowNewGame]        = useState(false)
   const [announcements,     setAnnouncements]      = useState([])
   const [showAddStudent,    setShowAddStudent]      = useState(false)
+  const [exportLoading,     setExportLoading]       = useState(false)
 
   const isAdmin    = user?.role === 'admin'
   const isTeacher  = (user?.role === 'teacher' && group?.teacher === user?.id) || isAdmin
@@ -218,6 +219,15 @@ export default function GroupDetail() {
       setGroup(g => ({ ...g, is_graduated: data.is_graduated }))
       show(data.is_graduated ? t('group_detail.toast_graduated') : t('group_detail.toast_ungraduated'), 'success')
     } catch { show(t('group_detail.toast_graduate_fail'), 'error') }
+  }
+
+  const handleExport = async () => {
+    setExportLoading(true)
+    try {
+      await exportExcel(id, group.name)
+    } catch {
+      show('Excel yuklab olishda xatolik', 'error')
+    } finally { setExportLoading(false) }
   }
 
   if (loading) return <Spinner />
@@ -309,6 +319,11 @@ export default function GroupDetail() {
                 </motion.button>
               )}
               <button onClick={() => setShowEditGroup(true)} style={ghostBtn}><Pencil size={13} /> {t('group_detail.edit_group')}</button>
+              <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleExport} disabled={exportLoading}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #10B98133', background: 'rgba(16,185,129,0.07)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: exportLoading ? 'not-allowed' : 'pointer', opacity: exportLoading ? 0.7 : 1 }}>
+                {exportLoading ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <FileDown size={13} />}
+                Excel
+              </motion.button>
               <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleGraduate}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.15s',

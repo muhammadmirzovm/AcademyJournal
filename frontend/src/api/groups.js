@@ -46,3 +46,15 @@ export const getExams         = (gid, page = 1)    => api.get(`/groups/${gid}/ex
 export const createExam       = (gid, data)        => api.post(`/groups/${gid}/exams/`, data)
 export const submitExam       = (gid, eid, data)   => api.post(`/groups/${gid}/exams/${eid}/submit/`, data)
 export const finishExam       = (gid, eid)         => api.patch(`/groups/${gid}/exams/${eid}/`, { status: 'finished' })
+
+export const exportExcel = async (gid, groupName) => {
+  const res = await api.get(`/groups/${gid}/export/excel/`, { responseType: 'blob' })
+  const url  = window.URL.createObjectURL(new Blob([res.data]))
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `${(groupName || 'group').replace(/\s+/g, '_')}_davomat_balllar.xlsx`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}

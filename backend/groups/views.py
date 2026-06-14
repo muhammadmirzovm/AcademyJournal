@@ -3,7 +3,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum, Count
+from django.http import HttpResponse
 from asgiref.sync import async_to_sync
+import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement, Exam, ExamResult
 from .serializers import (
     GroupSerializer, MemberSerializer, LessonSerializer,
@@ -1001,3 +1006,165 @@ class UpcomingExamsView(APIView):
             'exam_ready_groups': [group_data(g) for g in ready_groups],
             'active_exams':      ExamSerializer(active_exams, many=True).data,
         })
+
+
+# ── Excel Export ───────────────────────────────────────────────────────────────
+
+class ExportExcelView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+        user  = request.user
+
+        if user.role not in ('teacher', 'admin'):
+            return Response({'detail': 'Forbidden'}, status=403)
+        if user.role == 'teacher' and group.teacher != user:
+            return Response({'detail': 'Forbidden'}, status=403)
+
+        lessons     = list(group.lessons.order_by('date', 'created_at'))
+        memberships = list(group.memberships.select_related('student').order_by('student__first_name', 'student__username'))
+
+        if not lessons or not memberships:
+            return Response({'detail': 'No data to export'}, status=404)
+
+        lesson_ids  = [l.id for l in lessons]
+        student_ids = [m.student_id for m in memberships]
+
+        att_map   = {}
+        score_map = {}
+        for a in Attendance.objects.filter(lesson_id__in=lesson_ids, student_id__in=student_ids):
+            att_map[(a.lesson_id, a.student_id)] = a.present
+        for s in Score.objects.filter(lesson_id__in=lesson_ids, student_id__in=student_ids):
+            score_map[(s.lesson_id, s.student_id)] = s.value
+
+        wb = openpyxl.Workbook()
+
+        hdr_green  = PatternFill('solid', fgColor='1A5276')
+        hdr_blue   = PatternFill('solid', fgColor='1F618D')
+        hdr_brown  = PatternFill('solid', fgColor='6E2F19')
+        white_bold = Font(bold=True, color='FFFFFF', size=10)
+        center     = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        left_mid   = Alignment(horizontal='left',   vertical='center')
+
+        def _make_sheet(ws, title_text, col_fill):
+            n_lessons = len(lessons)
+            last_data_col = get_column_letter(n_lessons + 2)
+
+            ws.merge_cells(f'A1:{last_data_col}1')
+            ws['A1'] = title_text
+            ws['A1'].font = Font(bold=True, size=13)
+            ws['A1'].alignment = center
+            ws.row_dimensions[1].height = 26
+
+            ws['A2'] = '№';         ws['A2'].font = white_bold; ws['A2'].fill = hdr_green; ws['A2'].alignment = center
+            ws['B2'] = "O'quvchi";  ws['B2'].font = white_bold; ws['B2'].fill = hdr_green; ws['B2'].alignment = center
+            ws.column_dimensions['A'].width = 5
+            ws.column_dimensions['B'].width = 24
+            ws.row_dimensions[2].height = 34
+
+            for j, lesson in enumerate(lessons):
+                col = get_column_letter(j + 3)
+                cell = ws[f'{col}2']
+                cell.value     = lesson.date.strftime('%d.%m')
+                cell.font      = white_bold
+                cell.fill      = col_fill
+                cell.alignment = center
+                ws.column_dimensions[col].width = 6
+
+            return n_lessons
+
+        # ── Sheet 1: Davomat ───────────────────────────────────────────────────
+        ws1 = wb.active
+        ws1.title = 'Davomat'
+        n = _make_sheet(ws1, f'{group.name}  —  Davomat', hdr_blue)
+
+        jami_col = get_column_letter(n + 3)
+        pct_col  = get_column_letter(n + 4)
+        for lbl, col in [('Jami', jami_col), ('%', pct_col)]:
+            c = ws1[f'{col}2']
+            c.value = lbl; c.font = white_bold; c.fill = hdr_green; c.alignment = center
+            ws1.column_dimensions[col].width = 8
+
+        for i, ms in enumerate(memberships):
+            row     = i + 3
+            student = ms.student
+            name    = f'{student.first_name} {student.last_name}'.strip() or student.username
+
+            ws1[f'A{row}'] = i + 1;  ws1[f'A{row}'].alignment = center
+            ws1[f'B{row}'] = name;    ws1[f'B{row}'].alignment = left_mid
+
+            present_count = 0
+            for j, lesson in enumerate(lessons):
+                col    = get_column_letter(j + 3)
+                state  = att_map.get((lesson.id, student.id))
+                if state is True:
+                    ws1[f'{col}{row}'].value = '✓'
+                    ws1[f'{col}{row}'].font  = Font(color='166534', bold=True)
+                    present_count += 1
+                elif state is False:
+                    ws1[f'{col}{row}'].value = '✗'
+                    ws1[f'{col}{row}'].font  = Font(color='991B1B', bold=True)
+                else:
+                    ws1[f'{col}{row}'].value = '—'
+                    ws1[f'{col}{row}'].font  = Font(color='94A3B8')
+                ws1[f'{col}{row}'].alignment = center
+
+            pct = round(present_count / n * 100) if n else 0
+            ws1[f'{jami_col}{row}'] = f'{present_count}/{n}'; ws1[f'{jami_col}{row}'].alignment = center; ws1[f'{jami_col}{row}'].font = Font(bold=True)
+            pct_cell = ws1[f'{pct_col}{row}']
+            pct_cell.value     = f'{pct}%'
+            pct_cell.alignment = center
+            pct_cell.font      = Font(bold=True, color='166534' if pct >= 80 else ('92400E' if pct >= 60 else '991B1B'))
+
+        # ── Sheet 2: Balllar ───────────────────────────────────────────────────
+        ws2 = wb.create_sheet('Balllar')
+        _make_sheet(ws2, f'{group.name}  —  Balllar', hdr_brown)
+
+        avg_col = get_column_letter(n + 3)
+        c = ws2[f'{avg_col}2']
+        c.value = "O'rtacha"; c.font = white_bold; c.fill = hdr_green; c.alignment = center
+        ws2.column_dimensions[avg_col].width = 10
+
+        for i, ms in enumerate(memberships):
+            row     = i + 3
+            student = ms.student
+            name    = f'{student.first_name} {student.last_name}'.strip() or student.username
+
+            ws2[f'A{row}'] = i + 1;  ws2[f'A{row}'].alignment = center
+            ws2[f'B{row}'] = name;    ws2[f'B{row}'].alignment = left_mid
+
+            vals = []
+            for j, lesson in enumerate(lessons):
+                col = get_column_letter(j + 3)
+                val = score_map.get((lesson.id, student.id))
+                if val is not None:
+                    ws2[f'{col}{row}'].value     = val
+                    ws2[f'{col}{row}'].font       = Font(bold=True, color='166534' if val >= 4 else ('92400E' if val >= 3 else '991B1B'))
+                    vals.append(val)
+                else:
+                    ws2[f'{col}{row}'].value = '—'
+                    ws2[f'{col}{row}'].font  = Font(color='94A3B8')
+                ws2[f'{col}{row}'].alignment = center
+
+            if vals:
+                avg = round(sum(vals) / len(vals), 1)
+                ws2[f'{avg_col}{row}'].value     = avg
+                ws2[f'{avg_col}{row}'].font       = Font(bold=True, color='166534' if avg >= 4 else ('92400E' if avg >= 3 else '991B1B'))
+            else:
+                ws2[f'{avg_col}{row}'].value = '—'
+                ws2[f'{avg_col}{row}'].font  = Font(color='94A3B8')
+            ws2[f'{avg_col}{row}'].alignment = center
+
+        # ── Response ───────────────────────────────────────────────────────────
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        safe_name = group.name.replace(' ', '_').replace('/', '-')
+        response = HttpResponse(
+            buf.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{safe_name}_davomat_balllar.xlsx"'
+        return response
