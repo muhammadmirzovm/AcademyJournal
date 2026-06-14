@@ -29,4 +29,3 @@ release_command = "python manage.py migrate --noinput"
 [[mounts]]
   source = 'codelearn_media'
   destination = '/app/media'
-
