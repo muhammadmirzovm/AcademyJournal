@@ -128,10 +128,12 @@ MSG = {
         'rank_no_data':  "📭 Reyting hali aniqlanmagan.",
 
         # ── Homework ───────────────────────────────────────────────────────
-        'homework_header': "📝 *Uy vazifalari:*\n",
-        'homework_item':   "\n📚 *{group}* — {lesson}\n{homework}",
-        'homework_none':   "📭 Hozircha uy vazifasi yo'q.",
-        'hw_notification': "📝 *{lesson}* darsi uchun uy vazifasi ({group}):\n\n{homework}",
+        'homework_header':    "📝 *Uy vazifalari:*\n",
+        'homework_item':      "\n📚 *{group}* — {lesson}\n{homework}",
+        'homework_no_lesson': "\n📚 *{group}*\n📭 _Hali dars o'tkazilmagan_",
+        'homework_not_set':   "\n📚 *{group}* — {lesson}\n📭 _Uy vazifasi hali joylanmagan_",
+        'homework_none':      "📭 Hozircha guruh yo'q.",
+        'hw_notification':    "📝 *{lesson}* darsi uchun uy vazifasi ({group}):\n\n{homework}",
 
         # ── Teacher: groups ────────────────────────────────────────────────
         'groups_header': "👥 *Guruhlaringiz:*\n",
@@ -272,10 +274,12 @@ MSG = {
         'rank_no_data': "📭 Рейтинг ещё не определён.",
 
         # ── Homework ───────────────────────────────────────────────────────
-        'homework_header': "📝 *Домашние задания:*\n",
-        'homework_item':   "\n📚 *{group}* — {lesson}\n{homework}",
-        'homework_none':   "📭 Домашних заданий пока нет.",
-        'hw_notification': "📝 Домашнее задание по уроку *{lesson}* ({group}):\n\n{homework}",
+        'homework_header':    "📝 *Домашние задания:*\n",
+        'homework_item':      "\n📚 *{group}* — {lesson}\n{homework}",
+        'homework_no_lesson': "\n📚 *{group}*\n📭 _Уроков ещё не было_",
+        'homework_not_set':   "\n📚 *{group}* — {lesson}\n📭 _Домашнее задание ещё не задано_",
+        'homework_none':      "📭 Групп пока нет.",
+        'hw_notification':    "📝 Домашнее задание по уроку *{lesson}* ({group}):\n\n{homework}",
 
         # ── Teacher: groups ────────────────────────────────────────────────
         'groups_header': "👥 *Ваши группы:*\n",
@@ -379,12 +383,14 @@ def _student_homework(user):
     memberships = list(GroupMembership.objects.filter(student=user).select_related('group'))
     items = []
     for m in memberships:
-        lessons = list(m.group.lessons.filter(homework__gt='').order_by('-date')[:3])
-        for lesson in lessons:
+        last_lesson = m.group.lessons.order_by('-date', '-created_at').first()
+        if last_lesson is None:
+            items.append({'group': m.group.name, 'lesson': None, 'homework': None})
+        else:
             items.append({
                 'group':    m.group.name,
-                'lesson':   lesson.title,
-                'homework': lesson.homework,
+                'lesson':   last_lesson.title,
+                'homework': last_lesson.homework or None,
             })
     return items
 
@@ -721,9 +727,14 @@ async def homework_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = m['homework_header']
     for item in items:
-        text += m['homework_item'].format(
-            group=item['group'], lesson=item['lesson'], homework=item['homework']
-        )
+        if item['lesson'] is None:
+            text += m['homework_no_lesson'].format(group=item['group'])
+        elif item['homework'] is None:
+            text += m['homework_not_set'].format(group=item['group'], lesson=item['lesson'])
+        else:
+            text += m['homework_item'].format(
+                group=item['group'], lesson=item['lesson'], homework=item['homework']
+            )
     await update.message.reply_text(text, parse_mode='Markdown')
 
 
@@ -885,8 +896,8 @@ async def lessons_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for child in children_data:
         text += m['lessons_child'].format(name=child['name'], group=child['group'])
         if child['lessons']:
-            for l in child['lessons']:
-                text += m['lessons_item'].format(**l)
+            for lesson in child['lessons']:
+                text += m['lessons_item'].format(**lesson)
         else:
             text += m['lessons_none']
     if shown_all < total_all:
