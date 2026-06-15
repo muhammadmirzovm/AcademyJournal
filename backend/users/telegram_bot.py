@@ -5,7 +5,7 @@ Telegram bot for AcademyJournal — webhook mode.
 import os
 import logging
 from asgiref.sync import sync_to_async
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot, BotCommand
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot, BotCommand, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
     ContextTypes, ConversationHandler, MessageHandler, filters,
@@ -321,6 +321,82 @@ LANG_KEYBOARD = InlineKeyboardMarkup([
     ]
 ])
 
+# ── Reply keyboard menus (per role, per lang) ──────────────────────────────────
+
+MENU_BUTTONS = {
+    'uz': {
+        'student': [
+            ['📊 Statistika',     '🏆 Reyting'],
+            ['📝 Uy vazifasi',    '❓ Yordam'],
+        ],
+        'teacher': [
+            ['👥 Guruhlar',          '⚠️ Qiynalayotganlar'],
+            ['📢 Xabar yuborish',    '❓ Yordam'],
+        ],
+        'admin': [
+            ['🏫 Akademiya',      '📅 Kunlik hisobot'],
+            ['❓ Yordam'],
+        ],
+        'parent': [
+            ['📊 Statistika',       "📅 So'nggi darslar"],
+            ['❓ Yordam'],
+        ],
+    },
+    'ru': {
+        'student': [
+            ['📊 Статистика',         '🏆 Рейтинг'],
+            ['📝 Домашнее задание',   '❓ Помощь'],
+        ],
+        'teacher': [
+            ['👥 Группы',             '⚠️ Отстающие'],
+            ['📢 Сообщение группе',   '❓ Помощь'],
+        ],
+        'admin': [
+            ['🏫 Академия',           '📅 Ежедневный отчёт'],
+            ['❓ Помощь'],
+        ],
+        'parent': [
+            ['📊 Статистика',         '📅 Последние уроки'],
+            ['❓ Помощь'],
+        ],
+    },
+}
+
+BUTTON_ACTIONS = {
+    # UZ
+    '📊 Statistika':       'mystats',
+    '🏆 Reyting':          'myrank',
+    '📝 Uy vazifasi':      'homework',
+    '👥 Guruhlar':         'mygroups',
+    '⚠️ Qiynalayotganlar': 'struggling',
+    '📢 Xabar yuborish':   'notify',
+    '🏫 Akademiya':        'academy',
+    '📅 Kunlik hisobot':   'dailyreport',
+    "📅 So'nggi darslar":  'lessons',
+    '❓ Yordam':           'help',
+    # RU
+    '📊 Статистика':        'mystats',
+    '🏆 Рейтинг':           'myrank',
+    '📝 Домашнее задание':  'homework',
+    '👥 Группы':            'mygroups',
+    '⚠️ Отстающие':         'struggling',
+    '📢 Сообщение группе':  'notify',
+    '🏫 Академия':          'academy',
+    '📅 Ежедневный отчёт':  'dailyreport',
+    '📅 Последние уроки':   'lessons',
+    '❓ Помощь':            'help',
+}
+
+
+def _get_reply_keyboard(role, lang):
+    rows = MENU_BUTTONS.get(lang, MENU_BUTTONS['uz']).get(role)
+    if not rows:
+        return None
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton(btn) for btn in row] for row in rows],
+        resize_keyboard=True,
+    )
+
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
@@ -548,6 +624,10 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text)
     if user:
         await _set_user_commands(query.get_bot(), telegram_id, user.role)
+        kb = _get_reply_keyboard(user.role, lang)
+        if kb:
+            menu_label = '👇 Menyu:' if lang == 'uz' else '👇 Меню:'
+            await context.bot.send_message(chat_id=query.message.chat_id, text=menu_label, reply_markup=kb)
 
 
 async def _set_user_commands(bot, telegram_id: int, role: str):
@@ -632,6 +712,10 @@ async def _process_connect(query, telegram_id: int, lang: str, token_str: str):
 
     await query.edit_message_text(text)
     await _set_user_commands(query.get_bot(), telegram_id, user.role)
+    kb = _get_reply_keyboard(user.role, lang)
+    if kb:
+        menu_label = '👇 Menyu:' if lang == 'uz' else '👇 Меню:'
+        await query.get_bot().send_message(chat_id=query.message.chat_id, text=menu_label, reply_markup=kb)
 
 
 # ── /mystats ───────────────────────────────────────────────────────────────────
@@ -968,6 +1052,32 @@ async def username_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+# ── Menu button handler ───────────────────────────────────────────────────────
+
+async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    action = BUTTON_ACTIONS.get(update.message.text)
+    if action == 'mystats':
+        await mystats(update, context)
+    elif action == 'myrank':
+        await myrank(update, context)
+    elif action == 'homework':
+        await homework_cmd(update, context)
+    elif action == 'mygroups':
+        await mygroups(update, context)
+    elif action == 'struggling':
+        await struggling(update, context)
+    elif action == 'notify':
+        await notify_start(update, context)
+    elif action == 'academy':
+        await academy_cmd(update, context)
+    elif action == 'dailyreport':
+        await dailyreport_cmd(update, context)
+    elif action == 'lessons':
+        await lessons_cmd(update, context)
+    elif action == 'help':
+        await help_cmd(update, context)
+
+
 # ── OTP sender ────────────────────────────────────────────────────────────────
 
 async def send_otp(telegram_id: int, code: str, lang: str = 'uz'):
@@ -1134,6 +1244,7 @@ def get_application():
     private = filters.ChatType.PRIVATE
 
     app.add_handler(notify_handler)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, menu_handler))
     app.add_handler(CommandHandler('start',      start,       filters=private))
     app.add_handler(CommandHandler('mystats',    mystats,     filters=private))
     app.add_handler(CommandHandler('myrank',     myrank,      filters=private))
