@@ -8,14 +8,10 @@ from asgiref.sync import sync_to_async
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot, BotCommand, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
-    ContextTypes, ConversationHandler, MessageHandler, filters,
+    ContextTypes, MessageHandler, filters,
 )
 
 logger = logging.getLogger(__name__)
-
-# ── Conversation states ────────────────────────────────────────────────────────
-NOTIFY_CHOOSE = 0
-NOTIFY_MSG    = 1
 
 # ── Translations ───────────────────────────────────────────────────────────────
 
@@ -44,7 +40,6 @@ MSG = {
             "📌 Buyruqlar:\n"
             "/mygroups — guruhlaringiz statistikasi\n"
             "/struggling — qiynalayotgan o'quvchilar\n"
-            "/notify — guruhga xabar yuborish\n"
             "/help — barcha buyruqlar"
         ),
         'welcome_admin': (
@@ -95,7 +90,6 @@ MSG = {
             "📚 *AcademyJournal Bot*\n\n"
             "/mygroups — guruhlaringiz statistikasi\n"
             "/struggling — qiynalayotgan o'quvchilar\n"
-            "/notify — guruhga xabar yuborish\n"
             "/help — shu ro'yxat"
         ),
         'help_admin': (
@@ -145,13 +139,6 @@ MSG = {
         'struggling_item':   "\n👤 {name} ({group})\n• Ball: {score}% | Davomat: {att}%",
         'struggling_none':   "✅ Hamma yaxshi o'qiyapti!",
 
-        # ── Teacher: notify ────────────────────────────────────────────────
-        'notify_choose': "📢 Qaysi guruhga xabar yuborasiz?",
-        'notify_type':   "✏️ Xabar matnini yozing (bekor qilish uchun /cancel):",
-        'notify_sent':   "✅ Xabar {count} ta o'quvchiga yuborildi.",
-        'notify_no_tg':  "📭 Bu guruhda ulangan Telegram foydalanuvchi yo'q.",
-        'notify_cancel': "❌ Bekor qilindi.",
-
         # ── Parent: recent lessons ─────────────────────────────────────────
         'lessons_header': "📅 *So'nggi darslar* ({shown} ta, jami {total} ta):\n",
         'lessons_child':  "\n👤 *{name}* — {group}",
@@ -190,7 +177,6 @@ MSG = {
             "📌 Команды:\n"
             "/mygroups — статистика групп\n"
             "/struggling — отстающие ученики\n"
-            "/notify — отправить сообщение группе\n"
             "/help — все команды"
         ),
         'welcome_admin': (
@@ -241,7 +227,6 @@ MSG = {
             "📚 *AcademyJournal Bot*\n\n"
             "/mygroups — статистика групп\n"
             "/struggling — отстающие ученики\n"
-            "/notify — отправить сообщение группе\n"
             "/help — этот список"
         ),
         'help_admin': (
@@ -291,13 +276,6 @@ MSG = {
         'struggling_item':   "\n👤 {name} ({group})\n• Оценки: {score}% | Посещаемость: {att}%",
         'struggling_none':   "✅ Все учатся хорошо!",
 
-        # ── Teacher: notify ────────────────────────────────────────────────
-        'notify_choose': "📢 В какую группу отправить сообщение?",
-        'notify_type':   "✏️ Напишите текст сообщения (отмена: /cancel):",
-        'notify_sent':   "✅ Сообщение отправлено {count} ученикам.",
-        'notify_no_tg':  "📭 В этой группе нет учеников с привязанным Telegram.",
-        'notify_cancel': "❌ Отменено.",
-
         # ── Parent: recent lessons ─────────────────────────────────────────
         'lessons_header': "📅 *Последние уроки* ({shown} из {total}):\n",
         'lessons_child':  "\n👤 *{name}* — {group}",
@@ -331,7 +309,7 @@ MENU_BUTTONS = {
         ],
         'teacher': [
             ['👥 Guruhlar',          '⚠️ Qiynalayotganlar'],
-            ['📢 Xabar yuborish',    '❓ Yordam'],
+            ['❓ Yordam'],
         ],
         'admin': [
             ['🏫 Akademiya',      '📅 Kunlik hisobot'],
@@ -349,7 +327,7 @@ MENU_BUTTONS = {
         ],
         'teacher': [
             ['👥 Группы',             '⚠️ Отстающие'],
-            ['📢 Сообщение группе',   '❓ Помощь'],
+            ['❓ Помощь'],
         ],
         'admin': [
             ['🏫 Академия',           '📅 Ежедневный отчёт'],
@@ -369,7 +347,6 @@ BUTTON_ACTIONS = {
     '📝 Uy vazifasi':      'homework',
     '👥 Guruhlar':         'mygroups',
     '⚠️ Qiynalayotganlar': 'struggling',
-    '📢 Xabar yuborish':   'notify',
     '🏫 Akademiya':        'academy',
     '📅 Kunlik hisobot':   'dailyreport',
     "📅 So'nggi darslar":  'lessons',
@@ -380,7 +357,6 @@ BUTTON_ACTIONS = {
     '📝 Домашнее задание':  'homework',
     '👥 Группы':            'mygroups',
     '⚠️ Отстающие':         'struggling',
-    '📢 Сообщение группе':  'notify',
     '🏫 Академия':          'academy',
     '📅 Ежедневный отчёт':  'dailyreport',
     '📅 Последние уроки':   'lessons',
@@ -555,20 +531,6 @@ def _teacher_struggling(user):
     return struggling
 
 
-def _teacher_group_list(user):
-    from groups.models import Group
-    return list(Group.objects.filter(teacher=user).values('id', 'name'))
-
-
-def _group_students_with_tg(group_id):
-    from groups.models import Group, GroupMembership
-    group   = Group.objects.get(id=group_id)
-    members = GroupMembership.objects.filter(
-        group=group, student__telegram_id__isnull=False
-    ).select_related('student')
-    return [(m.student.telegram_id, m.student.telegram_lang or 'uz') for m in members], group.name
-
-
 def _admin_stats():
     from users.models import User
     return {
@@ -646,7 +608,6 @@ async def _set_user_commands(bot, telegram_id: int, role: str):
         commands = [
             BotCommand('mygroups',   'Guruhlar / Группы'),
             BotCommand('struggling', "Qiynalayotganlar / Отстающие"),
-            BotCommand('notify',     'Guruhga xabar / Сообщение группе'),
             u, h,
         ]
     elif role == 'admin':
@@ -874,79 +835,6 @@ async def struggling(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, parse_mode='Markdown')
 
 
-# ── /notify conversation (teacher) ────────────────────────────────────────────
-
-async def notify_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-    user = await sync_to_async(_get_user)(telegram_id)
-    lang = (user.telegram_lang if user else None) or 'uz'
-    m    = MSG[lang]
-
-    if not user or user.role not in ('teacher', 'admin'):
-        await update.message.reply_text(m['not_linked'])
-        return ConversationHandler.END
-
-    context.user_data['notify_lang'] = lang
-    groups = await sync_to_async(_teacher_group_list)(user)
-    if not groups:
-        await update.message.reply_text(m['groups_none'])
-        return ConversationHandler.END
-
-    keyboard = [[InlineKeyboardButton(g['name'], callback_data=f'notifyg_{g["id"]}')] for g in groups]
-    await update.message.reply_text(m['notify_choose'], reply_markup=InlineKeyboardMarkup(keyboard))
-    return NOTIFY_CHOOSE
-
-
-async def notify_group_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    group_id = int(query.data.split('_')[1])
-    context.user_data['notify_group_id'] = group_id
-    lang = context.user_data.get('notify_lang', 'uz')
-    await query.edit_message_text(MSG[lang]['notify_type'])
-    return NOTIFY_MSG
-
-
-async def notify_send_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_text = update.message.text
-    group_id     = context.user_data.get('notify_group_id')
-    lang         = context.user_data.get('notify_lang', 'uz')
-    m            = MSG[lang]
-
-    students, group_name = await sync_to_async(_group_students_with_tg)(group_id)
-    if not students:
-        await update.message.reply_text(m['notify_no_tg'])
-        return ConversationHandler.END
-
-    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
-    bot       = Bot(token=bot_token)
-    sender    = (
-        f'@{update.effective_user.username}'
-        if update.effective_user.username
-        else update.effective_user.first_name
-    )
-
-    count = 0
-    for tg_id, student_lang in students:
-        try:
-            msg_text = NOTIF_MSG.get(student_lang, NOTIF_MSG['uz'])['direct_message'].format(
-                sender=sender, message=message_text
-            )
-            await bot.send_message(chat_id=tg_id, text=msg_text, parse_mode='Markdown')
-            count += 1
-        except Exception as e:
-            logger.error('Notify send error to %s: %s', tg_id, e)
-
-    await update.message.reply_text(m['notify_sent'].format(count=count))
-    return ConversationHandler.END
-
-
-async def notify_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = context.user_data.get('notify_lang', 'uz')
-    await update.message.reply_text(MSG[lang]['notify_cancel'])
-    return ConversationHandler.END
-
-
 # ── /lessons (parent) ─────────────────────────────────────────────────────────
 
 async def lessons_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1066,8 +954,6 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await mygroups(update, context)
     elif action == 'struggling':
         await struggling(update, context)
-    elif action == 'notify':
-        await notify_start(update, context)
     elif action == 'academy':
         await academy_cmd(update, context)
     elif action == 'dailyreport':
@@ -1109,8 +995,6 @@ NOTIF_MSG = {
         'parent_absent_scored':     "⚠️ *{name}* *{lesson}* darsiga kelmadi.\n⭐ Ball: *{score}/5* | {group}",
         'parent_absent_unscored':   "⚠️ *{name}* *{lesson}* darsiga kelmadi. | {group}",
         'hw_notification':          "📝 *{lesson}* darsi uchun uy vazifasi ({group}):\n\n{homework}",
-        'direct_message':           "📢 *{sender}* sizga xabar yubordi:\n\n{message}",
-        'direct_message_parent':    "📢 *{sender}* ({student} haqida) xabar yubordi:\n\n{message}",
         'announcement':             "📌 *E'lon:* {title}\n\n{body}",
         'announcement_group':       "📌 *E'lon ({group}):* {title}\n\n{body}",
     },
@@ -1128,8 +1012,6 @@ NOTIF_MSG = {
         'parent_absent_scored':     "⚠️ *{name}* пропустил(а) урок *{lesson}*.\n⭐ Оценка: *{score}/5* | {group}",
         'parent_absent_unscored':   "⚠️ *{name}* пропустил(а) урок *{lesson}*. | {group}",
         'hw_notification':          "📝 Домашнее задание по уроку *{lesson}* ({group}):\n\n{homework}",
-        'direct_message':           "📢 *{sender}* отправил(а) вам сообщение:\n\n{message}",
-        'direct_message_parent':    "📢 *{sender}* (о {student}) отправил(а) сообщение:\n\n{message}",
         'announcement':             "📌 *Объявление:* {title}\n\n{body}",
         'announcement_group':       "📌 *Объявление ({group}):* {title}\n\n{body}",
     },
@@ -1231,19 +1113,8 @@ def get_application():
 
     app = ApplicationBuilder().token(bot_token).build()
 
-    # Notify conversation handler (must be registered before generic handlers)
-    notify_handler = ConversationHandler(
-        entry_points=[CommandHandler('notify', notify_start)],
-        states={
-            NOTIFY_CHOOSE: [CallbackQueryHandler(notify_group_chosen, pattern=r'^notifyg_\d+$')],
-            NOTIFY_MSG:    [MessageHandler(filters.TEXT & ~filters.COMMAND, notify_send_msg)],
-        },
-        fallbacks=[CommandHandler('cancel', notify_cancel)],
-    )
-
     private = filters.ChatType.PRIVATE
 
-    app.add_handler(notify_handler)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, menu_handler))
     app.add_handler(CommandHandler('start',      start,       filters=private))
     app.add_handler(CommandHandler('mystats',    mystats,     filters=private))
