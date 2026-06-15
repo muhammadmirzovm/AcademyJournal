@@ -684,7 +684,7 @@ function InvitesTab({ academy, userRole }) {
     Promise.all([
       api.get('/invites/').catch(() => ({ data: [] })),
       api.get('/groups/').catch(() => ({ data: [] })),
-      api.get('/academy/members/').catch(() => ({ data: [] })),
+      api.get('/academy/members/', { params: { role: 'student' } }).catch(() => ({ data: [] })),
     ]).then(([inv, grp, mem]) => {
       setInvites(inv.data)
       setGroups(grp.data)
