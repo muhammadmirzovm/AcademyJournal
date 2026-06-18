@@ -350,6 +350,7 @@
     "lessons_count": "lessons",
     "students_count": "students",
     "edit_group": "Edit group",
+    "more_actions": "More actions",
     "delete_group": "Delete group",
     "delete_group_confirm": "Delete this group and all its lessons? This cannot be undone.",
     "delete_group_btn": "Yes, delete",

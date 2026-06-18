@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog, MoreVertical, GraduationCap } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
@@ -159,10 +159,18 @@ export default function GroupDetail() {
   const [teachersList,         setTeachersList]         = useState([])
   const [selectedTeacherId,    setSelectedTeacherId]    = useState(null)
   const [changeTeacherLoading, setChangeTeacherLoading] = useState(false)
+  const [showActions,          setShowActions]          = useState(false)
+  const actionsRef = useRef(null)
 
   const isAdmin    = user?.role === 'admin'
   const isTeacher  = (user?.role === 'teacher' && group?.teacher === user?.id) || isAdmin
   const isReadOnly = !!group?.is_graduated
+
+  useEffect(() => {
+    const handler = e => { if (actionsRef.current && !actionsRef.current.contains(e.target)) setShowActions(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const load = async () => {
     setLoading(true)
@@ -345,26 +353,37 @@ export default function GroupDetail() {
                 </motion.button>
               )}
               <button onClick={() => setShowEditGroup(true)} style={ghostBtn}><Pencil size={13} /> {t('group_detail.edit_group')}</button>
-              {isAdmin && (
-                <button onClick={openChangeTeacher}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #8B5CF633', background: 'rgba(139,92,246,0.07)', color: '#8B5CF6', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  <UserCog size={13} /> O'qituvchi
+
+              {/* Secondary actions dropdown */}
+              <div ref={actionsRef} style={{ position: 'relative' }}>
+                <button onClick={() => setShowActions(o => !o)} title={t('group_detail.more_actions')}
+                  style={{ ...iconActionBtn, width: 36, height: 36, justifyContent: 'center', border: '1px solid var(--border)', borderRadius: 10 }}>
+                  <MoreVertical size={16} color="var(--text-muted)" />
                 </button>
-              )}
-              <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleExport} disabled={exportLoading}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #10B98133', background: 'rgba(16,185,129,0.07)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: exportLoading ? 'not-allowed' : 'pointer', opacity: exportLoading ? 0.7 : 1 }}>
-                {exportLoading ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <FileDown size={13} />}
-                Excel
-              </motion.button>
-              <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleGraduate}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
-                  background: group.is_graduated ? 'color-mix(in srgb, #10B981 15%, transparent)' : 'color-mix(in srgb, #10B981 10%, transparent)',
-                  color: '#10B981',
-                }}>
-                {group.is_graduated ? t('group_detail.ungraduate') : t('group_detail.graduate')}
-              </motion.button>
-              <button onClick={() => setShowDeleteGroup(true)} style={dangerOutlineBtn}><Trash2 size={13} /> {t('group_detail.delete_group')}</button>
+                <AnimatePresence>
+                  {showActions && (
+                    <motion.div initial={{ opacity: 0, y: -6, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', minWidth: 210, boxShadow: '0 12px 32px rgba(0,0,0,0.18)', zIndex: 50 }}>
+                      {isAdmin && (
+                        <button onClick={() => { setShowActions(false); openChangeTeacher() }} style={menuItemStyle('#8B5CF6')}>
+                          <UserCog size={14} /> O'qituvchi
+                        </button>
+                      )}
+                      <button onClick={() => { setShowActions(false); handleExport() }} disabled={exportLoading} style={menuItemStyle('#10B981')}>
+                        {exportLoading ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <FileDown size={14} />} Excel
+                      </button>
+                      <button onClick={() => { setShowActions(false); handleGraduate() }} style={menuItemStyle('#10B981')}>
+                        <GraduationCap size={14} /> {group.is_graduated ? t('group_detail.ungraduate') : t('group_detail.graduate')}
+                      </button>
+                      <div style={{ height: 1, background: 'var(--border)' }} />
+                      <button onClick={() => { setShowActions(false); setShowDeleteGroup(true) }} style={menuItemStyle('var(--danger)')}>
+                        <Trash2 size={14} /> {t('group_detail.delete_group')}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </>
           )}
         </div>
@@ -1324,6 +1343,7 @@ const ghostBtn         = { display: 'inline-flex', alignItems: 'center', gap: 6,
 const dangerBtn        = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 7, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }
 const dangerOutlineBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 7, border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', fontSize: 13, cursor: 'pointer', fontWeight: 600 }
 const iconActionBtn    = { background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', borderRadius: 6 }
+const menuItemStyle    = (color) => ({ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '10px 14px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 600, color, textAlign: 'left', whiteSpace: 'nowrap' })
 const labelStyle       = { fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }
 const errorStyle       = { fontSize: 12, color: 'var(--danger)', marginTop: 4 }
 const inputStyle       = (hasError) => ({ width: '100%', padding: '9px 12px', borderRadius: 7, border: `1.5px solid ${hasError ? 'var(--danger)' : 'var(--border)'}`, background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', display: 'block' })
