@@ -899,9 +899,9 @@ class ExamListCreateView(APIView):
         })
 
     def post(self, request, group_pk):
-        if request.user.role != 'admin':
-            return Response({'detail': 'Only admin can create exams.'}, status=403)
         group = get_object_or_404(Group, pk=group_pk)
+        if not (request.user.role == 'admin' or group.teacher == request.user):
+            return Response({'detail': 'Only the teacher or admin can create exams.'}, status=403)
         ser = ExamSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         exam = ser.save(group=group, created_by=request.user, status=Exam.ACTIVE)
@@ -918,9 +918,9 @@ class ExamDetailView(APIView):
         return Response(ExamSerializer(exam).data)
 
     def patch(self, request, group_pk, exam_pk):
-        if request.user.role != 'admin':
-            return Response({'detail': 'Only admin.'}, status=403)
         exam = get_object_or_404(Exam, pk=exam_pk, group_id=group_pk)
+        if not (request.user.role == 'admin' or exam.group.teacher == request.user):
+            return Response({'detail': 'Only the teacher or admin.'}, status=403)
         if 'status' in request.data:
             exam.status = request.data['status']
             exam.save(update_fields=['status'])
@@ -935,9 +935,9 @@ class ExamSubmitView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, group_pk, exam_pk):
-        if request.user.role != 'admin':
-            return Response({'detail': 'Only admin can submit exam results.'}, status=403)
         exam = get_object_or_404(Exam, pk=exam_pk, group_id=group_pk)
+        if not (request.user.role == 'admin' or exam.group.teacher == request.user):
+            return Response({'detail': 'Only the teacher or admin can submit exam results.'}, status=403)
         results_data = request.data.get('results', [])
         was_already_finished = exam.status == Exam.FINISHED
         existing = {r.student_id: r for r in exam.results.all()}

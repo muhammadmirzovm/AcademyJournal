@@ -421,10 +421,10 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
         </div>
       )}
 
-      {/* Admin: create exam button + ready notice */}
-      {isAdmin && (
+      {/* Admin or teacher: create exam button + ready notice */}
+      {(isAdmin || isTeacher) && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          {examReady && (
+          {isAdmin && examReady && (
             <div style={{ flex: 1 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#D97706', fontWeight: 600 }}>
                 <ClipboardList size={14} /> {t('exam.teacher_marked_ready')}
@@ -455,7 +455,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
           <ClipboardList size={36} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
           <p style={{ fontWeight: 600 }}>{t('exam.no_exams')}</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>{isAdmin ? t('exam.no_exams_sub_admin') : t('exam.no_exams_sub')}</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>{(isAdmin || isTeacher) ? t('exam.no_exams_sub_creator') : t('exam.no_exams_sub')}</p>
         </div>
       ) : (
         <>
@@ -490,7 +490,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    {isAdmin && !finished && (
+                    {(isAdmin || isTeacher) && !finished && (
                       <button onClick={() => setView({ examId: ex.id, mode: 'score' })}
                         style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid var(--accent)', background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                         {t('exam.score_btn')}
@@ -502,7 +502,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
                         {t('exam.results_btn')}
                       </button>
                     )}
-                    {isAdmin && finished && (
+                    {(isAdmin || isTeacher) && finished && (
                       <button onClick={() => setView({ examId: ex.id, mode: 'score' })}
                         style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, border: '1px solid #8B5CF6', background: '#8B5CF615', color: '#8B5CF6', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                         <Pencil size={12} /> {t('exam.edit_btn')}
