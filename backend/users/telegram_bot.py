@@ -997,6 +997,12 @@ NOTIF_MSG = {
         'hw_notification':          "📝 *{lesson}* darsi uchun uy vazifasi ({group}):\n\n{homework}",
         'announcement':             "📌 *E'lon:* {title}\n\n{body}",
         'announcement_group':       "📌 *E'lon ({group}):* {title}\n\n{body}",
+
+        # ── Exam results ────────────────────────────────────────────────────
+        'exam_result':              "📝 *{exam}* — imtihon natijasi\n📚 {group}\n\n✅ Natija: *{total}/{max}* ({pct}%)\n\n{breakdown}\n\n#exam",
+        'exam_result_absent':       "📝 *{exam}* — imtihon natijasi\n📚 {group}\n\n⚠️ Siz imtihonda qatnashmadingiz.\n\n#exam",
+        'exam_result_parent':       "📝 *{name}* — *{exam}* imtihon natijasi\n📚 {group}\n\n✅ Natija: *{total}/{max}* ({pct}%)\n\n{breakdown}\n\n#exam",
+        'exam_result_parent_absent': "📝 *{name}* — *{exam}* imtihon natijasi\n📚 {group}\n\n⚠️ {name} imtihonda qatnashmadi.\n\n#exam",
     },
     'ru': {
         'score':                    "📊 Вы получили *{score}/5* в уроке «{lesson}» ({group})",
@@ -1014,6 +1020,12 @@ NOTIF_MSG = {
         'hw_notification':          "📝 Домашнее задание по уроку *{lesson}* ({group}):\n\n{homework}",
         'announcement':             "📌 *Объявление:* {title}\n\n{body}",
         'announcement_group':       "📌 *Объявление ({group}):* {title}\n\n{body}",
+
+        # ── Exam results ────────────────────────────────────────────────────
+        'exam_result':              "📝 *{exam}* — результат экзамена\n📚 {group}\n\n✅ Результат: *{total}/{max}* ({pct}%)\n\n{breakdown}\n\n#exam",
+        'exam_result_absent':       "📝 *{exam}* — результат экзамена\n📚 {group}\n\n⚠️ Вы не присутствовали на экзамене.\n\n#exam",
+        'exam_result_parent':       "📝 *{name}* — результат экзамена *{exam}*\n📚 {group}\n\n✅ Результат: *{total}/{max}* ({pct}%)\n\n{breakdown}\n\n#exam",
+        'exam_result_parent_absent': "📝 *{name}* — результат экзамена *{exam}*\n📚 {group}\n\n⚠️ {name} не присутствовал(а) на экзамене.\n\n#exam",
     },
 }
 

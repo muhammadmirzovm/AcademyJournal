@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Check, BookOpen, UserX, Star } from 'lucide-react'
+import { Bell, Check, BookOpen, UserX, Star, ClipboardList } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getNotifications, markAllRead, markOneRead } from '../api/notifications'
 
@@ -8,12 +8,14 @@ const TYPE_ICON = {
   score:  <Star size={14} color="#F59E0B" fill="#F59E0B" />,
   absent: <UserX size={14} color="#EF4444" />,
   lesson: <BookOpen size={14} color="#14B8A8" />,
+  exam:   <ClipboardList size={14} color="#8B5CF6" />,
 }
 
 const TYPE_COLOR = {
   score:  'rgba(245,158,11,0.1)',
   absent: 'rgba(239,68,68,0.1)',
   lesson: 'rgba(20,184,168,0.1)',
+  exam:   'rgba(139,92,246,0.1)',
 }
 
 const TYPE_TEXT_COLOR = {
@@ -21,6 +23,7 @@ const TYPE_TEXT_COLOR = {
   absent:       '#EF4444',
   lesson:       '#14B8A6',
   announcement: '#6366F1',
+  exam:         '#8B5CF6',
 }
 
 function timeAgo(iso) {

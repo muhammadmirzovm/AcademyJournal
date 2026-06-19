@@ -60,3 +60,15 @@ export const exportExcel = async (gid, groupName) => {
   a.remove()
   window.URL.revokeObjectURL(url)
 }
+
+export const exportExamExcel = async (gid, eid, groupName, examName) => {
+  const res = await api.get(`/groups/${gid}/exams/${eid}/export-excel/`, { responseType: 'blob' })
+  const url  = window.URL.createObjectURL(new Blob([res.data]))
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `${(groupName || 'group').replace(/\s+/g, '_')}_${(examName || 'exam').replace(/\s+/g, '_')}.xlsx`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}

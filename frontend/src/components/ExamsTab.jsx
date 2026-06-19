@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight } from 'lucide-react'
-import { toggleExamReady, createExam, submitExam, getExams } from '../api/groups'
+import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight, Pencil, FileDown } from 'lucide-react'
+import { toggleExamReady, createExam, submitExam, getExams, exportExamExcel } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import Modal from './ui/Modal'
 
@@ -19,14 +19,18 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
   const qCount = exam.question_count
 
   const init = () =>
-    members.map(m => ({
-      student:  m.id,
-      name:     m.first_name ? `${m.first_name} ${m.last_name}`.trim() : m.username,
-      absent:   false,
-      scores:   Array(qCount).fill(0),
-      comments: Array(qCount).fill(''),
-      open:     false,
-    }))
+    members.map(m => {
+      const existing = exam.results?.find(r => r.student === m.id)
+      const hasScores = existing && !existing.absent
+      return {
+        student:  m.id,
+        name:     m.first_name ? `${m.first_name} ${m.last_name}`.trim() : m.username,
+        absent:   existing?.absent ?? false,
+        scores:   hasScores ? [...existing.scores] : Array(qCount).fill(0),
+        comments: hasScores ? [...existing.comments] : Array(qCount).fill(''),
+        open:     false,
+      }
+    })
 
   const [rows, setRows]     = useState(init)
   const [saving, setSaving] = useState(false)
@@ -169,19 +173,37 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
 }
 
 // ── Results view ──────────────────────────────────────────────────────────────
-function ResultsView({ exam, t }) {
+function ResultsView({ exam, groupId, groupName, t }) {
+  const { show } = useToast()
   const [open, setOpen] = useState(null)
+  const [downloading, setDownloading] = useState(false)
   const present = exam.results.filter(r => !r.absent).sort((a, b) => b.percentage - a.percentage)
   const absent  = exam.results.filter(r => r.absent)
   const sorted  = [...present, ...absent]
 
+  const handleDownload = async () => {
+    setDownloading(true)
+    try { await exportExamExcel(groupId, exam.id, groupName, exam.name) }
+    catch { show('Excel yuklab olishda xatolik', 'error') }
+    finally { setDownloading(false) }
+  }
+
   return (
     <div>
-      <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>{exam.name}</h3>
-      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 18 }}>
-        {t('exam.result_title')} · {exam.question_count} {t('exam.q_short')}
-        {absent.length > 0 && <span style={{ marginLeft: 8, color: '#64748B' }}>· {absent.length} {t('exam.absent_count')}</span>}
-      </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>{exam.name}</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 18 }}>
+            {t('exam.result_title')} · {exam.question_count} {t('exam.q_short')}
+            {absent.length > 0 && <span style={{ marginLeft: 8, color: '#64748B' }}>· {absent.length} {t('exam.absent_count')}</span>}
+          </p>
+        </div>
+        <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={handleDownload} disabled={downloading}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #10B98133', background: 'rgba(16,185,129,0.07)', color: '#10B981', fontSize: 12, fontWeight: 700, cursor: downloading ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: downloading ? 0.7 : 1 }}>
+          {downloading ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <FileDown size={13} />}
+          Excel
+        </motion.button>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {sorted.map((r, idx) => {
           const col = r.absent ? ABSENT_STYLE : PCT_COLOR(r.percentage)
@@ -363,7 +385,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
           ← {t('exam.tab')}
         </button>
         {view.mode === 'score'   && <ScoringScreen exam={activeExam} members={members} groupId={groupId} onDone={handleScored} t={t} />}
-        {view.mode === 'results' && <ResultsView exam={activeExam} t={t} />}
+        {view.mode === 'results' && <ResultsView exam={activeExam} groupId={groupId} groupName={group.name} t={t} />}
         {view.mode === 'mine'    && <StudentResultView exam={activeExam} userId={userId} t={t} />}
       </div>
     )
@@ -478,6 +500,12 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
                       <button onClick={() => setView({ examId: ex.id, mode: 'results' })}
                         style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid #16A34A', background: '#16A34A15', color: '#16A34A', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                         {t('exam.results_btn')}
+                      </button>
+                    )}
+                    {isAdmin && finished && (
+                      <button onClick={() => setView({ examId: ex.id, mode: 'score' })}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, border: '1px solid #8B5CF6', background: '#8B5CF615', color: '#8B5CF6', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                        <Pencil size={12} /> {t('exam.edit_btn')}
                       </button>
                     )}
                     {!isAdmin && !isTeacher && myResult && (

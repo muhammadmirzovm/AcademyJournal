@@ -818,6 +818,7 @@
     "status_finished": "Finished",
     "score_btn": "Score",
     "results_btn": "Results",
+    "edit_btn": "Edit",
     "scoring_title": "Scoring",
     "q_label": "Question {{n}}",
     "comment_placeholder": "Comment (optional)…",

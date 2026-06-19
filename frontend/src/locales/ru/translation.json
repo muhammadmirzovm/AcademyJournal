@@ -818,6 +818,7 @@
     "status_finished": "Завершён",
     "score_btn": "Оценить",
     "results_btn": "Результаты",
+    "edit_btn": "Редактировать",
     "scoring_title": "Оценивание",
     "q_label": "Вопрос {{n}}",
     "comment_placeholder": "Комментарий (необязательно)…",

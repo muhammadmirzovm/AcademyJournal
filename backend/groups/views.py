@@ -939,7 +939,10 @@ class ExamSubmitView(APIView):
             return Response({'detail': 'Only admin can submit exam results.'}, status=403)
         exam = get_object_or_404(Exam, pk=exam_pk, group_id=group_pk)
         results_data = request.data.get('results', [])
+        was_already_finished = exam.status == Exam.FINISHED
+        existing = {r.student_id: r for r in exam.results.all()}
 
+        changed_student_ids = []
         for entry in results_data:
             student_id = entry.get('student')
             absent     = bool(entry.get('absent', False))
@@ -951,19 +954,151 @@ class ExamSubmitView(APIView):
                 if not (0 <= int(s) <= 5):
                     return Response({'detail': 'Each score must be 0–5.'}, status=400)
             padded_scores   = [int(s) for s in scores] if not absent else [0] * exam.question_count
-            padded_comments = list(comments) + [''] * (exam.question_count - len(comments))
+            padded_comments = (list(comments) + [''] * (exam.question_count - len(comments)))[:exam.question_count]
+
+            prev = existing.get(student_id)
+            if prev is None or prev.absent != absent or prev.scores != padded_scores or prev.comments != padded_comments:
+                changed_student_ids.append(student_id)
+
             ExamResult.objects.update_or_create(
                 exam=exam, student_id=student_id,
                 defaults={
                     'absent':   absent,
                     'scores':   padded_scores,
-                    'comments': padded_comments[:exam.question_count],
+                    'comments': padded_comments,
                 },
             )
 
         exam.status = Exam.FINISHED
         exam.save(update_fields=['status'])
+
+        if changed_student_ids:
+            try:
+                _notify_exam_finished(exam, changed_student_ids, send_group_summary=not was_already_finished)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).error('exam_finished notify error', exc_info=True)
+
         return Response(ExamSerializer(exam).data)
+
+
+def _exam_breakdown_text(scores, comments):
+    lines = []
+    for i, sc in enumerate(scores):
+        line = f'{i + 1}. {sc}/5'
+        if comments[i]:
+            line += f' — "{comments[i]}"'
+        lines.append(line)
+    return '\n'.join(lines)
+
+
+def _notify_exam_finished(exam, changed_student_ids, send_group_summary=True):
+    import logging
+    from users.models import Notification
+    from users.telegram_bot import send_notification
+
+    group = exam.group
+    lang  = group.language or 'uz'
+
+    results = (
+        exam.results
+        .filter(student_id__in=changed_student_ids)
+        .select_related('student')
+        .prefetch_related('student__parents__parent')
+    )
+
+    for result in results:
+        student = result.student
+        name    = f'{student.first_name} {student.last_name}'.strip() or student.username
+
+        if result.absent:
+            s_body  = f'{exam.name}: imtihonda qatnashmadingiz'
+            p_body  = f'{name}: {exam.name} imtihonida qatnashmadi'
+            kwargs  = dict(exam=exam.name, group=group.name, name=name)
+            student_key, parent_key = 'exam_result_absent', 'exam_result_parent_absent'
+        else:
+            s_body  = f'{exam.name}: {result.total}/{result.max_score} ({result.percentage}%)'
+            p_body  = f'{name} — {exam.name}: {result.total}/{result.max_score} ({result.percentage}%)'
+            kwargs  = dict(
+                exam=exam.name, group=group.name, name=name,
+                total=result.total, max=result.max_score, pct=result.percentage,
+                breakdown=_exam_breakdown_text(result.scores, result.comments),
+            )
+            student_key, parent_key = 'exam_result', 'exam_result_parent'
+
+        Notification.objects.create(user=student, type=Notification.EXAM, title=exam.name, body=s_body[:500])
+        if student.telegram_id:
+            try:
+                async_to_sync(send_notification)(
+                    student.telegram_id, student_key, student.telegram_lang or lang, **kwargs,
+                )
+            except Exception:
+                logging.getLogger(__name__).error('exam result DM to student failed', exc_info=True)
+
+        for ps in student.parents.all():
+            parent = ps.parent
+            Notification.objects.create(user=parent, type=Notification.EXAM, title=exam.name, body=p_body[:500])
+            if parent.telegram_id:
+                try:
+                    async_to_sync(send_notification)(
+                        parent.telegram_id, parent_key, parent.telegram_lang or lang, **kwargs,
+                    )
+                except Exception:
+                    logging.getLogger(__name__).error('exam result DM to parent failed', exc_info=True)
+
+    if send_group_summary and group.telegram_chat_id:
+        _send_exam_group_summary(exam, group)
+
+
+def _send_exam_group_summary(exam, group):
+    import os, logging, html as html_module
+    from telegram import Bot as TelegramBot
+
+    def e(text):
+        return html_module.escape(str(text))
+
+    lang    = group.language or 'uz'
+    results = list(exam.results.select_related('student').all())
+    present = sorted([r for r in results if not r.absent], key=lambda r: r.percentage, reverse=True)
+    absent  = [r for r in results if r.absent]
+
+    def name_of(r):
+        return f'{r.student.first_name} {r.student.last_name}'.strip() or r.student.username
+
+    if lang == 'ru':
+        header        = f'📝 <b>{e(exam.name)}</b> — Результаты экзамена'
+        absent_header = '❌ <b>Не присутствовали:</b>'
+    else:
+        header        = f'📝 <b>{e(exam.name)}</b> — Imtihon natijalari'
+        absent_header = '❌ <b>Qatnashmaganlar:</b>'
+
+    lines  = [header, e(group.name), '']
+    medals = ['🥇', '🥈', '🥉']
+    for idx, r in enumerate(present):
+        prefix = medals[idx] if idx < 3 else f'{idx + 1}.'
+        lines.append(f'{prefix} {e(name_of(r))} — <b>{r.percentage}%</b> ({r.total}/{r.max_score})')
+
+    if absent:
+        lines.append('')
+        lines.append(absent_header)
+        for r in absent:
+            lines.append(f'• {e(name_of(r))}')
+
+    lines.append('')
+    lines.append('#exam')
+
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not bot_token:
+        return
+    try:
+        bot = TelegramBot(token=bot_token)
+        async_to_sync(bot.send_message)(
+            chat_id=group.telegram_chat_id,
+            text='\n'.join(lines),
+            parse_mode='HTML',
+        )
+    except Exception:
+        logging.getLogger(__name__).error('exam group summary send failed', exc_info=True)
 
 
 # ── Upcoming exams dashboard ──────────────────────────────────────────────────
@@ -1179,4 +1314,117 @@ class ExportExcelView(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
         response['Content-Disposition'] = f'attachment; filename="{safe_name}_davomat_balllar.xlsx"'
+        return response
+
+
+# ── Exam Excel Export ────────────────────────────────────────────────────────
+
+class ExamExportExcelView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, group_pk, exam_pk):
+        group = get_object_or_404(Group, pk=group_pk)
+        user  = request.user
+
+        if user.role not in ('teacher', 'admin'):
+            return Response({'detail': 'Forbidden'}, status=403)
+        if user.role == 'teacher' and group.teacher != user:
+            return Response({'detail': 'Forbidden'}, status=403)
+
+        exam    = get_object_or_404(Exam, pk=exam_pk, group_id=group_pk)
+        results = list(exam.results.select_related('student').all())
+        if not results:
+            return Response({'detail': 'No data to export'}, status=404)
+
+        present = sorted([r for r in results if not r.absent], key=lambda r: r.percentage, reverse=True)
+        absent  = [r for r in results if r.absent]
+        ordered = present + absent
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Natijalar'
+
+        hdr_fill   = PatternFill('solid', fgColor='1F618D')
+        white_bold = Font(bold=True, color='FFFFFF', size=10)
+        center     = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        left_mid   = Alignment(horizontal='left',   vertical='center')
+
+        n_q = exam.question_count
+        last_col = get_column_letter(n_q + 5)
+
+        ws.merge_cells(f'A1:{last_col}1')
+        ws['A1'] = f'{group.name} — {exam.name}'
+        ws['A1'].font = Font(bold=True, size=13)
+        ws['A1'].alignment = center
+        ws.row_dimensions[1].height = 26
+
+        headers = ['№', "O'quvchi"] + [f'{i + 1}-savol' for i in range(n_q)] + ['Jami', 'Max', '%', 'Izohlar']
+        for j, label in enumerate(headers):
+            col = get_column_letter(j + 1)
+            cell = ws[f'{col}2']
+            cell.value, cell.font, cell.fill, cell.alignment = label, white_bold, hdr_fill, center
+        ws.column_dimensions['A'].width = 5
+        ws.column_dimensions['B'].width = 24
+        for i in range(n_q):
+            ws.column_dimensions[get_column_letter(i + 3)].width = 8
+        ws.column_dimensions[get_column_letter(n_q + 3)].width = 8
+        ws.column_dimensions[get_column_letter(n_q + 4)].width = 8
+        ws.column_dimensions[get_column_letter(n_q + 5)].width = 40
+        ws.row_dimensions[2].height = 30
+
+        for i, r in enumerate(ordered):
+            row     = i + 3
+            student = r.student
+            name    = f'{student.first_name} {student.last_name}'.strip() or student.username
+
+            ws[f'A{row}'] = i + 1; ws[f'A{row}'].alignment = center
+            ws[f'B{row}'] = name;  ws[f'B{row}'].alignment = left_mid
+
+            if r.absent:
+                for qi in range(n_q):
+                    col = get_column_letter(qi + 3)
+                    ws[f'{col}{row}'].value = '—'
+                    ws[f'{col}{row}'].font  = Font(color='94A3B8')
+                    ws[f'{col}{row}'].alignment = center
+                tot_col, max_col, pct_col, com_col = (get_column_letter(n_q + k) for k in (3, 4, 5, 6))
+                ws[f'{tot_col}{row}'] = '—'
+                ws[f'{max_col}{row}'] = r.max_score
+                pct_cell = ws[f'{pct_col}{row}']
+                pct_cell.value = 'Yo\'q'
+                pct_cell.font  = Font(bold=True, color='991B1B')
+                ws[f'{com_col}{row}'] = ''
+                for c in (tot_col, max_col, pct_col):
+                    ws[f'{c}{row}'].alignment = center
+                continue
+
+            for qi, sc in enumerate(r.scores):
+                col  = get_column_letter(qi + 3)
+                cell = ws[f'{col}{row}']
+                cell.value = sc
+                cell.font  = Font(bold=True, color='166534' if sc >= 4 else ('92400E' if sc >= 3 else '991B1B'))
+                cell.alignment = center
+
+            tot_col, max_col, pct_col, com_col = (get_column_letter(n_q + k) for k in (3, 4, 5, 6))
+            ws[f'{tot_col}{row}'] = r.total;     ws[f'{tot_col}{row}'].alignment = center; ws[f'{tot_col}{row}'].font = Font(bold=True)
+            ws[f'{max_col}{row}'] = r.max_score; ws[f'{max_col}{row}'].alignment = center
+            pct_cell = ws[f'{pct_col}{row}']
+            pct_cell.value     = f'{r.percentage}%'
+            pct_cell.alignment = center
+            pct_cell.font      = Font(bold=True, color='166534' if r.percentage >= 80 else ('92400E' if r.percentage >= 60 else '991B1B'))
+
+            comments_str = '; '.join(f'{qi + 1}) {c}' for qi, c in enumerate(r.comments) if c)
+            com_cell = ws[f'{com_col}{row}']
+            com_cell.value = comments_str
+            com_cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        safe_name = f'{group.name}_{exam.name}'.replace(' ', '_').replace('/', '-')
+        response = HttpResponse(
+            buf.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{safe_name}.xlsx"'
         return response

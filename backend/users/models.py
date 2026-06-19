@@ -57,11 +57,13 @@ class Notification(models.Model):
     ABSENT       = 'absent'
     LESSON       = 'lesson'
     ANNOUNCEMENT = 'announcement'
+    EXAM         = 'exam'
     TYPE_CHOICES = [
         (SCORE,        'Score Added'),
         (ABSENT,       'Marked Absent'),
         (LESSON,       'New Lesson'),
         (ANNOUNCEMENT, 'Announcement'),
+        (EXAM,         'Exam Result'),
     ]
     user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     type       = models.CharField(max_length=20, choices=TYPE_CHOICES)

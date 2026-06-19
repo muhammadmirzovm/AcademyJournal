@@ -818,6 +818,7 @@
     "status_finished": "Yakunlangan",
     "score_btn": "Baholash",
     "results_btn": "Natijalar",
+    "edit_btn": "Tahrirlash",
     "scoring_title": "Baholash",
     "q_label": "{{n}}-savol",
     "comment_placeholder": "Izoh (ixtiyoriy)…",
