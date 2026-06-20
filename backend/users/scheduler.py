@@ -2,12 +2,18 @@ import logging
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
 _scheduler = BackgroundScheduler(timezone='UTC')
 
 
 def _run_daily(academy_id):
+    # APScheduler runs jobs on its own background thread, outside Django's
+    # request/response cycle — close_old_connections() is normally called per
+    # request, so a connection that goes stale here (e.g. a DB restart) is
+    # never refreshed and every future run fails with "connection already closed".
+    close_old_connections()
     from academies.models import Academy
     from .management.commands.send_daily_report import run_report_for_academy
     try:
@@ -15,9 +21,12 @@ def _run_daily(academy_id):
         run_report_for_academy(academy)
     except Exception as exc:
         logger.error('Daily report failed for academy %s: %s', academy_id, exc)
+    finally:
+        close_old_connections()
 
 
 def _run_weekly(academy_id):
+    close_old_connections()
     from academies.models import Academy
     from .management.commands.send_weekly_report import run_weekly_report_for_academy
     try:
@@ -25,9 +34,12 @@ def _run_weekly(academy_id):
         run_weekly_report_for_academy(academy)
     except Exception as exc:
         logger.error('Weekly report failed for academy %s: %s', academy_id, exc)
+    finally:
+        close_old_connections()
 
 
 def _load_all():
+    close_old_connections()
     from academies.models import Academy
     for academy in Academy.objects.all():
         reschedule(academy)
