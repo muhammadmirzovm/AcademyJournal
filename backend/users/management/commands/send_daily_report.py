@@ -114,7 +114,6 @@ def run_report_for_academy(academy, only_chat_id=None):
     admins = list(academy.members.filter(role='admin', telegram_id__isnull=False))
     if not admins:
         logger.info('Academy %s: no admins with Telegram', academy.name)
-        return
 
     for admin in admins:
         _send(token, admin.telegram_id, _build_report(_lang(admin)))
