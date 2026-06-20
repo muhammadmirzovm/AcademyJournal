@@ -819,16 +819,28 @@ class GroupExamReadyView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, group_pk):
+        from django.utils import timezone
         group = get_object_or_404(Group, pk=group_pk)
         if group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher of this group can toggle exam readiness.'}, status=403)
         group.exam_ready = not group.exam_ready
-        group.save(update_fields=['exam_ready'])
+        update_fields = ['exam_ready']
+
+        if group.exam_ready:
+            group.exam_ready_at = timezone.now()
+            group.exam_ready_note = request.data.get('note', '').strip()[:200]
+            update_fields += ['exam_ready_at', 'exam_ready_note']
+
+        group.save(update_fields=update_fields)
 
         if group.exam_ready:
             _notify_exam_ready(group, request.user)
 
-        return Response({'exam_ready': group.exam_ready})
+        return Response({
+            'exam_ready':      group.exam_ready,
+            'exam_ready_at':   group.exam_ready_at,
+            'exam_ready_note': group.exam_ready_note,
+        })
 
 
 def _notify_exam_ready(group, teacher):
@@ -852,16 +864,18 @@ def _notify_exam_ready(group, teacher):
     schedule = f"{days_str} — {time_str}"
 
     if lang == 'ru':
+        note_line = f"\nКомментарий: {group.exam_ready_note}" if group.exam_ready_note else ''
         text = (f"📝 <b>Группа готова к экзамену</b>\n\n"
                 f"<b>{group.name}</b>\n"
                 f"Учитель: {teacher_name}\n"
-                f"Расписание: {schedule}\n\n"
+                f"Расписание: {schedule}{note_line}\n\n"
                 f"Пожалуйста, создайте экзамен в системе.")
     else:
+        note_line = f"\nIzoh: {group.exam_ready_note}" if group.exam_ready_note else ''
         text = (f"📝 <b>Guruh imtihonga tayyor</b>\n\n"
                 f"<b>{group.name}</b>\n"
                 f"O'qituvchi: {teacher_name}\n"
-                f"Dars jadvali: {schedule}\n\n"
+                f"Dars jadvali: {schedule}{note_line}\n\n"
                 f"Iltimos, tizimda imtihon yarating.")
     for admin in admins:
         url  = f'https://api.telegram.org/bot{token}/sendMessage'
@@ -925,6 +939,13 @@ class ExamDetailView(APIView):
             exam.status = request.data['status']
             exam.save(update_fields=['status'])
         return Response(ExamSerializer(exam).data)
+
+    def delete(self, request, group_pk, exam_pk):
+        exam = get_object_or_404(Exam, pk=exam_pk, group_id=group_pk)
+        if not (request.user.role == 'admin' or exam.group.teacher == request.user):
+            return Response({'detail': 'Only the teacher or admin can delete this exam.'}, status=403)
+        exam.delete()
+        return Response(status=204)
 
 
 class ExamSubmitView(APIView):
@@ -1141,12 +1162,14 @@ class UpcomingExamsView(APIView):
 
         def group_data(g):
             return {
-                'id':           g.id,
-                'name':         g.name,
-                'member_count': g.memberships.count(),
-                'class_days':   g.class_days or [],
-                'class_time':   g.class_time or '',
-                'teacher_name': f'{g.teacher.first_name} {g.teacher.last_name}'.strip() or g.teacher.username,
+                'id':              g.id,
+                'name':            g.name,
+                'member_count':    g.memberships.count(),
+                'class_days':      g.class_days or [],
+                'class_time':      g.class_time or '',
+                'teacher_name':    f'{g.teacher.first_name} {g.teacher.last_name}'.strip() or g.teacher.username,
+                'exam_ready_at':   g.exam_ready_at,
+                'exam_ready_note': g.exam_ready_note,
             }
 
         return Response({

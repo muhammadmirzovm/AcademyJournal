@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight, Pencil, FileDown } from 'lucide-react'
-import { toggleExamReady, createExam, submitExam, getExams, exportExamExcel } from '../api/groups'
+import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight, Pencil, FileDown, Trash2 } from 'lucide-react'
+import { toggleExamReady, createExam, submitExam, getExams, exportExamExcel, deleteExam } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import Modal from './ui/Modal'
 
@@ -322,6 +322,8 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
   const [form, setForm]                 = useState({ name: '', question_count: 10 })
   const [creating, setCreating]         = useState(false)
   const [view, setView]                 = useState(null) // { examId, mode: 'score'|'results'|'mine' }
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [deletingId, setDeletingId]     = useState(null)
 
   const activeExam = view ? exams.find(e => e.id === view.examId) : null
 
@@ -376,6 +378,17 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
   const handleScored = () => {
     setView(null)
     fetchExams(page)
+  }
+
+  const handleDelete = async examId => {
+    setDeletingId(examId)
+    try {
+      await deleteExam(groupId, examId)
+      setConfirmDeleteId(null)
+      fetchExams(page)
+      show(t('exam.deleted_toast'), 'success')
+    } catch { show(t('exam.err_delete'), 'error') }
+    finally { setDeletingId(null) }
   }
 
   if (view && activeExam) {
@@ -507,6 +520,25 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
                         style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, border: '1px solid #8B5CF6', background: '#8B5CF615', color: '#8B5CF6', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                         <Pencil size={12} /> {t('exam.edit_btn')}
                       </button>
+                    )}
+                    {(isAdmin || isTeacher) && (
+                      confirmDeleteId === ex.id ? (
+                        <>
+                          <button onClick={() => handleDelete(ex.id)} disabled={deletingId === ex.id}
+                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, border: 'none', background: '#DC2626', color: '#fff', fontWeight: 700, fontSize: 12, cursor: deletingId === ex.id ? 'not-allowed' : 'pointer', opacity: deletingId === ex.id ? 0.7 : 1 }}>
+                            {deletingId === ex.id ? <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} /> : t('exam.confirm_delete')}
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(null)}
+                            style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                            {t('exam.cancel')}
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(ex.id)} title={t('exam.delete_btn')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      )
                     )}
                     {!isAdmin && !isTeacher && myResult && (
                       <button onClick={() => setView({ examId: ex.id, mode: 'mine' })}

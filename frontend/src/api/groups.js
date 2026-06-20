@@ -46,6 +46,7 @@ export const getExams         = (gid, page = 1)    => api.get(`/groups/${gid}/ex
 export const createExam       = (gid, data)        => api.post(`/groups/${gid}/exams/`, data)
 export const submitExam       = (gid, eid, data)   => api.post(`/groups/${gid}/exams/${eid}/submit/`, data)
 export const finishExam       = (gid, eid)         => api.patch(`/groups/${gid}/exams/${eid}/`, { status: 'finished' })
+export const deleteExam       = (gid, eid)         => api.delete(`/groups/${gid}/exams/${eid}/`)
 
 export const getAcademyTeachers = () => api.get('/academy/members/', { params: { role: 'teacher', page_size: 100 } })
 
