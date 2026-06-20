@@ -3,7 +3,8 @@ primary_region = 'iad'
 
 [build]
 
-release_command = "python manage.py migrate --noinput"
+[deploy]
+  release_command = "python manage.py migrate --noinput"
 
 [env]
   PORT = "8000"
