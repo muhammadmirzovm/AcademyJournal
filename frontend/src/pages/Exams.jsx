@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { getUpcomingExams, createExam } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
+import { formatDayMonthTime } from '../utils/date'
 
 const DAY_SHORT = ['Mo','Tu','We','Th','Fr','Sa','Su']
 const scheduleStr = g => {
@@ -124,7 +125,7 @@ export default function Exams() {
                   {g.exam_ready_at && (
                     <p style={{ fontSize: 12, color: '#D97706', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Clock size={11} />
-                      {new Date(g.exam_ready_at).toLocaleString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {formatDayMonthTime(g.exam_ready_at)}
                     </p>
                   )}
                   {g.exam_ready_note && (

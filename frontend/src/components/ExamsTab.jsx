@@ -5,6 +5,7 @@ import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, Use
 import { toggleExamReady, createExam, submitExam, getExams, exportExamExcel, deleteExam } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import Modal from './ui/Modal'
+import { formatDayMonthTime } from '../utils/date'
 
 const PCT_COLOR = pct =>
   pct >= 80 ? { color: '#16A34A', bg: '#16A34A12', border: '#16A34A30' }
@@ -424,7 +425,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
             <div style={{ marginTop: 8 }}>
               <p style={{ fontSize: 12, color: '#D97706', margin: 0 }}>
                 ✓ {t('exam.admin_notified')}
-                {examReadyAt && ` — ${new Date(examReadyAt).toLocaleString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                {examReadyAt && ` — ${formatDayMonthTime(examReadyAt)}`}
               </p>
               {examReadyNote && (
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0', fontStyle: 'italic' }}>"{examReadyNote}"</p>
@@ -443,7 +444,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
                 <ClipboardList size={14} /> {t('exam.teacher_marked_ready')}
                 {examReadyAt && (
                   <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>
-                    · {new Date(examReadyAt).toLocaleString('uz-UZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    · {formatDayMonthTime(examReadyAt)}
                   </span>
                 )}
               </span>
