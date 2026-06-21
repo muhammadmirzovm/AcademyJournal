@@ -744,7 +744,7 @@ class UserNotifyView(APIView):
         return request.user.role in ('teacher', 'admin')
 
     def get(self, request, pk):
-        if not self._check_permission(request):
+        if not self._check_permission(request) and request.user.pk != pk:
             return Response(status=403)
         student = get_object_or_404(User, pk=pk, role='student')
         parents = []

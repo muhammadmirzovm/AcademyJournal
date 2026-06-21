@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
-  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle, Gem,
+  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle, Gem, UserCheck,
 } from 'lucide-react'
 import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword, connectTelegram, disconnectTelegram, getNotifyInfo, sendDirectNotification } from '../api/users'
 import { useAuth } from '../context/AuthContext'
@@ -27,6 +27,7 @@ export default function Profile() {
   const [stats,    setStats]    = useState(null)
   const [groups,   setGroups]   = useState([])
   const [children, setChildren] = useState([])
+  const [parentInfo, setParentInfo] = useState(null)
   const [loading,  setLoading]  = useState(true)
   const [editing, setEditing]     = useState(false)
   const [editForm, setEditForm]   = useState({ first_name: '', last_name: '', username: '', email: '', bio: '' })
@@ -66,6 +67,9 @@ export default function Profile() {
       }
       if (targetRole === 'parent') {
         getUserChildren(id).then(r => setChildren(r.data)).catch(() => {})
+      }
+      if (targetRole === 'student' && (viewerIsOwner || viewerRole === 'admin' || viewerRole === 'teacher')) {
+        getNotifyInfo(id).then(r => setParentInfo(r.data)).catch(() => {})
       }
     }).catch(() => show(t('profile.fail_load'), 'error'))
     .finally(() => setLoading(false))
@@ -352,6 +356,38 @@ export default function Profile() {
         )
       })()}
 
+      {/* Parent link + Telegram status — student profiles, visible to self/teacher/admin */}
+      {profile.role === 'student' && parentInfo && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginBottom: 24, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <div style={{ ...chartIconWrap, background: 'rgba(236,72,153,0.1)' }}>
+              <UserCheck size={16} color="#EC4899" />
+            </div>
+            <p style={{ fontWeight: 700, fontSize: 14 }}>{t('profile.parent_section')}</p>
+          </div>
+
+          {!isOwn && (
+            <div style={{ marginBottom: parentInfo.parents.length ? 14 : 0 }}>
+              <TelegramStatusRow label={t('profile.student_telegram')} connected={parentInfo.student.telegram_connected} t={t} />
+            </div>
+          )}
+
+          {parentInfo.parents.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('profile.no_parent_linked')}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {parentInfo.parents.map(p => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg)' }}>
+                  <Link to={`/profile/${p.id}`} style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)', textDecoration: 'none' }}>{p.name}</Link>
+                  <TelegramStatusRow connected={p.telegram_connected} t={t} compact />
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Groups */}
       {groups.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
@@ -623,6 +659,25 @@ function RoleBadge({ role }) {
       <Icon size={12} />
       {t(cfg.key)}
     </span>
+  )
+}
+
+function TelegramStatusRow({ label, connected, compact, t }) {
+  const badge = connected ? (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#0088CC', background: 'rgba(0,136,204,0.08)', border: '1px solid rgba(0,136,204,0.2)', borderRadius: 99, padding: '2px 8px', flexShrink: 0 }}>
+      <CheckCircle2 size={11} /> {t('profile.notify_tg_connected')}
+    </span>
+  ) : (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#F59E0B', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 99, padding: '2px 8px', flexShrink: 0 }}>
+      <AlertCircle size={11} /> {t('profile.notify_tg_not_connected')}
+    </span>
+  )
+  if (compact) return badge
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
+      {badge}
+    </div>
   )
 }
 
