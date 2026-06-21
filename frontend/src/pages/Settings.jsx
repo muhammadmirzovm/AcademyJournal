@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
@@ -589,34 +590,36 @@ function MembersTab({ userRole }) {
                     border: '1px solid var(--border)',
                     background: 'var(--card)',
                   }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                    background: `linear-gradient(135deg, ${badge.color}, ${badge.color}bb)`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 15, fontWeight: 800, color: '#fff',
-                  }}>
-                    {initials}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-                        {m.first_name ? `${m.first_name} ${m.last_name}` : m.username}
-                      </span>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                        background: badge.bg, color: badge.color,
-                      }}>
-                        {t(`settings.role_${m.role}`, { defaultValue: m.role })}
-                      </span>
+                  <Link to={`/profile/${m.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, textDecoration: 'none' }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                      background: `linear-gradient(135deg, ${badge.color}, ${badge.color}bb)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 15, fontWeight: 800, color: '#fff',
+                    }}>
+                      {initials}
                     </div>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                      @{m.username}
-                      {m.invited_by && (
-                        <span> · {t('settings.invited_by')} <strong>{m.invited_by.first_name || m.invited_by.username}</strong></span>
-                      )}
-                    </p>
-                  </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                          {m.first_name ? `${m.first_name} ${m.last_name}` : m.username}
+                        </span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                          background: badge.bg, color: badge.color,
+                        }}>
+                          {t(`settings.role_${m.role}`, { defaultValue: m.role })}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        @{m.username}
+                        {m.invited_by && (
+                          <span> · {t('settings.invited_by')} <strong>{m.invited_by.first_name || m.invited_by.username}</strong></span>
+                        )}
+                      </p>
+                    </div>
+                  </Link>
 
                   <div className="member-date" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0, marginRight: 8 }}>
                     {new Date(m.date_joined).toLocaleDateString()}
