@@ -301,7 +301,7 @@ export default function GroupDetail() {
                   {(s.first_name?.[0] || s.username?.[0] || '?').toUpperCase()}
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{s.first_name} {s.last_name}</p>
+                  <Link to={`/profile/${s.id}`} style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--text)', textDecoration: 'none', display: 'block' }}>{s.first_name} {s.last_name}</Link>
                   <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>@{s.username}</p>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', borderRadius: 6, padding: '2px 8px' }}>
