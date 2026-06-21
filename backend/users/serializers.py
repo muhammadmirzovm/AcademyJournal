@@ -30,7 +30,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name',
             'role', 'bio', 'academy', 'academy_name', 'academy_color',
-            'has_password', 'telegram_id',
+            'has_password', 'telegram_id', 'last_seen', 'date_joined',
         )
 
     def get_has_password(self, obj):

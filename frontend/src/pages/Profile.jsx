@@ -14,6 +14,9 @@ import AttendanceDoughnut from '../components/charts/AttendanceDoughnut'
 import TeacherStats from '../components/charts/TeacherStats'
 import CoinLineChart from '../components/charts/CoinLineChart'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
+import { timeAgo, formatDate } from '../utils/date'
+
+const isOnline = lastSeen => (Date.now() - new Date(lastSeen)) / 1000 < 300
 
 export default function Profile() {
   const { id } = useParams()
@@ -186,6 +189,16 @@ export default function Profile() {
                     <TrendingUp size={12} /> {t('profile.avg_score', { score: avgScore })}
                   </span>
                 )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+                {profile.last_seen && (
+                  isOnline(profile.last_seen)
+                    ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#16A34A', fontWeight: 600 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#16A34A', display: 'inline-block' }} /> {t('profile.online_now')}
+                      </span>
+                    : <span>{t('profile.last_active', { time: timeAgo(profile.last_seen) })}</span>
+                )}
+                {profile.date_joined && <span>{t('profile.joined_on', { date: formatDate(profile.date_joined) })}</span>}
               </div>
             </div>
 
@@ -385,6 +398,20 @@ export default function Profile() {
               ))}
             </div>
           )}
+        </motion.div>
+      )}
+
+      {/* Telegram status — teacher profiles, admin view only (isOwn already has the full section below) */}
+      {profile.role === 'teacher' && !isOwn && me?.role === 'admin' && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginBottom: 24, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <div style={{ ...chartIconWrap, background: 'rgba(0,136,204,0.1)' }}>
+              <MessageCircle size={16} color="#0088CC" />
+            </div>
+            <p style={{ fontWeight: 700, fontSize: 14 }}>{t('profile.teacher_telegram_section')}</p>
+          </div>
+          <TelegramStatusRow label={t('telegram.section_title')} connected={!!profile.telegram_id} t={t} />
         </motion.div>
       )}
 

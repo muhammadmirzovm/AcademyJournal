@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, Check, BookOpen, UserX, Star, ClipboardList } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getNotifications, markAllRead, markOneRead } from '../api/notifications'
+import { timeAgo } from '../utils/date'
 
 const TYPE_ICON = {
   score:  <Star size={14} color="#F59E0B" fill="#F59E0B" />,
@@ -24,14 +25,6 @@ const TYPE_TEXT_COLOR = {
   lesson:       '#14B8A6',
   announcement: '#6366F1',
   exam:         '#8B5CF6',
-}
-
-function timeAgo(iso) {
-  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
-  if (diff < 60)  return `${diff}s`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
-  return `${Math.floor(diff / 86400)}d`
 }
 
 export default function NotificationBell() {
