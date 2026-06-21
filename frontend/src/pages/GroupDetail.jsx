@@ -311,6 +311,15 @@ export default function GroupDetail() {
             )
           })()}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+            {group.teacher_name && (
+              isAdmin ? (
+                <Link to={`/profile/${group.teacher}`} style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                  <GraduationCap size={14} />{group.teacher_name}
+                </Link>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><GraduationCap size={14} />{group.teacher_name}</span>
+              )
+            )}
             {!group.is_individual && <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Users size={14} />{members.length} {t('group_detail.students_count')}</span>}
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><BookOpen size={14} />{lessons.length} {t('group_detail.lessons_count')}</span>
             {(group.class_days?.length > 0 || group.class_time) && (

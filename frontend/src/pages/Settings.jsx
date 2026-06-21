@@ -443,17 +443,19 @@ function MembersTab({ userRole }) {
   const [total, setTotal]             = useState(0)
   const [removing, setRemoving]       = useState(null)
   const [search, setSearch]           = useState('')
+  const [roleFilter, setRoleFilter]   = useState('')
   const [linking, setLinking]         = useState(null)
   const [allStudents, setAllStudents] = useState([])
   const [linkStudent, setLinkStudent] = useState('')
   const [linkSaving, setLinkSaving]   = useState(false)
   const searchTimer = useRef(null)
 
-  const fetchPage = useCallback(async (p, q) => {
+  const fetchPage = useCallback(async (p, q, role) => {
     setLoading(true)
     try {
       const params = { page: p, page_size: 20 }
       if (q) params.search = q
+      if (role) params.role = role
       const { data } = await api.get('/academy/members/', { params })
       setMembers(data.results)
       setTotalPages(data.pages)
@@ -463,13 +465,18 @@ function MembersTab({ userRole }) {
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { fetchPage(1, '') }, [fetchPage])
+  useEffect(() => { fetchPage(1, '', '') }, [fetchPage])
 
   const handleSearch = e => {
     const q = e.target.value
     setSearch(q)
     clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => fetchPage(1, q), 350)
+    searchTimer.current = setTimeout(() => fetchPage(1, q, roleFilter), 350)
+  }
+
+  const handleRoleFilter = role => {
+    setRoleFilter(role)
+    fetchPage(1, search, role)
   }
 
   const removeMember = async (member) => {
@@ -478,7 +485,7 @@ function MembersTab({ userRole }) {
     setRemoving(member.id)
     try {
       await api.delete(`/academy/members/${member.id}/`)
-      fetchPage(page, search)
+      fetchPage(page, search, roleFilter)
       show(t('settings.member_removed'), 'success')
     } catch (err) {
       show(err.response?.data?.detail || t('settings.err_remove_member'), 'error')
@@ -527,6 +534,34 @@ function MembersTab({ userRole }) {
             {total}
           </span>
         )}
+      </div>
+
+      {/* Role filter */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button onClick={() => handleRoleFilter('')}
+          style={{
+            padding: '5px 12px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            border: `1.5px solid ${roleFilter === '' ? 'var(--accent)' : 'var(--border)'}`,
+            background: roleFilter === '' ? 'var(--accent)' : 'transparent',
+            color: roleFilter === '' ? '#fff' : 'var(--text-muted)',
+          }}>
+          {t('settings.role_filter_all')}
+        </button>
+        {ROLE_OPTION_DEFS.map(r => {
+          const active = roleFilter === r.value
+          return (
+            <button key={r.value} onClick={() => handleRoleFilter(r.value)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: `1.5px solid ${active ? r.color : 'var(--border)'}`,
+                background: active ? `${r.color}18` : 'transparent',
+                color: active ? r.color : 'var(--text-muted)',
+              }}>
+              <r.icon size={12} />
+              {t(`settings.role_${r.value}`)}
+            </button>
+          )
+        })}
       </div>
 
       {loading ? (
@@ -645,14 +680,14 @@ function MembersTab({ userRole }) {
           {/* Pagination */}
           {totalPages > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 4 }}>
-              <button onClick={() => fetchPage(page - 1, search)} disabled={page <= 1}
+              <button onClick={() => fetchPage(page - 1, search, roleFilter)} disabled={page <= 1}
                 style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}>
                 <ChevronLeft size={16} color="var(--text-muted)" />
               </button>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
                 {page} / {totalPages}
               </span>
-              <button onClick={() => fetchPage(page + 1, search)} disabled={page >= totalPages}
+              <button onClick={() => fetchPage(page + 1, search, roleFilter)} disabled={page >= totalPages}
                 style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.4 : 1 }}>
                 <ChevronRight size={16} color="var(--text-muted)" />
               </button>
