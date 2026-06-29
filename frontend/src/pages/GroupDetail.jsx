@@ -307,6 +307,24 @@ export default function GroupDetail() {
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', borderRadius: 6, padding: '2px 8px' }}>
                   {t('group_detail.connected_student')}
                 </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4, paddingLeft: 12, borderLeft: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                  <span style={{ fontSize: 12, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 600 }}>
+                    <Star size={13} color="#F59E0B" fill="#F59E0B" /> {s.coin_balance ?? 0}
+                  </span>
+                  {s.sticker_count > 0 && (
+                    <span style={{ fontSize: 12, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 600 }}>
+                      <Star size={13} color="var(--accent)" fill="var(--accent)" /> {s.sticker_count}
+                    </span>
+                  )}
+                  {isTeacher && !isReadOnly && (
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      <motion.button whileTap={{ scale: 0.88 }} onClick={() => handleCoin(s.id, s.membership_id, 1)}
+                        style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontWeight: 700, fontSize: 15, color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</motion.button>
+                      <motion.button whileTap={{ scale: 0.88 }} onClick={() => handleCoin(s.id, s.membership_id, -1)}
+                        style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontWeight: 700, fontSize: 15, color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</motion.button>
+                    </div>
+                  )}
+                </div>
               </div>
             )
           })()}
