@@ -227,6 +227,11 @@ class InviteAcceptView(APIView):
         if invite.used_by.filter(pk=user.pk).exists():
             return Response({'detail': 'You have already used this invite.'}, status=400)
 
+        if user.academy_id is not None and user.academy_id != invite.academy_id:
+            return Response({'detail': 'This account already belongs to a different academy. Log out and use a different account to accept this invite.'}, status=400)
+        if user.role != invite.role:
+            return Response({'detail': f'This account is already registered as {user.get_role_display()}. Log out and create a separate account to accept this invite.'}, status=400)
+
         user.academy = invite.academy
         user.role    = invite.role
         user.save(update_fields=['academy', 'role'])
