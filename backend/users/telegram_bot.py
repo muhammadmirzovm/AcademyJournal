@@ -997,6 +997,8 @@ NOTIF_MSG = {
         'hw_notification':          "📝 *{lesson}* darsi uchun uy vazifasi ({group}):\n\n{homework}",
         'announcement':             "📌 *E'lon:* {title}\n\n{body}",
         'announcement_group':       "📌 *E'lon ({group}):* {title}\n\n{body}",
+        'direct_message':           "📩 *{sender}* sizga xabar yubordi:\n\n{message}",
+        'direct_message_parent':    "📩 *{sender}* — *{student}* haqida xabar:\n\n{message}",
 
         # ── Exam results ────────────────────────────────────────────────────
         'exam_result':              "📝 *{exam}* — imtihon natijasi\n📚 {group}\n\n✅ Natija: *{total}/{max}* ({pct}%)\n\n{breakdown}\n\n#exam",
@@ -1020,6 +1022,8 @@ NOTIF_MSG = {
         'hw_notification':          "📝 Домашнее задание по уроку *{lesson}* ({group}):\n\n{homework}",
         'announcement':             "📌 *Объявление:* {title}\n\n{body}",
         'announcement_group':       "📌 *Объявление ({group}):* {title}\n\n{body}",
+        'direct_message':           "📩 *{sender}* отправил(а) вам сообщение:\n\n{message}",
+        'direct_message_parent':    "📩 *{sender}* — сообщение о *{student}*:\n\n{message}",
 
         # ── Exam results ────────────────────────────────────────────────────
         'exam_result':              "📝 *{exam}* — результат экзамена\n📚 {group}\n\n✅ Результат: *{total}/{max}* ({pct}%)\n\n{breakdown}\n\n#exam",
