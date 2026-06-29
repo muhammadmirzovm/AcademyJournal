@@ -163,16 +163,24 @@ class UserStatsView(APIView):
             CoinTransaction.objects.filter(student=user)
             .order_by('created_at')
         )
-        running = 0
-        coin_trend = []
+        # Cumulative lifetime coins earned, aggregated per day. Sticker
+        # conversions (auto negative txns) are skipped so the trend keeps
+        # rising instead of sawtoothing each time a sticker is earned.
+        from collections import OrderedDict
+        earned = 0
+        daily = OrderedDict()
         for txn in coin_txns:
-            running += txn.amount
-            coin_trend.append({
-                'date':   str(txn.created_at.date()),
-                'amount': txn.amount,
-                'total':  max(0, running),
-                'note':   txn.note,
-            })
+            is_sticker_conversion = txn.amount < 0 and (txn.note or '').endswith('sticker(s) earned')
+            if is_sticker_conversion:
+                continue
+            earned = max(0, earned + txn.amount)
+            day = str(txn.created_at.date())
+            if day in daily:
+                daily[day]['total']   = earned
+                daily[day]['amount'] += txn.amount
+            else:
+                daily[day] = {'date': day, 'amount': txn.amount, 'total': earned, 'note': None}
+        coin_trend = list(daily.values())
 
         return Response({
             'role': 'student',
