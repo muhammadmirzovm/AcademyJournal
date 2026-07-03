@@ -838,6 +838,8 @@
     "err_delete": "Не удалось удалить экзамен.",
     "scoring_title": "Оценивание",
     "q_label": "Вопрос {{n}}",
+    "add_question": "Добавить вопрос",
+    "remove_question": "Убрать последний вопрос",
     "comment_placeholder": "Комментарий (необязательно)…",
     "total": "Итого",
     "percent": "Балл",

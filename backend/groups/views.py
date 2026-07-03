@@ -969,13 +969,18 @@ class ExamSubmitView(APIView):
             absent     = bool(entry.get('absent', False))
             scores     = [] if absent else entry.get('scores', [])
             comments   = [] if absent else entry.get('comments', [])
-            if not absent and len(scores) != exam.question_count:
-                return Response({'detail': f'Expected {exam.question_count} scores per student.'}, status=400)
+            # Each student is scored against their own number of questions, so
+            # we only require at least one question for a present student.
+            if not absent and len(scores) < 1:
+                return Response({'detail': 'Each present student needs at least one question.'}, status=400)
             for s in scores:
                 if not (0 <= int(s) <= 5):
                     return Response({'detail': 'Each score must be 0–5.'}, status=400)
-            padded_scores   = [int(s) for s in scores] if not absent else [0] * exam.question_count
-            padded_comments = (list(comments) + [''] * (exam.question_count - len(comments)))[:exam.question_count]
+            if absent:
+                padded_scores, padded_comments = [], []
+            else:
+                padded_scores   = [int(s) for s in scores]
+                padded_comments = (list(comments) + [''] * len(scores))[:len(scores)]
 
             prev = existing.get(student_id)
             if prev is None or prev.absent != absent or prev.scores != padded_scores or prev.comments != padded_comments:
@@ -1372,7 +1377,9 @@ class ExamExportExcelView(APIView):
         center     = Alignment(horizontal='center', vertical='center', wrap_text=True)
         left_mid   = Alignment(horizontal='left',   vertical='center')
 
-        n_q = exam.question_count
+        # Students can be scored on different numbers of questions, so the
+        # sheet needs as many question columns as the largest result.
+        n_q = max([len(r.scores) for r in results if not r.absent] + [exam.question_count])
         last_col = get_column_letter(n_q + 5)
 
         ws.merge_cells(f'A1:{last_col}1')

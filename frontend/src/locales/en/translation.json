@@ -838,6 +838,8 @@
     "err_delete": "Failed to delete exam.",
     "scoring_title": "Scoring",
     "q_label": "Question {{n}}",
+    "add_question": "Add question",
+    "remove_question": "Remove last question",
     "comment_placeholder": "Comment (optional)…",
     "total": "Total",
     "percent": "Score",

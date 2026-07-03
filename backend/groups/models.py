@@ -162,8 +162,8 @@ class Exam(models.Model):
 class ExamResult(models.Model):
     exam     = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='results')
     student  = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='exam_results')
-    scores   = models.JSONField(default=list)    # [int, ...]  len == exam.question_count, each 0-5
-    comments = models.JSONField(default=list)    # [str, ...]  len == exam.question_count, can be ''
+    scores   = models.JSONField(default=list)    # [int, ...]  per-student question count, each 0-5
+    comments = models.JSONField(default=list)    # [str, ...]  same length as scores, can be ''
     absent   = models.BooleanField(default=False)
 
     class Meta:
@@ -175,7 +175,9 @@ class ExamResult(models.Model):
 
     @property
     def max_score(self):
-        return self.exam.question_count * 5
+        # Each student is scored out of their own number of questions, so a
+        # student asked more/fewer questions is graded fairly against their own.
+        return len(self.scores) * 5
 
     @property
     def percentage(self):

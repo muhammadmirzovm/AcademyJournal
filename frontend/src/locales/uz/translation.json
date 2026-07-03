@@ -838,6 +838,8 @@
     "err_delete": "Imtihonni o'chirishda xatolik.",
     "scoring_title": "Baholash",
     "q_label": "{{n}}-savol",
+    "add_question": "Savol qo'shish",
+    "remove_question": "Oxirgi savolni olib tashlash",
     "comment_placeholder": "Izoh (ixtiyoriy)…",
     "total": "Jami",
     "percent": "Foiz",

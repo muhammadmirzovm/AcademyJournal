@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Plus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight, Pencil, FileDown, Trash2 } from 'lucide-react'
+import { Plus, Minus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight, Pencil, FileDown, Trash2 } from 'lucide-react'
 import { toggleExamReady, createExam, submitExam, getExams, exportExamExcel, deleteExam } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import Modal from './ui/Modal'
@@ -17,18 +17,18 @@ const ABSENT_STYLE = { color: '#64748B', bg: '#64748B10', border: '#64748B30' }
 // ── Scoring screen ────────────────────────────────────────────────────────────
 function ScoringScreen({ exam, members, groupId, onDone, t }) {
   const { show } = useToast()
-  const qCount = exam.question_count
+  const defaultCount = exam.question_count
 
   const init = () =>
     members.map(m => {
       const existing = exam.results?.find(r => r.student === m.id)
-      const hasScores = existing && !existing.absent
+      const hasScores = existing && !existing.absent && existing.scores.length > 0
       return {
         student:  m.id,
         name:     m.first_name ? `${m.first_name} ${m.last_name}`.trim() : m.username,
         absent:   existing?.absent ?? false,
-        scores:   hasScores ? [...existing.scores] : Array(qCount).fill(0),
-        comments: hasScores ? [...existing.comments] : Array(qCount).fill(''),
+        scores:   hasScores ? [...existing.scores] : Array(defaultCount).fill(0),
+        comments: hasScores ? [...existing.comments] : Array(defaultCount).fill(''),
         open:     false,
       }
     })
@@ -48,10 +48,17 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
   const toggleOpen = si =>
     setRows(r => r.map((row, i) => i !== si ? row : { ...row, open: !row.open }))
 
+  const addQuestion = si =>
+    setRows(r => r.map((row, i) => i !== si ? row : { ...row, scores: [...row.scores, 0], comments: [...row.comments, ''] }))
+
+  const removeQuestion = si =>
+    setRows(r => r.map((row, i) => (i !== si || row.scores.length <= 1) ? row
+      : { ...row, scores: row.scores.slice(0, -1), comments: row.comments.slice(0, -1) }))
+
   const pct = row => {
-    if (row.absent) return null
+    if (row.absent || row.scores.length === 0) return null
     const total = row.scores.reduce((a, b) => a + b, 0)
-    return Math.round(total / (qCount * 5) * 100)
+    return Math.round(total / (row.scores.length * 5) * 100)
   }
 
   const save = async () => {
@@ -79,7 +86,7 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
         <div>
           <h3 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>{exam.name}</h3>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
-            {t('exam.scoring_title')} · {qCount} {t('exam.q_short')}
+            {t('exam.scoring_title')} · {defaultCount} {t('exam.q_short')}
             {absentCount > 0 && <span style={{ marginLeft: 8, color: '#64748B', fontWeight: 600 }}>· {absentCount} {t('exam.absent_count')}</span>}
           </p>
         </div>
@@ -109,7 +116,7 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>
                       {row.absent
                         ? <span style={{ color: '#64748B', fontWeight: 700 }}>{t('exam.absent_label')}</span>
-                        : <>{t('exam.total')}: {total}/{qCount * 5} · <span style={{ color: col.color, fontWeight: 700 }}>{p}%</span></>}
+                        : <>{t('exam.total')}: {total}/{row.scores.length * 5} · <span style={{ color: col.color, fontWeight: 700 }}>{p}%</span></>}
                     </p>
                   </div>
                   {!row.absent && (row.open ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />)}
@@ -127,7 +134,7 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
                 {row.open && !row.absent && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
                     <div style={{ padding: '12px 18px 16px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)' }}>
-                      {Array.from({ length: qCount }, (_, qi) => (
+                      {Array.from({ length: row.scores.length }, (_, qi) => (
                         <div key={qi}>
                           <div className="exam-q-score-row" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
                             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', minWidth: 70 }}>
@@ -160,6 +167,18 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
                           />
                         </div>
                       ))}
+                      <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                        <button onClick={() => addQuestion(si)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--accent)', background: 'transparent', color: 'var(--accent)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                          <Plus size={13} /> {t('exam.add_question')}
+                        </button>
+                        {row.scores.length > 1 && (
+                          <button onClick={() => removeQuestion(si)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                            <Minus size={13} /> {t('exam.remove_question')}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 )}
