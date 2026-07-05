@@ -134,16 +134,29 @@ class UserStatsView(APIView):
                     'students': g.memberships.count(),
                 })
 
-            # Weekly timetable — every group (incl. individual) that has set days
-            schedule = [
-                {
-                    'group':         g.name,
-                    'class_days':    g.class_days,
-                    'class_time':    g.class_time,
-                    'is_individual': g.is_individual,
-                }
-                for g in groups if g.class_days
-            ]
+            # Weekly timetable — every group (incl. individual) that has set days,
+            # ordered by lesson start time so earlier classes appear first.
+            def _start_minutes(class_time):
+                if not class_time:
+                    return 24 * 60 + 1  # groups without a time go last
+                try:
+                    hh, mm = class_time.split('-')[0].split(':')
+                    return int(hh) * 60 + int(mm)
+                except (ValueError, IndexError):
+                    return 24 * 60 + 1
+
+            schedule = sorted(
+                [
+                    {
+                        'group':         g.name,
+                        'class_days':    g.class_days,
+                        'class_time':    g.class_time,
+                        'is_individual': g.is_individual,
+                    }
+                    for g in groups if g.class_days
+                ],
+                key=lambda s: _start_minutes(s['class_time']),
+            )
 
             return Response({
                 'role': 'teacher',
