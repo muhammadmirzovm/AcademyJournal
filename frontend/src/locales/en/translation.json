@@ -534,7 +534,8 @@
     "students_tooltip": "Students",
     "timetable": "Timetable",
     "timetable_sub": "weekly class days and times",
-    "no_schedule": "No class days set for the groups."
+    "no_schedule": "No class days set for the groups.",
+    "today": "Today"
   },
   "notif": {
     "title": "Notifications",
@@ -627,10 +628,6 @@
     "err_invite_create": "Failed to create invite.",
     "admin_only": "Admin only",
     "admin_only_sub": "Only academy admins can edit branding and settings",
-    "role_student": "Student",
-    "role_teacher": "Teacher",
-    "role_admin": "Admin",
-    "role_parent": "Parent",
     "report_time": "Daily Report Time (Tashkent, UTC+5)",
     "report_time_hint": "Bot sends attendance report to admins at this time every day",
     "weekly_report_time": "Weekly Report Time (Tashkent, UTC+5)",

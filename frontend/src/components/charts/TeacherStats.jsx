@@ -11,6 +11,9 @@ export default function TeacherStats({ stats }) {
   const { t } = useTranslation()
   if (!stats) return null
 
+  // Today's weekday in class_days convention (0=Mon … 6=Sun)
+  const todayIdx = (new Date().getDay() + 6) % 7
+
   const statCards = [
     { label: t('teacher_stats.total_students'), value: stats.total_students, icon: Users,          color: '#0D9488' },
     { label: t('teacher_stats.groups'),         value: stats.total_groups,   icon: LayoutDashboard, color: '#0891B2' },
@@ -101,9 +104,18 @@ export default function TeacherStats({ stats }) {
                   <th style={{ ...thCell, textAlign: 'left', paddingLeft: 4, position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1 }}>
                     {t('teacher_stats.groups')}
                   </th>
-                  {DAYS.map((d, i) => (
-                    <th key={d} style={{ ...thCell, color: i >= 5 ? 'color-mix(in srgb, var(--text-muted) 60%, transparent)' : 'var(--text-muted)' }}>{d}</th>
-                  ))}
+                  {DAYS.map((d, i) => {
+                    const isToday = i === todayIdx
+                    return (
+                      <th key={d} style={{ ...thCell,
+                        color: isToday ? 'var(--accent)' : i >= 5 ? 'color-mix(in srgb, var(--text-muted) 60%, transparent)' : 'var(--text-muted)',
+                        background: isToday ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : undefined,
+                        borderTopLeftRadius: isToday ? 8 : 0, borderTopRightRadius: isToday ? 8 : 0 }}>
+                        {isToday && <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', marginBottom: 2 }}>{t('teacher_stats.today')}</div>}
+                        {d}
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -118,7 +130,7 @@ export default function TeacherStats({ stats }) {
                         {g.is_individual && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>·</span>}
                       </td>
                       {DAYS.map((_, di) => (
-                        <td key={di} style={cellStyle}>
+                        <td key={di} style={{ ...cellStyle, background: di === todayIdx ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : undefined }}>
                           {g.class_days.includes(di) ? (
                             time ? (
                               <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 700, color, background: `color-mix(in srgb, ${color} 14%, transparent)`, padding: '4px 8px', borderRadius: 7, whiteSpace: 'nowrap' }}>{time}</span>

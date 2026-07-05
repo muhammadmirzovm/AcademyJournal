@@ -534,7 +534,8 @@
     "students_tooltip": "O'quvchilar",
     "timetable": "Dars jadvali",
     "timetable_sub": "haftalik dars kunlari va vaqtlari",
-    "no_schedule": "Guruhlarga dars kunlari belgilanmagan."
+    "no_schedule": "Guruhlarga dars kunlari belgilanmagan.",
+    "today": "Bugun"
   },
   "notif": {
     "title": "Bildirishnomalar",
@@ -627,10 +628,6 @@
     "err_invite_create": "Taklif havolasini yaratishda xatolik.",
     "admin_only": "Faqat adminlar uchun",
     "admin_only_sub": "Faqat akademiya adminlari brendingni va sozlamalarni tahrirlashi mumkin",
-    "role_student": "O'quvchi",
-    "role_teacher": "O'qituvchi",
-    "role_admin": "Admin",
-    "role_parent": "Ota-ona",
     "report_time": "Kunlik hisobot vaqti (O'zbekiston vaqti, UTC+5)",
     "report_time_hint": "Bot har kuni shu vaqtda davomat hisobotini adminlarga yuboradi",
     "weekly_report_time": "Haftalik hisobot vaqti (O'zbekiston vaqti, UTC+5)",
