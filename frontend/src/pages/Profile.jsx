@@ -14,6 +14,7 @@ import AttendanceDoughnut from '../components/charts/AttendanceDoughnut'
 import TeacherStats from '../components/charts/TeacherStats'
 import CoinLineChart from '../components/charts/CoinLineChart'
 import TodayLessons from '../components/TodayLessons'
+import AdminCharts from '../components/charts/AdminCharts'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { timeAgo, formatDate } from '../utils/date'
 
@@ -279,12 +280,15 @@ export default function Profile() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
         style={{ marginBottom: 24 }}>
         {profile.role === 'admin' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-            <ProfileStatCard icon={Users}        label={t('dashboard.total_students')} value={stats?.total_students ?? '…'} color="#14B8A8" />
-            <ProfileStatCard icon={GraduationCap} label={t('dashboard.total_teachers')} value={stats?.total_teachers ?? '…'} color="#8B5CF6" />
-            <ProfileStatCard icon={BookOpen}     label={t('dashboard.total_groups')}   value={stats?.total_groups   ?? '…'} color="#0891B2" />
-            <ProfileStatCard icon={Trophy}       label={t('dashboard.total_lessons')}  value={stats?.total_lessons  ?? '…'} color="#F59E0B" />
-          </div>
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+              <ProfileStatCard icon={Users}        label={t('dashboard.total_students')} value={stats?.total_students ?? '…'} color="#14B8A8" />
+              <ProfileStatCard icon={GraduationCap} label={t('dashboard.total_teachers')} value={stats?.total_teachers ?? '…'} color="#8B5CF6" />
+              <ProfileStatCard icon={BookOpen}     label={t('dashboard.total_groups')}   value={stats?.total_groups   ?? '…'} color="#0891B2" />
+              <ProfileStatCard icon={Trophy}       label={t('dashboard.total_lessons')}  value={stats?.total_lessons  ?? '…'} color="#F59E0B" />
+            </div>
+            <AdminCharts stats={stats} />
+          </>
         ) : profile.role === 'teacher' ? (
           <TeacherStats stats={stats} />
         ) : profile.role === 'parent' ? (

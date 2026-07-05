@@ -120,12 +120,42 @@ class UserStatsView(APIView):
             total_teachers = User.objects.filter(academy=academy, role='teacher').count()
             total_groups   = Group.objects.filter(teacher__academy=academy).count()
             total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
+
+            # Students per teacher (workload distribution)
+            students_per_teacher = []
+            for tch in User.objects.filter(academy=academy, role='teacher'):
+                cnt = GroupMembership.objects.filter(group__teacher=tch).values('student').distinct().count()
+                students_per_teacher.append({
+                    'teacher':  (f'{tch.first_name} {tch.last_name}'.strip() or tch.username),
+                    'students': cnt,
+                })
+            students_per_teacher.sort(key=lambda x: x['students'], reverse=True)
+
+            # New students per month (enrollment growth)
+            from django.db.models.functions import TruncMonth
+            growth_qs = (
+                User.objects.filter(academy=academy, role='student')
+                .annotate(m=TruncMonth('date_joined'))
+                .values('m').annotate(c=Count('id')).order_by('m')
+            )
+            students_growth = [
+                {'month': row['m'].strftime('%Y-%m'), 'count': row['c']}
+                for row in growth_qs if row['m']
+            ]
+
+            # Academy-wide attendance
+            att_total   = Attendance.objects.filter(lesson__group__teacher__academy=academy).count()
+            att_present = Attendance.objects.filter(lesson__group__teacher__academy=academy, present=True).count()
+
             return Response({
                 'role': 'admin',
                 'total_students': total_students,
                 'total_teachers': total_teachers,
                 'total_groups':   total_groups,
                 'total_lessons':  total_lessons,
+                'students_per_teacher': students_per_teacher,
+                'students_growth':      students_growth,
+                'attendance_summary':   {'present': att_present, 'absent': att_total - att_present, 'total': att_total},
             })
 
         if user.role == 'teacher':

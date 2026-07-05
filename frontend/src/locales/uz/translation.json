@@ -886,5 +886,11 @@
     "toast_fail": "E'lonni saqlashda xatolik.",
     "empty": "Hali e'lonlar yo'q.",
     "empty_sub": "Birinchi e'lonni joylang."
+  },
+  "admin_stats": {
+    "students_per_teacher": "O'qituvchi bo'yicha o'quvchilar",
+    "new_students": "Yangi o'quvchilar",
+    "attendance": "Umumiy davomat",
+    "students": "O'quvchilar"
   }
 }

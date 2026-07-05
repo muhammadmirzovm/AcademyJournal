@@ -886,5 +886,11 @@
     "toast_fail": "Failed to save announcement.",
     "empty": "No announcements yet.",
     "empty_sub": "Post one to let everyone know."
+  },
+  "admin_stats": {
+    "students_per_teacher": "Students per teacher",
+    "new_students": "New students",
+    "attendance": "Overall attendance",
+    "students": "Students"
   }
 }
