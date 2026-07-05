@@ -120,49 +120,12 @@ class UserStatsView(APIView):
             total_teachers = User.objects.filter(academy=academy, role='teacher').count()
             total_groups   = Group.objects.filter(teacher__academy=academy).count()
             total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
-
-            # Students per teacher (workload distribution)
-            students_per_teacher = []
-            for tch in User.objects.filter(academy=academy, role='teacher'):
-                cnt = GroupMembership.objects.filter(group__teacher=tch).values('student').distinct().count()
-                students_per_teacher.append({
-                    'teacher':  (f'{tch.first_name} {tch.last_name}'.strip() or tch.username),
-                    'students': cnt,
-                })
-            students_per_teacher.sort(key=lambda x: x['students'], reverse=True)
-
-            # New students per month (enrollment growth)
-            from django.db.models.functions import TruncMonth
-            growth_qs = (
-                User.objects.filter(academy=academy, role='student')
-                .annotate(m=TruncMonth('date_joined'))
-                .values('m').annotate(c=Count('id')).order_by('m')
-            )
-            students_growth = [
-                {'month': row['m'].strftime('%Y-%m'), 'count': row['c']}
-                for row in growth_qs if row['m']
-            ]
-
-            # Missed lessons (absences) per month, academy-wide
-            absence_qs = (
-                Attendance.objects.filter(lesson__group__teacher__academy=academy, present=False)
-                .annotate(m=TruncMonth('lesson__date'))
-                .values('m').annotate(c=Count('id')).order_by('m')
-            )
-            absences_by_month = [
-                {'month': row['m'].strftime('%Y-%m'), 'count': row['c']}
-                for row in absence_qs if row['m']
-            ]
-
             return Response({
                 'role': 'admin',
                 'total_students': total_students,
                 'total_teachers': total_teachers,
                 'total_groups':   total_groups,
                 'total_lessons':  total_lessons,
-                'students_per_teacher': students_per_teacher,
-                'students_growth':      students_growth,
-                'absences_by_month':    absences_by_month,
             })
 
         if user.role == 'teacher':
@@ -400,6 +363,40 @@ class AdminStatsView(APIView):
             })
         top_students = sorted(top_students, key=lambda x: (x['comprehension'], x['sticker_count']), reverse=True)[:5]
 
+        # ── Analytics charts ──────────────────────────────────────────────────
+        from django.db.models import Count
+        from django.db.models.functions import TruncMonth
+        from groups.models import Attendance
+
+        students_per_teacher = []
+        for tch in User.objects.filter(academy=academy, role='teacher'):
+            cnt = GroupMembership.objects.filter(group__teacher=tch).values('student').distinct().count()
+            students_per_teacher.append({
+                'teacher':  (f'{tch.first_name} {tch.last_name}'.strip() or tch.username),
+                'students': cnt,
+            })
+        students_per_teacher.sort(key=lambda x: x['students'], reverse=True)
+
+        growth_qs = (
+            User.objects.filter(academy=academy, role='student')
+            .annotate(m=TruncMonth('date_joined'))
+            .values('m').annotate(c=Count('id')).order_by('m')
+        )
+        students_growth = [
+            {'month': r['m'].strftime('%Y-%m'), 'count': r['c']}
+            for r in growth_qs if r['m']
+        ]
+
+        absence_qs = (
+            Attendance.objects.filter(lesson__group__teacher__academy=academy, present=False)
+            .annotate(m=TruncMonth('lesson__date'))
+            .values('m').annotate(c=Count('id')).order_by('m')
+        )
+        absences_by_month = [
+            {'month': r['m'].strftime('%Y-%m'), 'count': r['c']}
+            for r in absence_qs if r['m']
+        ]
+
         return Response({
             'total_students': total_students,
             'total_teachers': total_teachers,
@@ -407,6 +404,9 @@ class AdminStatsView(APIView):
             'total_lessons':  total_lessons,
             'top_groups':     top_groups,
             'top_students':   top_students,
+            'students_per_teacher': students_per_teacher,
+            'students_growth':      students_growth,
+            'absences_by_month':    absences_by_month,
         })
 
 

@@ -6,6 +6,7 @@ import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Tr
 import { getGroups, joinGroup, getAcademyAnnouncements, createAcademyAnnouncement, deleteAnnouncement } from '../api/groups'
 import { getAdminStats, getTeacherLeaderboard } from '../api/users'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
+import AdminCharts from '../components/charts/AdminCharts'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -331,6 +332,8 @@ export default function Dashboard() {
 
             </div>
           )}
+
+          {!loading && <AdminCharts stats={adminStats} />}
         </div>
       )}
 
