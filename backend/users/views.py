@@ -117,6 +117,10 @@ class UserStatsView(APIView):
             scores_by_group   = []
             students_by_group = []
             for g in groups:
+                # Individual groups are a single student, not a real group, so
+                # they would clutter the per-group comparison charts.
+                if g.is_individual:
+                    continue
                 avg = (
                     Score.objects.filter(lesson__group=g)
                     .aggregate(avg=Avg('value'))['avg']
