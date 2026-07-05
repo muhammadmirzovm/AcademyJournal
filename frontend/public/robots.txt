@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /register
+Allow: /forgot-password
+
+# Private, login-only areas — no value for search engines
+Disallow: /dashboard
+Disallow: /groups
+Disallow: /profile
+Disallow: /settings
+Disallow: /students
+Disallow: /exams
+Disallow: /questions
+Disallow: /invite
+
+Sitemap: https://academyjournal.vercel.app/sitemap.xml
