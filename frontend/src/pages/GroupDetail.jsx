@@ -295,6 +295,9 @@ export default function GroupDetail() {
           {group.description && <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 8 }}>{group.description}</p>}
           {group.is_individual && members.length > 0 && (() => {
             const s = members[0]
+            const pctColor = p => p === null || p === undefined ? 'var(--text-muted)' : p >= 70 ? 'var(--success)' : p >= 40 ? 'var(--warning)' : 'var(--danger)'
+            const comp = s.comprehension
+            const att  = s.attendance_rate
             return (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: 10, padding: '8px 14px', marginBottom: 10 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', flexShrink: 0 }}>
@@ -324,6 +327,16 @@ export default function GroupDetail() {
                         style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontWeight: 700, fontSize: 15, color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</motion.button>
                     </div>
                   )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginLeft: 4, paddingLeft: 12, borderLeft: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: pctColor(comp) }}>{comp === null || comp === undefined ? '—' : `${comp}%`}</span>
+                    <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)' }}>{t('group_detail.comprehension')}</p>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: pctColor(att) }}>{att === null || att === undefined ? '—' : `${att}%`}</span>
+                    <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)' }}>{t('group_detail.attendance')}</p>
+                  </div>
                 </div>
               </div>
             )
