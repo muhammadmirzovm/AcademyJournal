@@ -890,7 +890,8 @@
   "admin_stats": {
     "students_per_teacher": "Ученики по учителям",
     "new_students": "Новые ученики",
-    "attendance": "Общая посещаемость",
-    "students": "Ученики"
+    "students": "Ученики",
+    "absences_by_month": "Пропуски по месяцам",
+    "absences": "Пропуски"
   }
 }

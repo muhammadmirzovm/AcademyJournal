@@ -890,7 +890,8 @@
   "admin_stats": {
     "students_per_teacher": "Students per teacher",
     "new_students": "New students",
-    "attendance": "Overall attendance",
-    "students": "Students"
+    "students": "Students",
+    "absences_by_month": "Monthly absences",
+    "absences": "Absences"
   }
 }

@@ -143,9 +143,16 @@ class UserStatsView(APIView):
                 for row in growth_qs if row['m']
             ]
 
-            # Academy-wide attendance
-            att_total   = Attendance.objects.filter(lesson__group__teacher__academy=academy).count()
-            att_present = Attendance.objects.filter(lesson__group__teacher__academy=academy, present=True).count()
+            # Missed lessons (absences) per month, academy-wide
+            absence_qs = (
+                Attendance.objects.filter(lesson__group__teacher__academy=academy, present=False)
+                .annotate(m=TruncMonth('lesson__date'))
+                .values('m').annotate(c=Count('id')).order_by('m')
+            )
+            absences_by_month = [
+                {'month': row['m'].strftime('%Y-%m'), 'count': row['c']}
+                for row in absence_qs if row['m']
+            ]
 
             return Response({
                 'role': 'admin',
@@ -155,7 +162,7 @@ class UserStatsView(APIView):
                 'total_lessons':  total_lessons,
                 'students_per_teacher': students_per_teacher,
                 'students_growth':      students_growth,
-                'attendance_summary':   {'present': att_present, 'absent': att_total - att_present, 'total': att_total},
+                'absences_by_month':    absences_by_month,
             })
 
         if user.role == 'teacher':

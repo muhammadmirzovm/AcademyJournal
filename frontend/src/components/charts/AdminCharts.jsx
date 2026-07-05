@@ -3,23 +3,20 @@ import {
   ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
-import { Users, TrendingUp, CalendarCheck } from 'lucide-react'
-import AttendanceDoughnut from './AttendanceDoughnut'
+import { Users, TrendingUp, CalendarX } from 'lucide-react'
 
 const COLORS = ['#0D9488', '#0891B2', '#7C3AED', '#DB2777', '#D97706', '#059669', '#DC2626', '#6366F1']
+const monthLabel = (m, lang) => new Date(`${m}-01`).toLocaleDateString(lang, { month: 'short', year: '2-digit' })
 
 export default function AdminCharts({ stats }) {
   const { t, i18n } = useTranslation()
   if (!stats) return null
 
-  const spt    = stats.students_per_teacher || []
-  const growth = (stats.students_growth || []).map(g => ({
-    ...g,
-    label: new Date(`${g.month}-01`).toLocaleDateString(i18n.language, { month: 'short', year: '2-digit' }),
-  }))
-  const att = stats.attendance_summary
+  const spt      = stats.students_per_teacher || []
+  const growth   = (stats.students_growth || []).map(g => ({ ...g, label: monthLabel(g.month, i18n.language) }))
+  const absences = (stats.absences_by_month || []).map(a => ({ ...a, label: monthLabel(a.month, i18n.language) }))
 
-  if (spt.length === 0 && growth.length === 0 && !(att && att.total > 0)) return null
+  if (spt.length === 0 && growth.length === 0 && absences.length === 0) return null
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 20 }}>
@@ -62,10 +59,18 @@ export default function AdminCharts({ stats }) {
         </div>
       )}
 
-      {att && att.total > 0 && (
+      {absences.length > 0 && (
         <div style={card}>
-          <div style={titleRow}><CalendarCheck size={16} color="var(--accent)" /><p style={cardTitle}>{t('admin_stats.attendance')}</p></div>
-          <AttendanceDoughnut data={att} />
+          <div style={titleRow}><CalendarX size={16} color="#DC2626" /><p style={cardTitle}>{t('admin_stats.absences_by_month')}</p></div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={absences} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} formatter={v => [v, t('admin_stats.absences')]} cursor={{ fill: 'rgba(220,38,38,0.08)' }} />
+              <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="#DC2626" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 
