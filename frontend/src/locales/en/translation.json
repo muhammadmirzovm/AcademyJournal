@@ -519,7 +519,9 @@
     "email_label": "Email",
     "bio": "Bio",
     "err_username_taken": "This username is taken, please choose another.",
-    "today_lessons": "Today's lessons"
+    "today_lessons": "Today's lessons",
+    "exam_results": "Exam results",
+    "exams_count": "{{count}} exams"
   },
   "teacher_stats": {
     "total_students": "Total Students",

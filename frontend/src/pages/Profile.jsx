@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
-  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle, Gem, UserCheck,
+  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle, Gem, UserCheck, ClipboardCheck,
 } from 'lucide-react'
 import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword, connectTelegram, disconnectTelegram, getNotifyInfo, sendDirectNotification } from '../api/users'
 import { useAuth } from '../context/AuthContext'
@@ -349,6 +349,39 @@ export default function Profile() {
               </div>
               <CoinLineChart data={stats?.coin_trend} />
             </div>
+            {stats?.exam_trend?.length > 0 && (
+              <div style={{ ...chartCard, gridColumn: '1 / -1' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <div style={{ ...chartIconWrap, background: 'rgba(139,92,246,0.1)' }}><ClipboardCheck size={16} color="#8B5CF6" /></div>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 14 }}>{t('profile.exam_results')}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('profile.exams_count', { count: stats.exam_trend.length })}</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[...stats.exam_trend].reverse().map((e, i) => {
+                    const col = e.absent ? '#64748B' : e.percentage >= 80 ? '#16A34A' : e.percentage >= 50 ? '#D97706' : '#DC2626'
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontWeight: 600, fontSize: 13.5, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.exam}</p>
+                          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>{e.group}</p>
+                        </div>
+                        {e.absent ? (
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', background: 'rgba(100,116,139,0.12)', borderRadius: 6, padding: '3px 9px' }}>{t('exam.absent_label')}</span>
+                        ) : (
+                          <>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{e.total}/{e.max}</span>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: col, fontVariantNumeric: 'tabular-nums', minWidth: 44, textAlign: 'right' }}>{e.percentage}%</span>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </motion.div>

@@ -221,12 +221,31 @@ class UserStatsView(APIView):
         student_groups = Group.objects.filter(memberships__student=user).distinct()
         schedule = _build_schedule(student_groups)
 
+        from groups.models import ExamResult
+        exam_results = (
+            ExamResult.objects.filter(student=user)
+            .select_related('exam', 'exam__group')
+            .order_by('exam__created_at')
+        )
+        exam_trend = [
+            {
+                'exam':       r.exam.name,
+                'group':      r.exam.group.name,
+                'percentage': r.percentage,
+                'absent':     r.absent,
+                'total':      r.total,
+                'max':        r.max_score,
+            }
+            for r in exam_results
+        ]
+
         return Response({
             'role': 'student',
             'total_stickers': total_stickers,
             'score_trend': score_trend,
             'coin_trend': coin_trend,
             'schedule': schedule,
+            'exam_trend': exam_trend,
             'attendance_summary': {
                 'present': present,
                 'absent':  total - present,

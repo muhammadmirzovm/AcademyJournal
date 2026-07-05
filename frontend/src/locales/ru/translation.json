@@ -519,7 +519,9 @@
     "email_label": "Email",
     "bio": "О себе",
     "err_username_taken": "Это имя пользователя занято, выберите другое.",
-    "today_lessons": "Сегодняшние занятия"
+    "today_lessons": "Сегодняшние занятия",
+    "exam_results": "Результаты экзаменов",
+    "exams_count": "{{count}} экзаменов"
   },
   "teacher_stats": {
     "total_students": "Всего учеников",
