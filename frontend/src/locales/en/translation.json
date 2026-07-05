@@ -531,7 +531,10 @@
     "students_by_group_sub": "enrolled headcount",
     "no_groups": "No groups yet — create your first group to see stats here.",
     "avg_score_tooltip": "Avg score",
-    "students_tooltip": "Students"
+    "students_tooltip": "Students",
+    "timetable": "Timetable",
+    "timetable_sub": "weekly class days and times",
+    "no_schedule": "No class days set for the groups."
   },
   "notif": {
     "title": "Notifications",

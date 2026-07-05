@@ -531,7 +531,10 @@
     "students_by_group_sub": "ro'yxatdagi o'quvchilar soni",
     "no_groups": "Hali guruhlar yo'q — statistikani ko'rish uchun birinchi guruhingizni yarating.",
     "avg_score_tooltip": "O'rt ball",
-    "students_tooltip": "O'quvchilar"
+    "students_tooltip": "O'quvchilar",
+    "timetable": "Dars jadvali",
+    "timetable_sub": "haftalik dars kunlari va vaqtlari",
+    "no_schedule": "Guruhlarga dars kunlari belgilanmagan."
   },
   "notif": {
     "title": "Bildirishnomalar",

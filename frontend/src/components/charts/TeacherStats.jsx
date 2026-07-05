@@ -2,9 +2,10 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer,
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, LayoutDashboard, Star } from 'lucide-react'
+import { Users, BookOpen, LayoutDashboard, Star, CalendarDays } from 'lucide-react'
 
 const COLORS = ['#0D9488','#0891B2','#7C3AED','#DB2777','#D97706','#059669','#DC2626','#6366F1']
+const DAYS = ['Mo','Tu','We','Th','Fr','Sa','Su']
 
 export default function TeacherStats({ stats }) {
   const { t } = useTranslation()
@@ -85,6 +86,59 @@ export default function TeacherStats({ stats }) {
         </div>
       )}
 
+      {/* Weekly timetable */}
+      {stats.schedule?.length > 0 && (
+        <div style={{ ...card, marginTop: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            <CalendarDays size={16} color="var(--accent)" />
+            <p style={{ ...cardTitle, marginBottom: 0 }}>{t('teacher_stats.timetable')}</p>
+          </div>
+          <p style={cardSub}>{t('teacher_stats.timetable_sub')}</p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560, fontVariantNumeric: 'tabular-nums' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thCell, textAlign: 'left', paddingLeft: 4, position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1 }}>
+                    {t('teacher_stats.groups')}
+                  </th>
+                  {DAYS.map((d, i) => (
+                    <th key={d} style={{ ...thCell, color: i >= 5 ? 'color-mix(in srgb, var(--text-muted) 60%, transparent)' : 'var(--text-muted)' }}>{d}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {stats.schedule.map((g, gi) => {
+                  const color = COLORS[gi % COLORS.length]
+                  const time  = g.class_time ? g.class_time.replace('-', '–') : null
+                  return (
+                    <tr key={gi}>
+                      <td style={{ ...nameCell, position: 'sticky', left: 0, background: 'var(--surface)' }}>
+                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.group}</span>
+                        {g.is_individual && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>·</span>}
+                      </td>
+                      {DAYS.map((_, di) => (
+                        <td key={di} style={cellStyle}>
+                          {g.class_days.includes(di) ? (
+                            time ? (
+                              <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 700, color, background: `color-mix(in srgb, ${color} 14%, transparent)`, padding: '4px 8px', borderRadius: 7, whiteSpace: 'nowrap' }}>{time}</span>
+                            ) : (
+                              <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: color }} />
+                            )
+                          ) : (
+                            <span style={{ color: 'color-mix(in srgb, var(--text-muted) 45%, transparent)' }}>·</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Empty state — teacher has no groups yet */}
       {stats.total_groups === 0 && (
         <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: 14 }}>
@@ -94,6 +148,10 @@ export default function TeacherStats({ stats }) {
     </div>
   )
 }
+
+const thCell    = { fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '10px 6px', borderBottom: '1px solid var(--border)', textAlign: 'center' }
+const nameCell  = { display: 'flex', alignItems: 'center', gap: 9, padding: '11px 14px 11px 4px', fontWeight: 600, fontSize: 13.5, borderBottom: '1px solid var(--border)', maxWidth: 180 }
+const cellStyle = { textAlign: 'center', padding: '9px 6px', borderBottom: '1px solid var(--border)' }
 
 const card      = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }
 const cardTitle = { fontWeight: 700, fontSize: 14, marginBottom: 2 }

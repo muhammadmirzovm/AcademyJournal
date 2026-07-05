@@ -134,6 +134,17 @@ class UserStatsView(APIView):
                     'students': g.memberships.count(),
                 })
 
+            # Weekly timetable — every group (incl. individual) that has set days
+            schedule = [
+                {
+                    'group':         g.name,
+                    'class_days':    g.class_days,
+                    'class_time':    g.class_time,
+                    'is_individual': g.is_individual,
+                }
+                for g in groups if g.class_days
+            ]
+
             return Response({
                 'role': 'teacher',
                 'total_students': total_students,
@@ -142,6 +153,7 @@ class UserStatsView(APIView):
                 'avg_score':      round(avg_score_val, 2) if avg_score_val else 0,
                 'scores_by_group':   scores_by_group,
                 'students_by_group': students_by_group,
+                'schedule':          schedule,
             })
 
         # ── Student stats ─────────────────────────────────────────────────────
