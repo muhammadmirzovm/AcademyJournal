@@ -13,7 +13,7 @@ export const updateMembership   = (gid, mid, data)     => api.patch(`/groups/${g
 export const removeMember       = (gid, mid)           => api.delete(`/groups/${gid}/members/${mid}/`)
 export const giveCoins          = (gid, data)          => api.post(`/groups/${gid}/coins/`, data)
 
-export const getLessons         = (gid)                => api.get(`/groups/${gid}/lessons/`)
+export const getLessons         = (gid, page = 1)      => api.get(`/groups/${gid}/lessons/?page=${page}`)
 export const createLesson       = (gid, data)          => api.post(`/groups/${gid}/lessons/`, data)
 export const updateLesson       = (gid, lid, data)     => api.patch(`/groups/${gid}/lessons/${lid}/`, data)
 export const deleteLesson       = (gid, lid)           => api.delete(`/groups/${gid}/lessons/${lid}/`)

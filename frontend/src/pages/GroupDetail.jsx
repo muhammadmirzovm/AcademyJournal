@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog, MoreVertical, GraduationCap } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronLeft, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog, MoreVertical, GraduationCap } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
@@ -140,6 +140,9 @@ export default function GroupDetail() {
   const [group, setGroup]     = useState(null)
   const [members, setMembers] = useState([])
   const [lessons, setLessons] = useState([])
+  const [lessonPage,  setLessonPage]  = useState(1)
+  const [lessonPages, setLessonPages] = useState(1)
+  const [lessonTotal, setLessonTotal] = useState(0)
   const initialTab = new URLSearchParams(location.search).get('tab') || 'lessons'
   const [tab, setTab]         = useState(initialTab)
   const [loading, setLoading] = useState(true)
@@ -176,10 +179,11 @@ export default function GroupDetail() {
     setLoading(true)
     try {
       const [g, m, l, gm, anns] = await Promise.all([
-        getGroup(id), getMembers(id), getLessons(id), getGames(id),
+        getGroup(id), getMembers(id), getLessons(id, 1), getGames(id),
         getGroupAnnouncements(id),
       ])
-      setGroup(g.data); setMembers(m.data); setLessons(l.data); setGames(gm.data)
+      setGroup(g.data); setMembers(m.data); setGames(gm.data)
+      setLessons(l.data.results); setLessonPages(l.data.pages); setLessonTotal(l.data.total); setLessonPage(l.data.page)
       setAnnouncements(anns.data)
     } catch { show(t('group_detail.toast_load_fail'), 'error') }
     finally { setLoading(false) }
@@ -206,8 +210,18 @@ export default function GroupDetail() {
     catch { show(t('group_detail.toast_group_delete_fail'), 'error') }
   }
 
+  const fetchLessons = async (page) => {
+    const { data } = await getLessons(id, page)
+    setLessons(data.results); setLessonPages(data.pages); setLessonTotal(data.total); setLessonPage(data.page)
+  }
+
   const handleDeleteLesson = async (lid) => {
-    try { await deleteLesson(id, lid); setLessons(ls => ls.filter(x => x.id !== lid)); show(t('group_detail.toast_deleted'), 'info') }
+    try {
+      await deleteLesson(id, lid)
+      // Reload the current page (backfilling from the next); step back if it emptied.
+      await fetchLessons(lessons.length === 1 && lessonPage > 1 ? lessonPage - 1 : lessonPage)
+      show(t('group_detail.toast_deleted'), 'info')
+    }
     catch { show(t('group_detail.toast_delete_fail'), 'error') }
   }
 
@@ -352,7 +366,7 @@ export default function GroupDetail() {
               )
             )}
             {!group.is_individual && <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Users size={14} />{members.length} {t('group_detail.students_count')}</span>}
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><BookOpen size={14} />{lessons.length} {t('group_detail.lessons_count')}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><BookOpen size={14} />{lessonTotal} {t('group_detail.lessons_count')}</span>
             {(group.class_days?.length > 0 || group.class_time) && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Clock size={14} />
@@ -460,15 +474,30 @@ export default function GroupDetail() {
               </motion.button>
             </div>
           )}
-          {lessons.length === 0 ? (
+          {lessonTotal === 0 ? (
             <EmptyTab icon={BookOpen} text={t('group_detail.no_lessons')} sub={isTeacher ? t('group_detail.no_lessons_teacher') : t('group_detail.no_lessons_student')} />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {lessons.map((l, i) => (
-                <LessonRow key={l.id} lesson={l} groupId={id} index={i} isTeacher={isTeacher && !isReadOnly}
-                  onEdit={() => setEditingLesson(l)} onDelete={() => handleDeleteLesson(l.id)} />
-              ))}
-            </div>
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {lessons.map((l, i) => (
+                  <LessonRow key={l.id} lesson={l} groupId={id} index={i} isTeacher={isTeacher && !isReadOnly}
+                    onEdit={() => setEditingLesson(l)} onDelete={() => handleDeleteLesson(l.id)} />
+                ))}
+              </div>
+              {lessonPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 20 }}>
+                  <button onClick={() => fetchLessons(lessonPage - 1)} disabled={lessonPage <= 1}
+                    style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: lessonPage <= 1 ? 'not-allowed' : 'pointer', opacity: lessonPage <= 1 ? 0.4 : 1 }}>
+                    <ChevronLeft size={16} color="var(--text-muted)" />
+                  </button>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>{lessonPage} / {lessonPages}</span>
+                  <button onClick={() => fetchLessons(lessonPage + 1)} disabled={lessonPage >= lessonPages}
+                    style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: lessonPage >= lessonPages ? 'not-allowed' : 'pointer', opacity: lessonPage >= lessonPages ? 0.4 : 1 }}>
+                    <ChevronRight size={16} color="var(--text-muted)" />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -538,7 +567,7 @@ export default function GroupDetail() {
 
       {/* Modals */}
       <AddLessonModal open={showAddLesson} onClose={() => setShowAddLesson(false)} groupId={id}
-        onAdded={l => { setLessons(ls => [l, ...ls]); setShowAddLesson(false); show(t('group_detail.toast_added'), 'success') }} />
+        onAdded={() => { fetchLessons(1); setShowAddLesson(false); show(t('group_detail.toast_added'), 'success') }} />
       <EditLessonModal open={!!editingLesson} onClose={() => setEditingLesson(null)} lesson={editingLesson} groupId={id}
         onUpdated={u => { setLessons(ls => ls.map(l => l.id === u.id ? u : l)); setEditingLesson(null); show(t('group_detail.toast_lesson_updated'), 'success') }} />
       <EditGroupModal open={showEditGroup} onClose={() => setShowEditGroup(false)} group={group} groupId={id}

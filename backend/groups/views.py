@@ -181,6 +181,17 @@ class LessonListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return Lesson.objects.filter(group_id=self.kwargs['group_pk'])
 
+    def list(self, request, *args, **kwargs):
+        qs        = self.get_queryset()
+        page      = max(1, int(request.query_params.get('page', 1)))
+        page_size = max(1, min(100, int(request.query_params.get('page_size', 10))))
+        total     = qs.count()
+        pages     = max(1, (total + page_size - 1) // page_size)
+        page      = min(page, pages)
+        lessons   = qs[(page - 1) * page_size : page * page_size]
+        data      = self.get_serializer(lessons, many=True).data
+        return Response({'results': data, 'total': total, 'pages': pages, 'page': page})
+
     def perform_create(self, serializer):
         group = get_object_or_404(Group, pk=self.kwargs['group_pk'])
         if group.teacher != self.request.user and self.request.user.role != 'admin':
