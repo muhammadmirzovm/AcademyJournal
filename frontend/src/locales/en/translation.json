@@ -518,7 +518,8 @@
     "username_hint": "If you forget it, use /username command in the Telegram bot.",
     "email_label": "Email",
     "bio": "Bio",
-    "err_username_taken": "This username is taken, please choose another."
+    "err_username_taken": "This username is taken, please choose another.",
+    "today_lessons": "Today's lessons"
   },
   "teacher_stats": {
     "total_students": "Total Students",

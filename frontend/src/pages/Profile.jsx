@@ -13,6 +13,7 @@ import ScoreLineChart from '../components/charts/ScoreLineChart'
 import AttendanceDoughnut from '../components/charts/AttendanceDoughnut'
 import TeacherStats from '../components/charts/TeacherStats'
 import CoinLineChart from '../components/charts/CoinLineChart'
+import TodayLessons from '../components/TodayLessons'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { timeAgo, formatDate } from '../utils/date'
 
@@ -270,6 +271,9 @@ export default function Profile() {
           </div>
         </div>
       </motion.div>
+
+      {/* Today's lessons — teacher & student */}
+      {(profile.role === 'teacher' || profile.role === 'student') && <TodayLessons schedule={stats?.schedule} />}
 
       {/* Stats section — role-specific */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}

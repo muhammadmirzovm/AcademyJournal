@@ -518,7 +518,8 @@
     "username_hint": "Если забудете — узнайте через Telegram бот командой /username.",
     "email_label": "Email",
     "bio": "О себе",
-    "err_username_taken": "Это имя пользователя занято, выберите другое."
+    "err_username_taken": "Это имя пользователя занято, выберите другое.",
+    "today_lessons": "Сегодняшние занятия"
   },
   "teacher_stats": {
     "total_students": "Всего учеников",

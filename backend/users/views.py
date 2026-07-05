@@ -72,6 +72,34 @@ class ProfileView(generics.RetrieveAPIView):
         return target
 
 
+def _class_start_minutes(class_time):
+    if not class_time:
+        return 24 * 60 + 1  # groups without a time go last
+    try:
+        hh, mm = class_time.split('-')[0].split(':')
+        return int(hh) * 60 + int(mm)
+    except (ValueError, IndexError):
+        return 24 * 60 + 1
+
+
+def _build_schedule(groups):
+    """Weekly timetable rows for groups that have class days set, ordered by
+    lesson start time so earlier classes come first."""
+    return sorted(
+        [
+            {
+                'id':            g.id,
+                'group':         g.name,
+                'class_days':    g.class_days,
+                'class_time':    g.class_time,
+                'is_individual': g.is_individual,
+            }
+            for g in groups if g.class_days
+        ],
+        key=lambda s: _class_start_minutes(s['class_time']),
+    )
+
+
 class UserStatsView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -134,29 +162,8 @@ class UserStatsView(APIView):
                     'students': g.memberships.count(),
                 })
 
-            # Weekly timetable — every group (incl. individual) that has set days,
-            # ordered by lesson start time so earlier classes appear first.
-            def _start_minutes(class_time):
-                if not class_time:
-                    return 24 * 60 + 1  # groups without a time go last
-                try:
-                    hh, mm = class_time.split('-')[0].split(':')
-                    return int(hh) * 60 + int(mm)
-                except (ValueError, IndexError):
-                    return 24 * 60 + 1
-
-            schedule = sorted(
-                [
-                    {
-                        'group':         g.name,
-                        'class_days':    g.class_days,
-                        'class_time':    g.class_time,
-                        'is_individual': g.is_individual,
-                    }
-                    for g in groups if g.class_days
-                ],
-                key=lambda s: _start_minutes(s['class_time']),
-            )
+            # Weekly timetable — every group (incl. individual) that has set days.
+            schedule = _build_schedule(groups)
 
             return Response({
                 'role': 'teacher',
@@ -211,11 +218,15 @@ class UserStatsView(APIView):
                 daily[day] = {'date': day, 'amount': txn.amount, 'total': earned, 'note': None}
         coin_trend = list(daily.values())
 
+        student_groups = Group.objects.filter(memberships__student=user).distinct()
+        schedule = _build_schedule(student_groups)
+
         return Response({
             'role': 'student',
             'total_stickers': total_stickers,
             'score_trend': score_trend,
             'coin_trend': coin_trend,
+            'schedule': schedule,
             'attendance_summary': {
                 'present': present,
                 'absent':  total - present,
