@@ -187,8 +187,11 @@ class LessonListCreateView(generics.ListCreateAPIView):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Only the teacher or admin can add lessons.')
         lesson = serializer.save(group=group)
+        # Skip students who joined after this lesson's date, so a back-dated
+        # lesson does not create attendance for members who were not yet in.
         for membership in group.memberships.all():
-            Attendance.objects.get_or_create(lesson=lesson, student=membership.student, defaults={'present': False})
+            if membership.joined_at.date() <= lesson.date:
+                Attendance.objects.get_or_create(lesson=lesson, student=membership.student, defaults={'present': False})
 
 
 class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):

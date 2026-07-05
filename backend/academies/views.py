@@ -242,7 +242,10 @@ class InviteAcceptView(APIView):
                 group=invite.group, student=user,
             )
             if created:
-                for lesson in invite.group.lessons.all():
+                # Only track attendance from the join date onward, so a student
+                # who joins late is not marked absent for earlier lessons.
+                join_date = membership.joined_at.date()
+                for lesson in invite.group.lessons.filter(date__gte=join_date):
                     Attendance.objects.get_or_create(
                         lesson=lesson, student=user, defaults={'present': False}
                     )
