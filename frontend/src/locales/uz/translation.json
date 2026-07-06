@@ -149,7 +149,11 @@
     "t3_quote": "O'g'lim dars o'tgan har safar Telegram xabar olaman. Hech kimni chaqirmasdan har doim xabardor bo'laman.",
     "t3_name": "Nodira Karimova",
     "t3_role": "Ota-ona",
-    "tech_label": "Texnologiyalar"
+    "tech_label": "Texnologiyalar",
+    "contact_eyebrow": "Aloqa",
+    "contact_title": "Savolingiz bormi? Zayavka qoldiring",
+    "contact_sub": "Telegram bot orqali qisqacha ma'lumot qoldiring — biz tez orada siz bilan bog'lanamiz.",
+    "contact_btn": "Zayavka qoldirish"
   },
   "auth": {
     "create_account": "Hisob yaratish",

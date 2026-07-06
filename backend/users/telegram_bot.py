@@ -543,6 +543,14 @@ def _admin_stats():
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
+        if context.args[0] == 'lead':
+            context.user_data.pop('pending_token', None)
+            context.user_data['lead_step'] = 'phone'
+            await update.message.reply_text(
+                "👋 Rahmat! Siz bilan bog'lanishimiz uchun qisqacha ma'lumot qoldiring.\n\n"
+                "📱 Telefon raqamingizni yozing:"
+            )
+            return
         context.user_data['pending_token'] = context.args[0]
     telegram_id = update.effective_user.id
     user = await sync_to_async(_get_user)(telegram_id)
@@ -943,6 +951,32 @@ async def username_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Menu button handler ───────────────────────────────────────────────────────
 
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Lead capture flow (started via t.me/<bot>?start=lead)
+    step = context.user_data.get('lead_step')
+    if step:
+        text = (update.message.text or '').strip()
+        if step == 'phone':
+            context.user_data['lead_phone'] = text
+            context.user_data['lead_step']  = 'message'
+            await update.message.reply_text(
+                "✍️ Endi xabaringizni yozing — qaysi markazdansiz va nima kerakligini qisqacha:"
+            )
+            return
+        if step == 'message':
+            u = update.effective_user
+            name = f"{u.first_name or ''} {u.last_name or ''}".strip()
+            lead = await sync_to_async(_create_lead)(
+                name, u.username or '', u.id,
+                context.user_data.get('lead_phone', ''), text,
+            )
+            await _notify_owner_lead(lead)
+            context.user_data.pop('lead_step', None)
+            context.user_data.pop('lead_phone', None)
+            await update.message.reply_text(
+                "✅ Rahmat! Zayavkangiz qabul qilindi. Tez orada siz bilan bog'lanamiz."
+            )
+            return
+
     action = BUTTON_ACTIONS.get(update.message.text)
     if action == 'mystats':
         await mystats(update, context)
@@ -962,6 +996,52 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await lessons_cmd(update, context)
     elif action == 'help':
         await help_cmd(update, context)
+
+
+# ── Lead capture (contact requests from the landing page) ──────────────────────
+
+def _create_lead(name, username, telegram_id, phone, message):
+    from users.models import Lead
+    return Lead.objects.create(
+        name=name or '', username=username or '', telegram_id=telegram_id,
+        phone=phone or '', message=message or '',
+    )
+
+
+def _owner_telegram_ids():
+    from django.contrib.auth import get_user_model
+    U = get_user_model()
+    ids = set(
+        U.objects.filter(is_superuser=True, telegram_id__isnull=False)
+        .values_list('telegram_id', flat=True)
+    )
+    env_owner = os.environ.get('OWNER_TELEGRAM_ID')
+    if env_owner:
+        try:
+            ids.add(int(env_owner))
+        except (ValueError, TypeError):
+            pass
+    return ids
+
+
+async def _notify_owner_lead(lead):
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not bot_token:
+        return
+    bot   = Bot(token=bot_token)
+    uname = f'@{lead.username}' if lead.username else '—'
+    text  = (
+        "🆕 *Yangi zayavka*\n\n"
+        f"👤 {lead.name or '—'} ({uname})\n"
+        f"📱 {lead.phone or '—'}\n"
+        f"💬 {lead.message or '—'}"
+    )
+    ids = await sync_to_async(_owner_telegram_ids)()
+    for tid in ids:
+        try:
+            await bot.send_message(chat_id=tid, text=text, parse_mode='Markdown')
+        except Exception as e:
+            logger.error('lead owner notify error: %s', e)
 
 
 # ── OTP sender ────────────────────────────────────────────────────────────────

@@ -659,6 +659,29 @@ export default function Landing() {
         </div>
       </motion.div>
 
+      {/* ── Contact / Lead ───────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+        className="section-mb" style={{ maxWidth: 760, margin: '0 auto 88px' }}>
+        <div style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: 'clamp(32px, 5vw, 52px)', textAlign: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 0%, rgba(34,158,217,0.10) 0%, transparent 62%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'relative' }}>
+            <div style={{ width: 60, height: 60, borderRadius: 16, margin: '0 auto 20px', background: 'linear-gradient(135deg, #229ED9, #1c8dc4)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(34,158,217,0.35)' }}>
+              <Send size={26} color="#fff" />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.1em' }}>{t('landing.contact_eyebrow')}</span>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 4vw, 34px)', fontWeight: 800, marginTop: 10, marginBottom: 12, letterSpacing: '-0.5px' }}>
+              {t('landing.contact_title')}
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 16, maxWidth: 460, margin: '0 auto 28px' }}>{t('landing.contact_sub')}</p>
+            <motion.a href="https://t.me/AcademyJournalBot?start=lead" target="_blank" rel="noopener noreferrer"
+              whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.97 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 9, padding: '15px 32px', borderRadius: 12, background: 'linear-gradient(135deg, #229ED9, #1c8dc4)', color: '#fff', fontWeight: 800, fontSize: 15, textDecoration: 'none', boxShadow: '0 6px 20px rgba(34,158,217,0.35)' }}>
+              <Send size={17} /> {t('landing.contact_btn')}
+            </motion.a>
+          </div>
+        </div>
+      </motion.div>
+
       {/* ── CTA ──────────────────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
         style={{ background: 'linear-gradient(135deg, #0f766e 0%, var(--accent) 50%, #6366F1 100%)', borderRadius: 20, padding: 'clamp(36px, 6vw, 64px) clamp(20px, 5vw, 64px)', textAlign: 'center', marginBottom: 56, position: 'relative', overflow: 'hidden' }}>

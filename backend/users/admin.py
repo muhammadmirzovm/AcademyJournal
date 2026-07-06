@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User
+from .models import User, Lead
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
@@ -9,3 +9,12 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         ('Academy Journal', {'fields': ('role','bio')}),
     )
+
+
+@admin.register(Lead)
+class LeadAdmin(admin.ModelAdmin):
+    list_display    = ('name', 'username', 'phone', 'handled', 'created_at')
+    list_filter     = ('handled', 'created_at')
+    search_fields   = ('name', 'username', 'phone', 'message')
+    list_editable   = ('handled',)
+    readonly_fields = ('name', 'username', 'telegram_id', 'phone', 'message', 'created_at')
