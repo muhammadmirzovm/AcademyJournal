@@ -27,6 +27,10 @@ class Group(models.Model):
     exam_ready_note   = models.CharField(max_length=200, blank=True)
     created_at        = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        # Active groups first, graduated ones last, alphabetical within each.
+        ordering = ['is_graduated', 'name']
+
     def __str__(self):
         return self.name
 
