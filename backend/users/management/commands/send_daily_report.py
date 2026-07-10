@@ -78,7 +78,7 @@ def run_report_for_academy(academy, only_chat_id=None):
 
     groups_today = [
         g for g in
-        Group.objects.filter(teacher__academy=academy).select_related('teacher')
+        Group.objects.filter(teacher__academy=academy, is_graduated=False).select_related('teacher')
         if isinstance(g.class_days, list) and weekday in g.class_days
     ]
 
