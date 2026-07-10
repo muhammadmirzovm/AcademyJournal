@@ -83,8 +83,9 @@ def _class_start_minutes(class_time):
 
 
 def _build_schedule(groups):
-    """Weekly timetable rows for groups that have class days set, ordered by
-    lesson start time so earlier classes come first."""
+    """Weekly timetable rows for active groups that have class days set,
+    ordered by lesson start time so earlier classes come first. Graduated
+    groups no longer hold lessons, so they are left out."""
     return sorted(
         [
             {
@@ -94,7 +95,7 @@ def _build_schedule(groups):
                 'class_time':    g.class_time,
                 'is_individual': g.is_individual,
             }
-            for g in groups if g.class_days
+            for g in groups if g.class_days and not g.is_graduated
         ],
         key=lambda s: _class_start_minutes(s['class_time']),
     )
