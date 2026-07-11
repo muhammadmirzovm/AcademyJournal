@@ -1402,7 +1402,7 @@ class ExamExportExcelView(APIView):
         ws['A1'].alignment = center
         ws.row_dimensions[1].height = 26
 
-        headers = ['№', "O'quvchi"] + [f'{i + 1}-savol' for i in range(n_q)] + ['Jami', 'Max', '%', 'Izohlar']
+        headers = ['№', "O'quvchi"] + [f'{i + 1}-savol' for i in range(n_q)] + ['Jami', 'Max', '%']
         for j, label in enumerate(headers):
             col = get_column_letter(j + 1)
             cell = ws[f'{col}2']
@@ -1413,7 +1413,7 @@ class ExamExportExcelView(APIView):
             ws.column_dimensions[get_column_letter(i + 3)].width = 8
         ws.column_dimensions[get_column_letter(n_q + 3)].width = 8
         ws.column_dimensions[get_column_letter(n_q + 4)].width = 8
-        ws.column_dimensions[get_column_letter(n_q + 5)].width = 40
+        ws.column_dimensions[get_column_letter(n_q + 5)].width = 8
         ws.row_dimensions[2].height = 30
 
         for i, r in enumerate(ordered):
@@ -1430,13 +1430,12 @@ class ExamExportExcelView(APIView):
                     ws[f'{col}{row}'].value = '—'
                     ws[f'{col}{row}'].font  = Font(color='94A3B8')
                     ws[f'{col}{row}'].alignment = center
-                tot_col, max_col, pct_col, com_col = (get_column_letter(n_q + k) for k in (3, 4, 5, 6))
+                tot_col, max_col, pct_col = (get_column_letter(n_q + k) for k in (3, 4, 5))
                 ws[f'{tot_col}{row}'] = '—'
                 ws[f'{max_col}{row}'] = r.max_score
                 pct_cell = ws[f'{pct_col}{row}']
                 pct_cell.value = 'Yo\'q'
                 pct_cell.font  = Font(bold=True, color='991B1B')
-                ws[f'{com_col}{row}'] = ''
                 for c in (tot_col, max_col, pct_col):
                     ws[f'{c}{row}'].alignment = center
                 continue
@@ -1448,18 +1447,13 @@ class ExamExportExcelView(APIView):
                 cell.font  = Font(bold=True, color='166534' if sc >= 4 else ('92400E' if sc >= 3 else '991B1B'))
                 cell.alignment = center
 
-            tot_col, max_col, pct_col, com_col = (get_column_letter(n_q + k) for k in (3, 4, 5, 6))
+            tot_col, max_col, pct_col = (get_column_letter(n_q + k) for k in (3, 4, 5))
             ws[f'{tot_col}{row}'] = r.total;     ws[f'{tot_col}{row}'].alignment = center; ws[f'{tot_col}{row}'].font = Font(bold=True)
             ws[f'{max_col}{row}'] = r.max_score; ws[f'{max_col}{row}'].alignment = center
             pct_cell = ws[f'{pct_col}{row}']
             pct_cell.value     = f'{r.percentage}%'
             pct_cell.alignment = center
             pct_cell.font      = Font(bold=True, color='166534' if r.percentage >= 80 else ('92400E' if r.percentage >= 60 else '991B1B'))
-
-            comments_str = '; '.join(f'{qi + 1}) {c}' for qi, c in enumerate(r.comments) if c)
-            com_cell = ws[f'{com_col}{row}']
-            com_cell.value = comments_str
-            com_cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
 
         buf = io.BytesIO()
         wb.save(buf)
