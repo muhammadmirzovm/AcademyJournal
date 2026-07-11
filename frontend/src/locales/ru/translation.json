@@ -525,7 +525,13 @@
     "err_username_taken": "Это имя пользователя занято, выберите другое.",
     "today_lessons": "Сегодняшние занятия",
     "exam_results": "Результаты экзаменов",
-    "exams_count": "{{count}} экзаменов"
+    "exams_count": "{{count}} экзаменов",
+    "attendance_calendar": "Календарь посещаемости",
+    "current_streak": "Текущий стрик",
+    "longest_streak": "Самый долгий",
+    "cal_present": "Присутствовал",
+    "cal_absent": "Пропустил",
+    "cal_nolesson": "Нет урока"
   },
   "teacher_stats": {
     "total_students": "Всего учеников",

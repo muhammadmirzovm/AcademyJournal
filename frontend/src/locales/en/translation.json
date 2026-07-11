@@ -525,7 +525,13 @@
     "err_username_taken": "This username is taken, please choose another.",
     "today_lessons": "Today's lessons",
     "exam_results": "Exam results",
-    "exams_count": "{{count}} exams"
+    "exams_count": "{{count}} exams",
+    "attendance_calendar": "Attendance calendar",
+    "current_streak": "Current streak",
+    "longest_streak": "Longest streak",
+    "cal_present": "Attended",
+    "cal_absent": "Missed",
+    "cal_nolesson": "No lesson"
   },
   "teacher_stats": {
     "total_students": "Total Students",

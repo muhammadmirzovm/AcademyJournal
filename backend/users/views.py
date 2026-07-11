@@ -240,6 +240,28 @@ class UserStatsView(APIView):
             for r in exam_results
         ]
 
+        # ── Attendance calendar + streaks ─────────────────────────────────────
+        att_records = list(
+            Attendance.objects.filter(student=user)
+            .select_related('lesson')
+            .order_by('lesson__date', 'lesson__id')
+        )
+        # Per-day status: a day counts as absent if any lesson that day was missed
+        day_status = OrderedDict()
+        for a in att_records:
+            d = str(a.lesson.date)
+            day_status[d] = a.present if d not in day_status else (day_status[d] and a.present)
+        attendance_calendar = [{'date': d, 'present': p} for d, p in day_status.items()]
+
+        # Streaks over lessons in chronological order
+        longest_streak = current_streak = 0
+        for a in att_records:
+            if a.present:
+                current_streak += 1
+                longest_streak = max(longest_streak, current_streak)
+            else:
+                current_streak = 0
+
         return Response({
             'role': 'student',
             'total_stickers': total_stickers,
@@ -247,6 +269,8 @@ class UserStatsView(APIView):
             'coin_trend': coin_trend,
             'schedule': schedule,
             'exam_trend': exam_trend,
+            'attendance_calendar': attendance_calendar,
+            'streak': {'current': current_streak, 'longest': longest_streak},
             'attendance_summary': {
                 'present': present,
                 'absent':  total - present,

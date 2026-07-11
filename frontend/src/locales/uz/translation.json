@@ -525,7 +525,13 @@
     "err_username_taken": "Bu username band, boshqasini tanlang.",
     "today_lessons": "Bugungi darslar",
     "exam_results": "Imtihon natijalari",
-    "exams_count": "{{count}} ta imtihon"
+    "exams_count": "{{count}} ta imtihon",
+    "attendance_calendar": "Davomat kalendari",
+    "current_streak": "Joriy streak",
+    "longest_streak": "Eng uzun streak",
+    "cal_present": "Qatnashgan",
+    "cal_absent": "Kelmagan",
+    "cal_nolesson": "Dars yo'q"
   },
   "teacher_stats": {
     "total_students": "Jami o'quvchilar",

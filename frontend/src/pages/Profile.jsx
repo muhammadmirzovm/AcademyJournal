@@ -14,6 +14,7 @@ import AttendanceDoughnut from '../components/charts/AttendanceDoughnut'
 import TeacherStats from '../components/charts/TeacherStats'
 import CoinLineChart from '../components/charts/CoinLineChart'
 import TodayLessons from '../components/TodayLessons'
+import AttendanceCalendar from '../components/AttendanceCalendar'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { timeAgo, formatDate } from '../utils/date'
 
@@ -385,6 +386,13 @@ export default function Profile() {
           </div>
         )}
       </motion.div>
+
+      {/* Attendance calendar + streak — students only */}
+      {profile.role === 'student' && stats?.attendance_calendar?.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} style={{ marginBottom: 24 }}>
+          <AttendanceCalendar calendar={stats.attendance_calendar} streak={stats.streak} attendanceSummary={stats.attendance_summary} />
+        </motion.div>
+      )}
 
       {/* Sticker showcase — students only */}
       {profile.role === 'student' && (() => {
