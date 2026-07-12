@@ -22,6 +22,7 @@ export default function Groups() {
   const [showJoin, setShowJoin]     = useState(false)
   const [search, setSearch]         = useState('')
   const [teacherFilter, setTeacherFilter] = useState('all')
+  const [category, setCategory]     = useState('all')
 
   const load = () => {
     setLoading(true)
@@ -36,11 +37,25 @@ export default function Groups() {
     return Object.entries(map).map(([id, name]) => ({ id, name }))
   }, [groups, isAdmin])
 
+  const counts = useMemo(() => ({
+    all:        groups.length,
+    active:     groups.filter(g => !g.is_graduated).length,
+    graduated:  groups.filter(g =>  g.is_graduated).length,
+    groups:     groups.filter(g => !g.is_individual).length,
+    individual: groups.filter(g =>  g.is_individual).length,
+  }), [groups])
+
   const visible = useMemo(() => groups.filter(g => {
     const matchSearch  = !search || g.name.toLowerCase().includes(search.toLowerCase()) || g.teacher_name?.toLowerCase().includes(search.toLowerCase())
     const matchTeacher = !isAdmin || teacherFilter === 'all' || String(g.teacher) === teacherFilter
-    return matchSearch && matchTeacher
-  }), [groups, search, teacherFilter, isAdmin])
+    const matchCategory =
+      category === 'all'
+      || (category === 'active'     && !g.is_graduated)
+      || (category === 'graduated'  &&  g.is_graduated)
+      || (category === 'groups'     && !g.is_individual)
+      || (category === 'individual' &&  g.is_individual)
+    return matchSearch && matchTeacher && matchCategory
+  }), [groups, search, teacherFilter, isAdmin, category])
 
   const title = isAdmin ? t('groups.admin_title') : t('groups.title')
   const sub   = isAdmin ? t('groups.admin_sub', { count: groups.length }) : isTeacher ? t('groups.teacher_sub') : t('groups.student_sub')
@@ -65,8 +80,33 @@ export default function Groups() {
         </div>
       </div>
 
-      {/* Admin filters */}
-      {isAdmin && !loading && groups.length > 0 && (
+      {/* Category tabs */}
+      {!loading && groups.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {[
+            { key: 'all',        label: t('groups.cat_all') },
+            { key: 'active',     label: t('groups.cat_active') },
+            { key: 'graduated',  label: t('groups.cat_graduated') },
+            { key: 'groups',     label: t('groups.cat_groups') },
+            { key: 'individual', label: t('groups.cat_individual') },
+          ].map(tab => {
+            const on = category === tab.key
+            return (
+              <button key={tab.key} onClick={() => setCategory(tab.key)}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999, border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
+                  background: on ? 'var(--accent)' : 'var(--surface)', color: on ? '#fff' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+                {tab.label}
+                <span style={{ fontSize: 11, fontWeight: 700, minWidth: 18, textAlign: 'center', padding: '1px 6px', borderRadius: 999,
+                  background: on ? 'rgba(255,255,255,0.25)' : 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                  color: on ? '#fff' : 'var(--accent)' }}>{counts[tab.key]}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Search + teacher filter */}
+      {isTeacher && !loading && groups.length > 0 && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
             <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
@@ -76,7 +116,7 @@ export default function Groups() {
               style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
-          {teachers.length > 1 && (
+          {isAdmin && teachers.length > 1 && (
             <select value={teacherFilter} onChange={e => setTeacherFilter(e.target.value)}
               style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
               <option value="all">{t('groups.all_teachers')}</option>

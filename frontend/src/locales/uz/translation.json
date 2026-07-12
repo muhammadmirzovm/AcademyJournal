@@ -315,7 +315,12 @@
     "group_type": "Guruh turi",
     "type_group": "Guruh (ko'p o'quvchi)",
     "type_individual": "Individual (1 o'quvchi)",
-    "individual_hint": "Individual guruhda bitta o'quvchi bilan ishlaysiz"
+    "individual_hint": "Individual guruhda bitta o'quvchi bilan ishlaysiz",
+    "cat_all": "Hammasi",
+    "cat_active": "Faol",
+    "cat_graduated": "Bitirgan",
+    "cat_groups": "Guruhlar",
+    "cat_individual": "Individual"
   },
   "group_detail": {
     "tab_lessons": "darslar",

@@ -315,7 +315,12 @@
     "group_type": "Тип группы",
     "type_group": "Группа (несколько учеников)",
     "type_individual": "Индивидуальный (1 ученик)",
-    "individual_hint": "Индивидуальные группы для занятий один на один"
+    "individual_hint": "Индивидуальные группы для занятий один на один",
+    "cat_all": "Все",
+    "cat_active": "Активные",
+    "cat_graduated": "Выпущенные",
+    "cat_groups": "Группы",
+    "cat_individual": "Индивидуальные"
   },
   "group_detail": {
     "tab_lessons": "уроки",

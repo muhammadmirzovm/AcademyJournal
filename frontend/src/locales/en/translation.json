@@ -315,7 +315,12 @@
     "group_type": "Group type",
     "type_group": "Group (multiple students)",
     "type_individual": "Individual (1 student)",
-    "individual_hint": "Individual groups are for one-on-one teaching"
+    "individual_hint": "Individual groups are for one-on-one teaching",
+    "cat_all": "All",
+    "cat_active": "Active",
+    "cat_graduated": "Graduated",
+    "cat_groups": "Groups",
+    "cat_individual": "Individual"
   },
   "group_detail": {
     "tab_lessons": "lessons",
