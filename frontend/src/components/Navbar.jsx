@@ -63,8 +63,9 @@ export default function Navbar() {
           : 'var(--nav-bg)',
         backdropFilter: scrolled ? 'blur(14px)' : 'none',
         WebkitBackdropFilter: scrolled ? 'blur(14px)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent',
-        transition: 'background 0.25s, border-color 0.25s, backdrop-filter 0.25s',
+        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.07)',
+        boxShadow: scrolled ? '0 4px 20px rgba(0,0,0,0.25)' : 'none',
+        transition: 'background 0.25s, border-color 0.25s, backdrop-filter 0.25s, box-shadow 0.25s',
         height: 60,
       }}>
         <div className="nav-inner" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px', height: '100%', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -83,16 +84,7 @@ export default function Navbar() {
           {/* Desktop nav links */}
           <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
             {navLinks.map(link => (
-              <Link key={link.to} to={link.to}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '6px 13px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  textDecoration: 'none', transition: 'background 0.15s, color 0.15s',
-                  color: isActive(link.to) ? 'var(--accent)' : '#94A3B8',
-                  background: isActive(link.to) ? 'rgba(16,185,129,0.1)' : 'transparent',
-                }}>
-                {link.icon} {link.label}
-              </Link>
+              <NavLink key={link.to} to={link.to} active={isActive(link.to)} icon={link.icon} label={link.label} />
             ))}
           </div>
 
@@ -102,17 +94,17 @@ export default function Navbar() {
             {user && <NotificationBell />}
 
             {/* Theme toggle */}
-            <button onClick={toggle} style={circleBtn} title="Toggle theme">
+            <button onClick={toggle} className="nav-ctrl-btn" style={circleBtn} title="Toggle theme">
               {theme === 'dark'
-                ? <Sun size={15} color="#94A3B8" />
-                : <Moon size={15} color="#94A3B8" />}
+                ? <Sun size={15} color="#CBD5E1" />
+                : <Moon size={15} color="#CBD5E1" />}
             </button>
 
             {/* Lang switcher */}
             <div style={{ position: 'relative' }}>
-              <button onClick={() => setLangOpen(o => !o)}
-                style={{ ...circleBtn, width: 'auto', padding: '0 12px', borderRadius: 8, gap: 5, fontSize: 12, fontWeight: 700, color: '#94A3B8' }}>
-                <Globe size={13} color="#94A3B8" />
+              <button onClick={() => setLangOpen(o => !o)} className="nav-ctrl-btn"
+                style={{ ...circleBtn, width: 'auto', padding: '0 12px', borderRadius: 8, gap: 5, fontSize: 12, fontWeight: 700, color: '#CBD5E1' }}>
+                <Globe size={13} color="#CBD5E1" />
                 {currentLang.label}
               </button>
               <AnimatePresence>
@@ -140,8 +132,8 @@ export default function Navbar() {
                   title={t('nav.profile')}>
                   {initials}
                 </Link>
-                <button onClick={handleLogout} style={circleBtn} title={t('nav.logout')}>
-                  <LogOut size={15} color="#94A3B8" />
+                <button onClick={handleLogout} className="nav-ctrl-btn" style={circleBtn} title={t('nav.logout')}>
+                  <LogOut size={15} color="#CBD5E1" />
                 </button>
               </>
             ) : (
@@ -164,11 +156,11 @@ export default function Navbar() {
 
           {/* Mobile right: theme + hamburger */}
           <div className="mobile-nav" style={{ display: 'none', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-            <button onClick={toggle} style={circleBtn}>
-              {theme === 'dark' ? <Sun size={15} color="#94A3B8" /> : <Moon size={15} color="#94A3B8" />}
+            <button onClick={toggle} className="nav-ctrl-btn" style={circleBtn}>
+              {theme === 'dark' ? <Sun size={15} color="#CBD5E1" /> : <Moon size={15} color="#CBD5E1" />}
             </button>
-            <button onClick={() => setDrawerOpen(o => !o)} style={{ ...circleBtn, borderColor: drawerOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)' }}>
-              {drawerOpen ? <X size={17} color="#fff" /> : <Menu size={17} color="#94A3B8" />}
+            <button onClick={() => setDrawerOpen(o => !o)} className="nav-ctrl-btn" style={{ ...circleBtn, borderColor: drawerOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)' }}>
+              {drawerOpen ? <X size={17} color="#fff" /> : <Menu size={17} color="#CBD5E1" />}
             </button>
           </div>
         </div>
@@ -259,6 +251,9 @@ export default function Navbar() {
       </AnimatePresence>
 
       <style>{`
+        .nav-ctrl-btn { transition: background 0.15s, border-color 0.15s, transform 0.1s; }
+        .nav-ctrl-btn:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.18); }
+        .nav-ctrl-btn:active { transform: scale(0.92); }
         @media (max-width: 720px) {
           .desktop-nav { display: none !important; }
           .mobile-nav  { display: flex !important; }
@@ -270,6 +265,25 @@ export default function Navbar() {
         }
       `}</style>
     </>
+  )
+}
+
+function NavLink({ to, active, icon, label }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <Link to={to}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        position: 'relative',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '8px 13px', borderRadius: 8, fontSize: 13, fontWeight: active ? 700 : 600,
+        textDecoration: 'none', transition: 'color 0.15s, background 0.15s',
+        color: active ? 'var(--accent)' : (hover ? '#F1F5F9' : '#CBD5E1'),
+        background: !active && hover ? 'rgba(255,255,255,0.06)' : 'transparent',
+      }}>
+      {icon} {label}
+      {active && <span style={{ position: 'absolute', left: 13, right: 13, bottom: 2, height: 2, borderRadius: 2, background: 'var(--accent)' }} />}
+    </Link>
   )
 }
 
