@@ -78,7 +78,7 @@ def _build_message(parent, week_start, week_end):
         name  = f'{child.first_name} {child.last_name}'.strip() or child.username
         text += m['child'].format(name=name)
 
-        memberships = list(GroupMembership.objects.filter(student=child).select_related('group'))
+        memberships = list(GroupMembership.objects.filter(student=child, group__is_graduated=False).select_related('group'))
         if not memberships:
             text += m['no_data'] + m['sep']
             continue
