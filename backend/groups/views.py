@@ -95,8 +95,7 @@ class JoinGroupView(APIView):
 
         GroupMembership.objects.create(group=group, student=request.user)
 
-        from datetime import date
-        today = date.today()
+        today = timezone.localdate()
         for lesson in group.lessons.filter(date__gte=today):
             Attendance.objects.get_or_create(lesson=lesson, student=request.user, defaults={'present': False})
 

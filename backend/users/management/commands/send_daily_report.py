@@ -3,9 +3,8 @@ import json
 import logging
 import urllib.request
 import urllib.parse
-from datetime import date
-
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +72,7 @@ def run_report_for_academy(academy, only_chat_id=None):
         logger.warning('TELEGRAM_BOT_TOKEN not set')
         return
 
-    today = date.today()
+    today = timezone.localdate()
     weekday = today.weekday()
 
     groups_today = [

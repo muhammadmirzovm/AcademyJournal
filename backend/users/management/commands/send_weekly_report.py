@@ -3,7 +3,8 @@ import logging
 import urllib.request
 import urllib.parse
 import json
-from datetime import date, timedelta
+from datetime import timedelta
+from django.utils import timezone
 
 from django.core.management.base import BaseCommand
 
@@ -57,7 +58,7 @@ def _send(token, chat_id, text):
 
 
 def _week_range():
-    today = date.today()
+    today = timezone.localdate()
     start = today - timedelta(days=today.weekday())   # Monday
     end   = start + timedelta(days=6)                 # Sunday
     return start, end
