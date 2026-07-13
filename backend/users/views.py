@@ -790,7 +790,7 @@ class TeacherLeaderboardView(APIView):
 
         memberships = (
             GroupMembership.objects
-            .filter(group__teacher=request.user)
+            .filter(group__teacher=request.user, group__is_graduated=False)
             .select_related('student', 'group')
         )
 
