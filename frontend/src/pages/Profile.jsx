@@ -460,8 +460,8 @@ export default function Profile() {
         </motion.div>
       )}
 
-      {/* Groups */}
-      {groups.length > 0 && (
+      {/* Groups — students only (teacher groups are shown via the timetable & charts) */}
+      {groups.length > 0 && profile.role !== 'teacher' && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
