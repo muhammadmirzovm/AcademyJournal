@@ -6,7 +6,7 @@ import {
   Code2, Users, BarChart2, BookOpen, GraduationCap, ArrowRight,
   CheckCircle, LayoutDashboard, Star, Zap, ChevronDown, Trophy,
   ClipboardList, TrendingUp, Key, Gamepad2, ShieldCheck,
-  Baby, Database, Link2, MessageCircle, Send, Minus,
+  Baby, Database, Link2, MessageCircle, Send, Minus, Mail,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getOnlineCount, getPlatformStats } from '../api/users'
@@ -510,8 +510,8 @@ export default function Landing() {
       </motion.div>
 
       {/* ── FEATURES GRID ────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
-        className="section-mb" style={{ marginBottom: 88 }}>
+      <motion.div id="features" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+        className="section-mb" style={{ marginBottom: 88, scrollMarginTop: 80 }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Features</span>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800, marginTop: 10, letterSpacing: '-0.5px' }}>
@@ -646,8 +646,8 @@ export default function Landing() {
       </motion.div>
 
       {/* ── FAQ ──────────────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
-        className="section-mb" style={{ maxWidth: 700, margin: '0 auto 88px' }}>
+      <motion.div id="faq" initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+        className="section-mb" style={{ maxWidth: 700, margin: '0 auto 88px', scrollMarginTop: 80 }}>
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.1em' }}>FAQ</span>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 4vw, 34px)', fontWeight: 800, marginTop: 10, letterSpacing: '-0.5px' }}>
@@ -678,7 +678,44 @@ export default function Landing() {
         </motion.div>
       </motion.div>
 
+      {/* ── FOOTER ────────────────────────────────────────────────────── */}
+      <footer style={{ borderTop: '1px solid var(--border)', paddingTop: 40, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 32, marginBottom: 32 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{ width: 30, height: 30, background: 'var(--accent)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <GraduationCap size={16} color="#fff" />
+              </div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 800 }}>Academy Journal</span>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 240, lineHeight: 1.6 }}>{t('footer.tagline')}</p>
+          </div>
+
+          <div>
+            <p style={footColTitle}>{t('footer.pages')}</p>
+            <a href="#features" className="foot-link" style={footLinkStyle}>{t('footer.features')}</a>
+            <a href="#faq" className="foot-link" style={footLinkStyle}>{t('footer.faq')}</a>
+            <Link to="/login" className="foot-link" style={footLinkStyle}>{t('footer.login')}</Link>
+            <Link to="/register" className="foot-link" style={footLinkStyle}>{t('footer.register')}</Link>
+          </div>
+
+          <div>
+            <p style={footColTitle}>{t('footer.contact')}</p>
+            <a href="mailto:academyjournalsupport@gmail.com" className="foot-link" style={{ ...footLinkStyle, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <Mail size={14} /> academyjournalsupport@gmail.com
+            </a>
+            <a href="https://t.me/AcademyJournalBot" target="_blank" rel="noopener noreferrer" className="foot-link" style={{ ...footLinkStyle, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <Send size={14} /> @AcademyJournalBot
+            </a>
+          </div>
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12.5 }}>
+          © 2026 Academy Journal · {t('footer.rights')}
+        </div>
+      </footer>
+
       <style>{`
+        .foot-link:hover { color: var(--accent) !important; }
         @keyframes pulse-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
           50%       { opacity: 0.4; transform: scale(0.8); }
@@ -774,3 +811,5 @@ const ghostBtn = {
   fontSize: 14, fontWeight: 600, textDecoration: 'none',
   transition: 'border-color 0.15s',
 }
+const footColTitle  = { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text)', marginBottom: 14 }
+const footLinkStyle = { display: 'block', color: 'var(--text-muted)', fontSize: 13, textDecoration: 'none', marginBottom: 9, transition: 'color 0.15s', width: 'fit-content' }

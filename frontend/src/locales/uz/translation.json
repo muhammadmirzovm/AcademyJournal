@@ -904,5 +904,15 @@
     "students": "O'quvchilar",
     "absences_by_month": "Oylik dars qoldirishlari",
     "absences": "Qoldirilgan"
+  },
+  "footer": {
+    "tagline": "O'quv markazlari uchun zamonaviy raqamli jurnal.",
+    "pages": "Sahifalar",
+    "features": "Imkoniyatlar",
+    "faq": "Savol-javob",
+    "login": "Kirish",
+    "register": "Ro'yxatdan o'tish",
+    "contact": "Aloqa",
+    "rights": "Barcha huquqlar himoyalangan."
   }
 }

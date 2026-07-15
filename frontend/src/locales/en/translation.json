@@ -904,5 +904,15 @@
     "students": "Students",
     "absences_by_month": "Monthly absences",
     "absences": "Absences"
+  },
+  "footer": {
+    "tagline": "A modern digital journal for learning centers.",
+    "pages": "Pages",
+    "features": "Features",
+    "faq": "FAQ",
+    "login": "Log in",
+    "register": "Sign up",
+    "contact": "Contact",
+    "rights": "All rights reserved."
   }
 }
