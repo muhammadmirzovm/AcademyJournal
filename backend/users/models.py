@@ -109,20 +109,3 @@ class ParentStudent(models.Model):
 
     def __str__(self):
         return f'{self.parent.username} → {self.student.username}'
-
-
-class Lead(models.Model):
-    """A contact/sign-up request left by a visitor through the Telegram bot."""
-    name        = models.CharField(max_length=120, blank=True)
-    username    = models.CharField(max_length=64, blank=True)
-    telegram_id = models.BigIntegerField(null=True, blank=True)
-    phone       = models.CharField(max_length=32, blank=True)
-    message     = models.TextField(blank=True)
-    handled     = models.BooleanField(default=False)
-    created_at  = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f'Lead: {self.name or self.username or self.telegram_id} — {self.created_at:%Y-%m-%d}'

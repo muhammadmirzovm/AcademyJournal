@@ -149,11 +149,7 @@
     "t3_quote": "I get a Telegram message every time my son has a lesson. I'm always in the loop without calling anyone.",
     "t3_name": "Nodira Karimova",
     "t3_role": "Parent",
-    "tech_label": "Built with",
-    "contact_eyebrow": "Contact",
-    "contact_title": "Have a question? Leave a request",
-    "contact_sub": "Leave your details through our Telegram bot and we'll get back to you shortly.",
-    "contact_btn": "Leave a request"
+    "tech_label": "Built with"
   },
   "auth": {
     "create_account": "Create your account",
