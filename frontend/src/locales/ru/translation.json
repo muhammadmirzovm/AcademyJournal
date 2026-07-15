@@ -24,7 +24,15 @@
     "parent_yes": "Есть родитель",
     "parent_no": "Нет родителя",
     "attendance": "Пос",
-    "score": "Балл"
+    "score": "Балл",
+    "st_active": "Активные",
+    "st_inactive": "Неактивные",
+    "st_all": "Все",
+    "inactive_badge": "Неактивен",
+    "deactivate": "Деактивировать",
+    "activate": "Активировать",
+    "deactivated_toast": "Ученик деактивирован",
+    "activated_toast": "Ученик активирован"
   },
   "landing": {
     "badge": "Уже в сети — начните бесплатно",

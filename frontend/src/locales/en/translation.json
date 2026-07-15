@@ -24,7 +24,15 @@
     "parent_yes": "Has parent",
     "parent_no": "No parent",
     "attendance": "Att",
-    "score": "Score"
+    "score": "Score",
+    "st_active": "Active",
+    "st_inactive": "Inactive",
+    "st_all": "All",
+    "inactive_badge": "Inactive",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "deactivated_toast": "Student deactivated",
+    "activated_toast": "Student activated"
   },
   "landing": {
     "badge": "Now live — start for free",

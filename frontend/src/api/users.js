@@ -11,6 +11,7 @@ export const getOnlineCount   = ()     => api.get('/auth/users/online/')
 export const getPlatformStats = ()     => api.get('/auth/users/platform-stats/')
 
 export const getTeacherLeaderboard  = ()     => api.get('/auth/teacher/leaderboard/')
+export const setStudentActive = (id, is_active) => api.post(`/auth/students/${id}/active/`, { is_active })
 export const connectTelegram        = ()     => api.post('/auth/connect-telegram/')
 export const disconnectTelegram     = ()     => api.delete('/auth/connect-telegram/')
 export const passwordResetRequest   = (data) => api.post('/auth/password-reset/request/', data)

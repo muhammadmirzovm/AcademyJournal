@@ -117,7 +117,7 @@ class UserStatsView(APIView):
             academy = user.academy
             if not academy:
                 return Response({'role': 'admin', 'total_students': 0, 'total_teachers': 0, 'total_groups': 0, 'total_lessons': 0})
-            total_students = User.objects.filter(academy=academy, role='student').count()
+            total_students = User.objects.filter(academy=academy, role='student', is_active=True).count()
             total_teachers = User.objects.filter(academy=academy, role='teacher').count()
             total_groups   = Group.objects.filter(teacher__academy=academy).count()
             total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
@@ -137,7 +137,7 @@ class UserStatsView(APIView):
             total_groups   = groups.count()
             total_lessons  = Lesson.objects.filter(group__teacher=user, group__is_graduated=False).count()
             total_students = (
-                GroupMembership.objects.filter(group__teacher=user, group__is_graduated=False)
+                GroupMembership.objects.filter(group__teacher=user, group__is_graduated=False, student__is_active=True)
                 .values('student').distinct().count()
             )
             avg_score_val = (
@@ -162,7 +162,7 @@ class UserStatsView(APIView):
                 })
                 students_by_group.append({
                     'group': g.name,
-                    'students': g.memberships.count(),
+                    'students': g.memberships.filter(student__is_active=True).count(),
                 })
 
             # Weekly timetable — every group (incl. individual) that has set days.
@@ -326,7 +326,7 @@ class AdminStatsView(APIView):
         from groups.models import Group, Lesson, Score, GroupMembership
         from django.db.models import Avg, Sum
 
-        total_students = User.objects.filter(academy=academy, role='student').count()
+        total_students = User.objects.filter(academy=academy, role='student', is_active=True).count()
         total_teachers = User.objects.filter(academy=academy, role='teacher').count()
         total_groups   = Group.objects.filter(teacher__academy=academy).count()
         total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
@@ -347,7 +347,7 @@ class AdminStatsView(APIView):
 
         # Top students by comprehension % — active groups only
         memberships = GroupMembership.objects.filter(
-            group__teacher__academy=academy, group__is_graduated=False
+            group__teacher__academy=academy, group__is_graduated=False, student__is_active=True
         ).select_related('student', 'group')
 
         student_map = {}
@@ -397,7 +397,7 @@ class AdminStatsView(APIView):
 
         students_per_teacher = []
         for tch in User.objects.filter(academy=academy, role='teacher'):
-            cnt = GroupMembership.objects.filter(group__teacher=tch, group__is_graduated=False).values('student').distinct().count()
+            cnt = GroupMembership.objects.filter(group__teacher=tch, group__is_graduated=False, student__is_active=True).values('student').distinct().count()
             students_per_teacher.append({
                 'teacher':  (f'{tch.first_name} {tch.last_name}'.strip() or tch.username),
                 'students': cnt,
@@ -577,6 +577,13 @@ class AdminStudentsView(APIView):
         if group_id:
             qs = qs.filter(memberships__group_id=group_id).distinct()
 
+        status_filter = request.query_params.get('status', 'active')
+        if status_filter == 'active':
+            qs = qs.filter(is_active=True)
+        elif status_filter == 'inactive':
+            qs = qs.filter(is_active=False)
+        # 'all' → no filter
+
         # Pagination
         page_size = int(request.query_params.get('page_size', 20))
         page      = int(request.query_params.get('page', 1))
@@ -607,6 +614,7 @@ class AdminStudentsView(APIView):
                 'telegram_linked':  bool(s.telegram_id),
                 'has_parent':       s.parents.exists(),
                 'date_joined':      s.date_joined,
+                'is_active':        s.is_active,
             })
 
         return Response({
@@ -615,6 +623,29 @@ class AdminStudentsView(APIView):
             'page':     page,
             'results':  data,
         })
+
+
+class StudentActiveView(APIView):
+    """Activate / deactivate a student. A deactivated student cannot log in and
+    is hidden from every roster, ranking, stat and report — but their data is
+    kept and they can be reactivated."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        actor = request.user
+        if actor.role not in ('admin', 'teacher') or not actor.academy:
+            return Response({'detail': 'Admin or teacher only.'}, status=403)
+        try:
+            student = User.objects.get(pk=pk, role='student', academy=actor.academy)
+        except User.DoesNotExist:
+            return Response({'detail': 'Student not found.'}, status=404)
+        if actor.role == 'teacher':
+            from groups.models import GroupMembership
+            if not GroupMembership.objects.filter(student=student, group__teacher=actor).exists():
+                return Response({'detail': 'You can only manage your own students.'}, status=403)
+        student.is_active = bool(request.data.get('is_active', True))
+        student.save(update_fields=['is_active'])
+        return Response({'id': student.id, 'is_active': student.is_active})
 
 
 class ChangePasswordView(APIView):
@@ -792,7 +823,7 @@ class TeacherLeaderboardView(APIView):
 
         memberships = (
             GroupMembership.objects
-            .filter(group__teacher=request.user, group__is_graduated=False)
+            .filter(group__teacher=request.user, group__is_graduated=False, student__is_active=True)
             .select_related('student', 'group')
         )
 

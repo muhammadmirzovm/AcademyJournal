@@ -74,7 +74,7 @@ def _build_message(parent, week_start, week_end):
     fmt = lambda d: d.strftime('%d.%m')
     text = m['header'].format(from_date=fmt(week_start), to_date=fmt(week_end))
 
-    for ps in parent.children.select_related('student').all():
+    for ps in parent.children.select_related('student').filter(student__is_active=True):
         child = ps.student
         name  = f'{child.first_name} {child.last_name}'.strip() or child.username
         text += m['child'].format(name=name)

@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Search, Users, GraduationCap, MessageCircle, UserCheck, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { Search, Users, GraduationCap, MessageCircle, UserCheck, UserX, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import api from '../api/axios'
+import { setStudentActive } from '../api/users'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
@@ -34,6 +35,7 @@ export default function Students() {
   const [loading,  setLoading]  = useState(true)
   const [search,   setSearch]   = useState('')
   const [groupId,  setGroupId]  = useState('')
+  const [status,   setStatus]   = useState('active')
   const [page,     setPage]     = useState(1)
   const [total,    setTotal]    = useState(0)
   const [pages,    setPages]    = useState(1)
@@ -41,7 +43,7 @@ export default function Students() {
   const fetchStudents = useCallback(async (p = page) => {
     setLoading(true)
     try {
-      const params = { page: p, page_size: PAGE_SIZE }
+      const params = { page: p, page_size: PAGE_SIZE, status }
       if (search)  params.search  = search
       if (groupId) params.group   = groupId
       const { data } = await api.get('/auth/admin/students/', { params })
@@ -51,7 +53,16 @@ export default function Students() {
     } catch {
       show('Error loading students', 'error')
     } finally { setLoading(false) }
-  }, [page, search, groupId])
+  }, [page, search, groupId, status])
+
+  const handleToggleActive = async (e, s) => {
+    e.stopPropagation()
+    try {
+      await setStudentActive(s.id, !s.is_active)
+      show(s.is_active ? t('students.deactivated_toast') : t('students.activated_toast'), 'success')
+      fetchStudents(page)
+    } catch { show('Error', 'error') }
+  }
 
   useEffect(() => {
     api.get('/groups/').then(r => setGroups(r.data)).catch(() => {})
@@ -60,7 +71,7 @@ export default function Students() {
   useEffect(() => {
     const timer = setTimeout(() => { setPage(1); fetchStudents(1) }, 300)
     return () => clearTimeout(timer)
-  }, [search, groupId])
+  }, [search, groupId, status])
 
   useEffect(() => { fetchStudents(page) }, [page])
 
@@ -108,6 +119,25 @@ export default function Students() {
         </select>
       </div>
 
+      {/* Status tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[
+          { key: 'active',   label: t('students.st_active') },
+          { key: 'inactive', label: t('students.st_inactive') },
+          { key: 'all',      label: t('students.st_all') },
+        ].map(tab => {
+          const on = status === tab.key
+          return (
+            <button key={tab.key} onClick={() => setStatus(tab.key)}
+              style={{ padding: '7px 15px', borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
+                background: on ? 'var(--accent)' : 'var(--card)', color: on ? '#fff' : 'var(--text)' }}>
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Table */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
@@ -131,6 +161,7 @@ export default function Students() {
                 padding: '14px 18px', borderRadius: 14,
                 background: 'var(--card)', border: '1.5px solid rgba(0,0,0,0.07)',
                 cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
+                opacity: s.is_active === false ? 0.6 : 1,
               }}
               whileHover={{ boxShadow: '0 4px 16px rgba(0,0,0,0.08)', borderColor: 'rgba(13,148,136,0.3)' }}
             >
@@ -180,6 +211,19 @@ export default function Students() {
                   <UserCheck size={12} />
                   {s.has_parent ? t('students.parent_yes') : t('students.parent_no')}
                 </span>
+                {s.is_active === false && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(100,116,139,0.15)', color: '#64748B' }}>
+                    <UserX size={12} /> {t('students.inactive_badge')}
+                  </span>
+                )}
+                <button onClick={e => handleToggleActive(e, s)}
+                  title={s.is_active ? t('students.deactivate') : t('students.activate')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+                    border: `1px solid ${s.is_active ? 'rgba(220,38,38,0.3)' : 'rgba(22,163,74,0.3)'}`,
+                    background: s.is_active ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)',
+                    color: s.is_active ? '#DC2626' : '#16A34A' }}>
+                  {s.is_active ? <><UserX size={12} /> {t('students.deactivate')}</> : <><UserCheck size={12} /> {t('students.activate')}</>}
+                </button>
               </div>
             </motion.div>
           ))}

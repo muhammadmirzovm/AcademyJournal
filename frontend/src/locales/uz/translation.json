@@ -24,7 +24,15 @@
     "parent_yes": "Ota-ona bor",
     "parent_no": "Ota-ona yo'q",
     "attendance": "Dav",
-    "score": "Ball"
+    "score": "Ball",
+    "st_active": "Faol",
+    "st_inactive": "Nofaol",
+    "st_all": "Hammasi",
+    "inactive_badge": "Nofaol",
+    "deactivate": "Nofaol qilish",
+    "activate": "Faollashtirish",
+    "deactivated_toast": "O'quvchi nofaol qilindi",
+    "activated_toast": "O'quvchi faollashtirildi"
   },
   "landing": {
     "badge": "Endi jonli — bepul boshlang",

@@ -108,13 +108,13 @@ class GroupMembersView(generics.ListAPIView):
 
     def get_queryset(self):
         group = get_object_or_404(Group, pk=self.kwargs['pk'])
-        return group.memberships.select_related('student')
+        return group.memberships.select_related('student').filter(student__is_active=True)
 
     def get_serializer_context(self):
         ctx   = super().get_serializer_context()
         group = get_object_or_404(Group, pk=self.kwargs['pk'])
 
-        memberships  = list(group.memberships.select_related('student').all())
+        memberships  = list(group.memberships.select_related('student').filter(student__is_active=True))
         student_ids  = [m.student.id for m in memberships]
 
         # ── Comprehension (per-student join-date scoped) ──────────────────────
@@ -199,7 +199,7 @@ class LessonListCreateView(generics.ListCreateAPIView):
         lesson = serializer.save(group=group)
         # Skip students who joined after this lesson's date, so a back-dated
         # lesson does not create attendance for members who were not yet in.
-        for membership in group.memberships.all():
+        for membership in group.memberships.filter(student__is_active=True):
             if membership.joined_at.date() <= lesson.date:
                 Attendance.objects.get_or_create(lesson=lesson, student=membership.student, defaults={'present': False})
 
