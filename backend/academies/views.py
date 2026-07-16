@@ -122,6 +122,18 @@ class AcademyMembersView(APIView):
         if user.role == 'teacher' and member.role not in ('student', 'parent'):
             return Response({'detail': 'Teachers can only remove students and parents.'}, status=403)
 
+        # Teachers can only manage students in their own groups, and parents
+        # of those students — not other teachers' students.
+        if user.role == 'teacher':
+            from groups.models import GroupMembership
+            if member.role == 'student':
+                if not GroupMembership.objects.filter(student=member, group__teacher=user).exists():
+                    return Response({'detail': 'You can only manage your own students.'}, status=403)
+            elif member.role == 'parent':
+                from users.models import ParentStudent
+                if not ParentStudent.objects.filter(parent=member, student__memberships__group__teacher=user).exists():
+                    return Response({'detail': 'You can only manage parents of your own students.'}, status=403)
+
         # Nobody can remove an admin except another admin
         if member.role == 'admin' and user.role != 'admin':
             return Response({'detail': 'Only admins can remove other admins.'}, status=403)
