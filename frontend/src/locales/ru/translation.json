@@ -271,7 +271,9 @@
     "stickers": "стикеров",
     "leaderboard": "Рейтинг учеников",
     "at_risk": "Требуют внимания",
-    "below_80": "ниже 80%"
+    "below_80": "ниже 80%",
+    "teachers_section": "Учителя",
+    "by_students_count": "по числу учеников"
   },
   "groups": {
     "title": "Мои группы",

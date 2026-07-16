@@ -271,7 +271,9 @@
     "stickers": "stickers",
     "leaderboard": "Student Leaderboard",
     "at_risk": "Needs Attention",
-    "below_80": "below 80%"
+    "below_80": "below 80%",
+    "teachers_section": "Teachers",
+    "by_students_count": "by student count"
   },
   "groups": {
     "title": "My Groups",

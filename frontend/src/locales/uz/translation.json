@@ -271,7 +271,9 @@
     "stickers": "stiker",
     "leaderboard": "O'quvchilar reytingi",
     "at_risk": "E'tibor talab qiladi",
-    "below_80": "80% dan past"
+    "below_80": "80% dan past",
+    "teachers_section": "O'qituvchilar",
+    "by_students_count": "o'quvchilar soni bo'yicha"
   },
   "groups": {
     "title": "Mening guruhlarim",

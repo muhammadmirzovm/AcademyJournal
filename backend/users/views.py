@@ -331,8 +331,9 @@ class AdminStatsView(APIView):
         total_groups   = Group.objects.filter(teacher__academy=academy).count()
         total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
 
-        # Top groups by avg score (converted to 0-100%) — active groups only
-        groups = Group.objects.filter(teacher__academy=academy, is_graduated=False)
+        # Top groups by avg score (converted to 0-100%) — active, non-individual
+        # groups only; a 1-student individual group isn't a "group" to rank.
+        groups = Group.objects.filter(teacher__academy=academy, is_graduated=False, is_individual=False)
         group_data = []
         for g in groups:
             avg = Score.objects.filter(lesson__group=g).aggregate(avg=Avg('value'))['avg']
@@ -340,7 +341,7 @@ class AdminStatsView(APIView):
                 'id':           g.id,
                 'name':         g.name,
                 'teacher_name': g.teacher.first_name or g.teacher.username,
-                'member_count': g.memberships.count(),
+                'member_count': g.memberships.filter(student__is_active=True).count(),
                 'avg_score':    round(avg * 20, 1) if avg else 0,
             })
         top_groups = sorted(group_data, key=lambda x: x['avg_score'], reverse=True)[:5]
@@ -395,14 +396,21 @@ class AdminStatsView(APIView):
         from django.db.models.functions import TruncMonth
         from groups.models import Attendance
 
-        students_per_teacher = []
+        teachers_list = []
         for tch in User.objects.filter(academy=academy, role='teacher'):
-            cnt = GroupMembership.objects.filter(group__teacher=tch, group__is_graduated=False, student__is_active=True).values('student').distinct().count()
-            students_per_teacher.append({
-                'teacher':  (f'{tch.first_name} {tch.last_name}'.strip() or tch.username),
-                'students': cnt,
+            name  = f'{tch.first_name} {tch.last_name}'.strip() or tch.username
+            scnt  = GroupMembership.objects.filter(group__teacher=tch, group__is_graduated=False, student__is_active=True).values('student').distinct().count()
+            gcnt  = Group.objects.filter(teacher=tch, is_graduated=False).count()
+            avg   = Score.objects.filter(lesson__group__teacher=tch, lesson__group__is_graduated=False).aggregate(avg=Avg('value'))['avg']
+            teachers_list.append({
+                'id':            tch.id,
+                'name':          name,
+                'group_count':   gcnt,
+                'student_count': scnt,
+                'avg_score':     round(avg * 20, 1) if avg else 0,
             })
-        students_per_teacher.sort(key=lambda x: x['students'], reverse=True)
+        teachers_list.sort(key=lambda x: x['student_count'], reverse=True)
+        students_per_teacher = [{'teacher': t['name'], 'students': t['student_count']} for t in teachers_list]
 
         growth_qs = (
             User.objects.filter(academy=academy, role='student')
@@ -431,6 +439,7 @@ class AdminStatsView(APIView):
             'total_lessons':  total_lessons,
             'top_groups':     top_groups,
             'top_students':   top_students,
+            'teachers':       teachers_list,
             'students_per_teacher': students_per_teacher,
             'students_growth':      students_growth,
             'absences_by_month':    absences_by_month,

@@ -330,6 +330,41 @@ export default function Dashboard() {
                 )}
               </div>
 
+              {/* Teachers */}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(139,92,246,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <GraduationCap size={16} color="#8B5CF6" />
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 14 }}>{t('dashboard.teachers_section')}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('dashboard.by_students_count')}</p>
+                  </div>
+                </div>
+                {adminStats?.teachers?.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('dashboard.no_data_yet')}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {adminStats?.teachers?.map((tc, i) => (
+                      <motion.div key={tc.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
+                        <Link to={`/profile/${tc.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#8B5CF622', color: '#8B5CF6', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {(tc.name?.[0] || '?').toUpperCase()}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tc.name}</p>
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tc.group_count} {t('dashboard.groups_label')} · {tc.student_count} {t('dashboard.students')}</p>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: tc.avg_score >= 70 ? '#14B8A8' : tc.avg_score >= 40 ? '#F59E0B' : '#EF4444', flexShrink: 0 }}>
+                            {tc.avg_score}%
+                          </span>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 
