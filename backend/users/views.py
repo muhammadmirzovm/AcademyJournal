@@ -118,7 +118,7 @@ class UserStatsView(APIView):
             if not academy:
                 return Response({'role': 'admin', 'total_students': 0, 'total_teachers': 0, 'total_groups': 0, 'total_lessons': 0})
             total_students = User.objects.filter(academy=academy, role='student', is_active=True).count()
-            total_teachers = User.objects.filter(academy=academy, role='teacher').count()
+            total_teachers = User.objects.filter(academy=academy, role='teacher', is_active=True).count()
             total_groups   = Group.objects.filter(teacher__academy=academy).count()
             total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
             return Response({
@@ -327,7 +327,7 @@ class AdminStatsView(APIView):
         from django.db.models import Avg, Sum
 
         total_students = User.objects.filter(academy=academy, role='student', is_active=True).count()
-        total_teachers = User.objects.filter(academy=academy, role='teacher').count()
+        total_teachers = User.objects.filter(academy=academy, role='teacher', is_active=True).count()
         total_groups   = Group.objects.filter(teacher__academy=academy).count()
         total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
 
@@ -397,7 +397,7 @@ class AdminStatsView(APIView):
         from groups.models import Attendance
 
         teachers_list = []
-        for tch in User.objects.filter(academy=academy, role='teacher'):
+        for tch in User.objects.filter(academy=academy, role='teacher', is_active=True):
             name  = f'{tch.first_name} {tch.last_name}'.strip() or tch.username
             scnt  = GroupMembership.objects.filter(group__teacher=tch, group__is_graduated=False, student__is_active=True).values('student').distinct().count()
             gcnt  = Group.objects.filter(teacher=tch, is_graduated=False).count()
@@ -655,6 +655,25 @@ class StudentActiveView(APIView):
         student.is_active = bool(request.data.get('is_active', True))
         student.save(update_fields=['is_active'])
         return Response({'id': student.id, 'is_active': student.is_active})
+
+
+class TeacherActiveView(APIView):
+    """Activate / deactivate a teacher (admin only). A deactivated teacher
+    cannot log in and is hidden from the admin dashboard's Teachers list,
+    but their groups and data are untouched — students keep full access."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        actor = request.user
+        if actor.role != 'admin' or not actor.academy:
+            return Response({'detail': 'Admin only.'}, status=403)
+        try:
+            teacher = User.objects.get(pk=pk, role='teacher', academy=actor.academy)
+        except User.DoesNotExist:
+            return Response({'detail': 'Teacher not found.'}, status=404)
+        teacher.is_active = bool(request.data.get('is_active', True))
+        teacher.save(update_fields=['is_active'])
+        return Response({'id': teacher.id, 'is_active': teacher.is_active})
 
 
 class ChangePasswordView(APIView):

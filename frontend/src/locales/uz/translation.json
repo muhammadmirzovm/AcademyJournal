@@ -667,7 +667,13 @@
     "telegram_groups": "Telegram guruhlar",
     "tg_group_name": "Guruh nomi",
     "tg_group_hint": "Botni guruhga qo'shing, guruh ID sini kiriting — hisobot o'sha guruhga ham yuboriladi",
-    "add": "Qo'shish"
+    "add": "Qo'shish",
+    "inactive_badge": "Nofaol",
+    "deactivate_teacher": "Nofaol qilish",
+    "activate_teacher": "Faollashtirish",
+    "teacher_deactivated": "O'qituvchi nofaol qilindi",
+    "teacher_activated": "O'qituvchi faollashtirildi",
+    "err_toggle_active": "Xatolik yuz berdi"
   },
   "invite": {
     "expired_title": "Taklif muddati o'tgan",

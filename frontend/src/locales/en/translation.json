@@ -667,7 +667,13 @@
     "telegram_groups": "Telegram Groups",
     "tg_group_name": "Group name",
     "tg_group_hint": "Add the bot to a Telegram group, enter the group chat ID — reports will also be sent there",
-    "add": "Add"
+    "add": "Add",
+    "inactive_badge": "Inactive",
+    "deactivate_teacher": "Deactivate",
+    "activate_teacher": "Activate",
+    "teacher_deactivated": "Teacher deactivated",
+    "teacher_activated": "Teacher activated",
+    "err_toggle_active": "Something went wrong"
   },
   "invite": {
     "expired_title": "Invite Expired",

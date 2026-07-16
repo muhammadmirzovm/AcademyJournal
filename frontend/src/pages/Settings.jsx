@@ -499,6 +499,18 @@ function MembersTab({ userRole }) {
     return true
   }
 
+  const [togglingActive, setTogglingActive] = useState(null)
+  const toggleTeacherActive = async (member) => {
+    setTogglingActive(member.id)
+    try {
+      await api.post(`/auth/teachers/${member.id}/active/`, { is_active: !member.is_active })
+      fetchPage(page, search, roleFilter)
+      show(member.is_active ? t('settings.teacher_deactivated') : t('settings.teacher_activated'), 'success')
+    } catch (err) {
+      show(err.response?.data?.detail || t('settings.err_toggle_active'), 'error')
+    } finally { setTogglingActive(null) }
+  }
+
   const openLink = async (memberId) => {
     setLinking(memberId)
     setLinkStudent('')
@@ -655,6 +667,29 @@ function MembersTab({ userRole }) {
                         + {t('settings.link_child')}
                       </button>
                     )
+                  )}
+
+                  {m.role === 'teacher' && m.is_active === false && (
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(100,116,139,0.15)', color: '#64748B', flexShrink: 0 }}>
+                      {t('settings.inactive_badge')}
+                    </span>
+                  )}
+
+                  {m.role === 'teacher' && userRole === 'admin' && (
+                    <button onClick={() => toggleTeacherActive(m)} disabled={togglingActive === m.id}
+                      title={m.is_active ? t('settings.deactivate_teacher') : t('settings.activate_teacher')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
+                        borderRadius: 9, cursor: togglingActive === m.id ? 'not-allowed' : 'pointer', flexShrink: 0,
+                        border: `1px solid ${m.is_active ? 'rgba(220,38,38,0.2)' : 'rgba(22,163,74,0.25)'}`,
+                        background: m.is_active ? 'rgba(220,38,38,0.06)' : 'rgba(22,163,74,0.07)',
+                        color: m.is_active ? '#DC2626' : '#16A34A', fontSize: 12, fontWeight: 600,
+                      }}>
+                      {togglingActive === m.id
+                        ? <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} />
+                        : <UserX size={12} />}
+                      {m.is_active ? t('settings.deactivate_teacher') : t('settings.activate_teacher')}
+                    </button>
                   )}
 
                   {canRemove(m) && (

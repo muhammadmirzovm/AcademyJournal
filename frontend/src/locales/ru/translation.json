@@ -667,7 +667,13 @@
     "telegram_groups": "Telegram группы",
     "tg_group_name": "Название группы",
     "tg_group_hint": "Добавьте бота в группу, введите ID группы — отчёт будет отправляться и туда",
-    "add": "Добавить"
+    "add": "Добавить",
+    "inactive_badge": "Неактивен",
+    "deactivate_teacher": "Деактивировать",
+    "activate_teacher": "Активировать",
+    "teacher_deactivated": "Учитель деактивирован",
+    "teacher_activated": "Учитель активирован",
+    "err_toggle_active": "Произошла ошибка"
   },
   "invite": {
     "expired_title": "Приглашение истекло",

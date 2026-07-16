@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     RegisterView, MeView, ProfileView, UserStatsView,
     OnlineCountView, PlatformStatsView,
-    ParentChildrenView, AdminStatsView, AdminStudentsView, StudentActiveView, UserChildrenView, UserGroupsView,
+    ParentChildrenView, AdminStatsView, AdminStudentsView, StudentActiveView, TeacherActiveView, UserChildrenView, UserGroupsView,
     ChangePasswordView, ConnectTelegramView,
     PasswordResetRequestView, PasswordResetConfirmView,
     TelegramWebhookView, TeacherLeaderboardView,
@@ -27,6 +27,7 @@ urlpatterns = [
     path('admin-stats/',     AdminStatsView.as_view(),    name='admin_stats'),
     path('admin/students/',  AdminStudentsView.as_view(), name='admin_students'),
     path('students/<int:pk>/active/', StudentActiveView.as_view(), name='student_active'),
+    path('teachers/<int:pk>/active/', TeacherActiveView.as_view(), name='teacher_active'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),
     path('connect-telegram/', ConnectTelegramView.as_view(), name='connect_telegram'),
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='password_reset_request'),

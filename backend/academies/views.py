@@ -103,6 +103,7 @@ class AcademyMembersView(APIView):
                 'role':        m.role,
                 'date_joined': m.date_joined,
                 'invited_by':  invited_by.get(m.id),
+                'is_active':   m.is_active,
             })
 
         return Response({'results': data, 'total': total, 'pages': pages, 'page': page})
