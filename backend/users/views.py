@@ -18,7 +18,7 @@ import random
 import secrets
 from asgiref.sync import async_to_sync
 from .serializers import RegisterSerializer, UserSerializer
-from backend.throttles import LoginRateThrottle, PasswordResetRateThrottle
+from backend.throttles import LoginRateThrottle, RegisterRateThrottle, PasswordResetRateThrottle
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -28,7 +28,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = (permissions.AllowAny,)
-    throttle_classes = [LoginRateThrottle]
+    throttle_classes = [RegisterRateThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

@@ -1,5 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from backend.throttles import LoginRateThrottle
 from .views import (
     RegisterView, MeView, ProfileView, UserStatsView,
     OnlineCountView, PlatformStatsView,
@@ -13,7 +14,10 @@ from .views import (
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
-    path('login/', TokenObtainPairView.as_view(), name='token_obtain'),
+    # Brute-force protection: TokenObtainPairView has no throttle of its own,
+    # so give it the dedicated 'login' scope instead of falling back to the
+    # generic shared 'anon' bucket used by every other public endpoint.
+    path('login/', TokenObtainPairView.as_view(throttle_classes=[LoginRateThrottle]), name='token_obtain'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('me/', MeView.as_view(), name='me'),
     path('users/online/', OnlineCountView.as_view(), name='online_count'),
