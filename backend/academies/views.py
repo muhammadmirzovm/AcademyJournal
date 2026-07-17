@@ -122,16 +122,27 @@ class AcademyMembersView(APIView):
         if user.role == 'teacher' and member.role not in ('student', 'parent'):
             return Response({'detail': 'Teachers can only remove students and parents.'}, status=403)
 
-        # Teachers can only manage students in their own groups, and parents
-        # of those students — not other teachers' students.
+        # Teachers can only manage students they own — either the student is
+        # in one of their groups, or the student joined via an invite this
+        # teacher created (covers group-less invites too) — and parents of
+        # those students. Never another teacher's students.
         if user.role == 'teacher':
             from groups.models import GroupMembership
             if member.role == 'student':
-                if not GroupMembership.objects.filter(student=member, group__teacher=user).exists():
+                is_own = (
+                    GroupMembership.objects.filter(student=member, group__teacher=user).exists()
+                    or InviteToken.objects.filter(created_by=user, used_by=member).exists()
+                )
+                if not is_own:
                     return Response({'detail': 'You can only manage your own students.'}, status=403)
             elif member.role == 'parent':
                 from users.models import ParentStudent
-                if not ParentStudent.objects.filter(parent=member, student__memberships__group__teacher=user).exists():
+                own_students = ParentStudent.objects.filter(parent=member).values_list('student_id', flat=True)
+                is_own = (
+                    GroupMembership.objects.filter(student_id__in=own_students, group__teacher=user).exists()
+                    or InviteToken.objects.filter(created_by=user, used_by_id__in=own_students).exists()
+                )
+                if not is_own:
                     return Response({'detail': 'You can only manage parents of your own students.'}, status=403)
 
         # Nobody can remove an admin except another admin
