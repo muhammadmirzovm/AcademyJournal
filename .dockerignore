@@ -15,3 +15,6 @@ frontend/dist/
 .gitignore
 *.md
 .DS_Store
+
+# Secrets (never ship real env into the build context)
+/.env
