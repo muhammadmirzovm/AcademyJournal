@@ -1,0 +1,67 @@
+name: academyjournal
+
+# AcademyJournal self-hosted stack.
+# Fully isolated from the CRM Neo services running natively on this host
+# (system nginx 80/443, system postgres 11 on 5432). This stack uses its own
+# dockerised PostgreSQL 16 and publishes only port 8080.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    shm_size: 256m
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [internal]
+    # Intentionally NOT published to the host — reachable only on the internal network.
+
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/backend.Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 3).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks: [internal]
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - media:/media:ro          # serve user-uploaded media directly from nginx
+    ports:
+      - "8080:80"
+    networks: [internal]
+
+volumes:
+  pgdata:
+  media:
+
+networks:
+  internal:
+    driver: bridge

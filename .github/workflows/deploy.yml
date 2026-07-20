@@ -1,9 +1,10 @@
-name: Deploy to Fly.io
+name: CI/CD
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   test:
@@ -47,17 +48,21 @@ jobs:
         working-directory: backend
 
   deploy:
-    name: Deploy
+    name: Deploy to server
     runs-on: ubuntu-latest
     needs: test
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
         with:
-          version: '0.4.43'
-
-      - run: flyctl deploy --config backend/fly.toml --wait-timeout 300
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script_stop: true
+          command_timeout: 20m
+          script: |
+            cd /home/academy/AcademyJournal
+            bash deploy/deploy.sh
