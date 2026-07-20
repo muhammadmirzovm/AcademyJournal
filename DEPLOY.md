@@ -21,13 +21,17 @@ the same host (system nginx on 80/443, system PostgreSQL 11 on 5432).
                       └──────────────────────────────────────┘
 ```
 
-* **Frontend** talks to the API on the **same origin** (`/api`), so there is no
-  CORS to configure and nothing to rebuild when the domain is added.
+* **Live URLs:** frontend `https://journal.crmneo.com`, backend
+  `https://api.journal.crmneo.com`. The **host** nginx (also serving CRM Neo)
+  terminates TLS and proxies both to the web container; the web container routes
+  by Host header.
+* The **SPA** (journal.crmneo.com) calls the API on `api.journal.crmneo.com`
+  (baked in at build via `VITE_API_URL`); django-cors-headers allows that origin.
 * **Media** is served directly by nginx from the shared `media` volume.
 * **Static** (Django admin / DRF) is collected at image build and served by
   whitenoise via the backend.
-* Only **port 8080** is published. PostgreSQL is reachable only inside the
-  Docker network.
+* Port **8080 is bound to 127.0.0.1 only** (host nginx is the sole entry).
+  PostgreSQL is reachable only inside the Docker network.
 
 ## Files
 
@@ -69,14 +73,20 @@ On every push to `main`: run tests, then SSH into the server and run
 The matching public key is installed in `academy`'s `authorized_keys`, and the
 `academy` user is in the `docker` group so it can run compose without root.
 
-## Adding the domain later (HTTPS)
+## Domains & HTTPS (live)
 
-1. Point the domain's A record to `173.249.29.176`.
-2. Add a server block in the **host** nginx (the one already on 80/443) that
-   proxies the domain to `http://127.0.0.1:8080` and issue a Let's Encrypt cert
-   (certbot). No container changes are needed.
-3. Append the domain to `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` in `.env`,
-   then `docker compose up -d`.
-4. Telegram bot + Web Push become usable once HTTPS is live: set
-   `TELEGRAM_BOT_TOKEN`, generate VAPID keys, then
-   `python manage.py set_telegram_webhook`.
+* DNS: `journal.crmneo.com` and `api.journal.crmneo.com` → `173.249.29.176`.
+* Host nginx site: `/etc/nginx/sites-available/academyjournal`
+  (reference copy: `deploy/nginx-host/academyjournal.conf`). It terminates TLS
+  and proxies both names to `127.0.0.1:8080`.
+* TLS: one Let's Encrypt cert covering both names, obtained via webroot
+  (`/var/www/certbot`). Auto-renews via the certbot systemd timer; a deploy hook
+  (`/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh`) reloads nginx.
+  Manual check: `certbot renew --dry-run`.
+
+## Still optional (Telegram bot / Web Push)
+
+Now that HTTPS is live these can be enabled: set `TELEGRAM_BOT_TOKEN` (+ a
+`TELEGRAM_WEBHOOK_SECRET`) and generate VAPID keys in `.env`, `docker compose up -d`,
+then `docker compose exec backend python manage.py set_telegram_webhook`
+(webhook host = `https://api.journal.crmneo.com`).

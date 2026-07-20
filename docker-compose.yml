@@ -55,7 +55,8 @@ services:
     volumes:
       - media:/media:ro          # serve user-uploaded media directly from nginx
     ports:
-      - "8080:80"
+      # Bound to localhost only — the host nginx terminates TLS and proxies here.
+      - "127.0.0.1:8080:80"
     networks: [internal]
 
 volumes:
