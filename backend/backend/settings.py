@@ -21,6 +21,15 @@ VAPID_CLAIMS_EMAIL       = os.environ.get('VAPID_CLAIMS_EMAIL', 'admin@academyjo
 # Trust Fly.io / reverse-proxy HTTPS headers so build_absolute_uri returns https://
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# ââ HTTPS hardening (active in production, i.e. when DEBUG is False) ââââââ
+SESSION_COOKIE_SECURE          = not DEBUG
+CSRF_COOKIE_SECURE             = not DEBUG
+SECURE_SSL_REDIRECT            = not DEBUG
+# HSTS is emitted by the TLS-terminating nginx so it covers both subdomains
+# uniformly (the SPA host is served by nginx, not Django).
+SECURE_HSTS_SECONDS            = 0
+SILENCED_SYSTEM_CHECKS = ['security.W004']  # HSTS handled at the reverse proxy
+
 # ── Apps ──────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
