@@ -313,7 +313,7 @@ export default function GroupDetail() {
             const comp = s.comprehension
             const att  = s.attendance_rate
             return (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: 10, padding: '8px 14px', marginBottom: 10 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, maxWidth: '100%', background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: 10, padding: '8px 14px', marginBottom: 10 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', flexShrink: 0 }}>
                   {(s.first_name?.[0] || s.username?.[0] || '?').toUpperCase()}
                 </div>
@@ -625,11 +625,11 @@ function LessonRow({ lesson, groupId, index, isTeacher, onEdit, onDelete }) {
   const [confirm, setConfirm] = useState(false)
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
-      style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
+      style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
       <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <Calendar size={18} color="var(--accent)" />
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 120 }}>
         <Link to={`/groups/${groupId}/lessons/${lesson.id}`} style={{ fontWeight: 600, fontSize: 14, textDecoration: 'none', color: 'var(--text)' }}>{lesson.title}</Link>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
           {new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -1145,11 +1145,11 @@ function GameRow({ game, groupId, index, isTeacher, onDelete, onDuplicated }) {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
-      style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
+      style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
       <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <Users size={18} color="var(--accent)" />
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 120 }}>
         <p style={{ fontWeight: 600, fontSize: 14 }}>{game.name}</p>
         <p style={{ fontSize: 12, color: STATUS_COLOR[game.status] || 'var(--text-muted)', marginTop: 2 }}>
           {t(statusKey)} · {game.team_count} {t('quiz.teams')}
@@ -1297,7 +1297,7 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
             value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
           <div>
             <label style={labelStyle}>{t('quiz.timer')}</label>
             <input type="number" min={5} max={300} style={{ ...inputStyle(false), marginTop: 5 }}

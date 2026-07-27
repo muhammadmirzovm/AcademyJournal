@@ -498,7 +498,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
               const myResult  = !isAdmin && !isTeacher ? ex.results?.find(r => r.student === userId) : null
               const absentCount = ex.results?.filter(r => r.absent).length ?? 0
               return (
-                <div key={ex.id} style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div key={ex.id} className="exam-hub-card" style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ width: 42, height: 42, borderRadius: 11, background: finished ? '#16A34A15' : 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <ClipboardList size={20} color={finished ? '#16A34A' : 'var(--accent)'} />
                   </div>
@@ -522,7 +522,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
                       {myResult?.absent && <span style={{ marginLeft: 10, fontWeight: 700, color: ABSENT_STYLE.color }}>{t('exam.absent_label')}</span>}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <div className="exam-hub-card-btns" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                     {(isAdmin || isTeacher) && !finished && (
                       <button onClick={() => setView({ examId: ex.id, mode: 'score' })}
                         style={{ padding: '7px 14px', borderRadius: 9, border: '1px solid var(--accent)', background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>

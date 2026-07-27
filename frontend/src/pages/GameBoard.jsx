@@ -222,7 +222,7 @@ function TeamSplitScreen({ teams: initialTeams, isTeacher, groupId, gameId, onDo
 function Scoreboard({ teams, currentTeamId, t }) {
   const sorted = [...teams].sort((a, b) => b.score - a.score)
   return (
-    <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ flex: '1 1 180px', minWidth: 180, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{t('quiz.scoreboard')}</p>
       {sorted.map((team, i) => {
         const color = TEAM_COLORS[teams.indexOf(team) % TEAM_COLORS.length]
@@ -389,7 +389,7 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
 
           {/* MCQ options */}
           {question.answer_type === 'mcq' && question.options && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
               {['a', 'b', 'c', 'd'].filter(k => question.options[k]).map(k => (
                 <div key={k} style={{ background: 'var(--bg)', border: '1.5px solid var(--border)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--accent)', width: 20 }}>{k.toUpperCase()}</span>
@@ -875,7 +875,7 @@ export default function GameBoard() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
             <Board board={game.board || {}} answeredIds={game.answered_question_ids || []}
               doubleId={game.double_question_id} currentTeam={game.current_team}
               isTeacher={isTeacher} onPickSquare={handleSelectTeamAndPick} t={t} />

@@ -297,7 +297,7 @@ export default function InviteLanding() {
                 </button>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1e293b', marginBottom: 20 }}>{t('invite.register_title')}</h2>
                 <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
                       <label style={labelStyle}>{t('auth.first_name')}</label>
                       <input style={inputStyle(!!errors.first_name)} placeholder="John"

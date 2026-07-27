@@ -199,11 +199,11 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
             const present = local[m.id] ?? false
             return (
               <motion.div key={m.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: `1.5px solid ${present ? 'var(--success)' : 'var(--border)'}`, borderRadius: 10, padding: '12px 16px', transition: 'border-color 0.2s' }}>
+                style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14, background: 'var(--surface)', border: `1.5px solid ${present ? 'var(--success)' : 'var(--border)'}`, borderRadius: 10, padding: '12px 16px', transition: 'border-color 0.2s' }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: present ? 'rgba(5,150,105,0.12)' : 'var(--bg)', border: `1.5px solid ${present ? 'var(--success)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: present ? 'var(--success)' : 'var(--text-muted)', flexShrink: 0, transition: 'all 0.2s' }}>
                   {(m.first_name?.[0] || m.username?.[0] || '?').toUpperCase()}
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 100 }}>
                   <p style={{ fontWeight: 600, fontSize: 14 }}>{m.first_name} {m.last_name}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>@{m.username}</p>
                 </div>
