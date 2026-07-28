@@ -633,25 +633,40 @@ class CoinView(APIView):
             return Response({'balance': current, 'sticker_count': membership.sticker_count, 'sticker_earned': False})
 
         CoinTransaction.objects.create(group=group, student_id=student_id, amount=amount, note=note)
-        new_balance    = current + amount
-        threshold      = group.coin_threshold
-        stickers_earned = new_balance // threshold
+        new_balance = current + amount
 
-        if stickers_earned > 0:
-            membership.sticker_count += stickers_earned
-            membership.save()
-            CoinTransaction.objects.create(
-                group=group, student_id=student_id,
-                amount=-(stickers_earned * threshold),
-                note=f'{stickers_earned} sticker(s) earned',
-            )
-            new_balance = new_balance % threshold
+        return Response({'balance': new_balance})
 
-        return Response({
-            'balance':       new_balance,
-            'sticker_count': membership.sticker_count,
-            'sticker_earned': stickers_earned > 0,
-        })
+
+# ── Stickers ──────────────────────────────────────────────────────────────────
+
+class StickerView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can manage stickers.'}, status=403)
+
+        student_id = request.data.get('student')
+        amount     = request.data.get('amount')
+
+        if not student_id or amount is None:
+            return Response({'detail': 'student and amount are required.'}, status=400)
+
+        try:
+            amount = int(amount)
+        except (ValueError, TypeError):
+            return Response({'detail': 'amount must be an integer.'}, status=400)
+
+        if amount == 0:
+            return Response({'detail': 'amount cannot be zero.'}, status=400)
+
+        membership = get_object_or_404(GroupMembership, group=group, student_id=student_id)
+        membership.sticker_count = max(0, membership.sticker_count + amount)
+        membership.save()
+
+        return Response({'sticker_count': membership.sticker_count})
 
 
 def _notify_announcement(ann, recipients):

@@ -8,8 +8,7 @@ import Modal from './ui/Modal'
 import { formatDayMonthTime } from '../utils/date'
 
 const PCT_COLOR = pct =>
-  pct >= 80 ? { color: '#16A34A', bg: '#16A34A12', border: '#16A34A30' }
-  : pct >= 50 ? { color: '#D97706', bg: '#D9770612', border: '#D9770630' }
+  pct >= 70 ? { color: '#16A34A', bg: '#16A34A12', border: '#16A34A30' }
   : { color: '#DC2626', bg: '#DC262612', border: '#DC262630' }
 
 const ABSENT_STYLE = { color: '#64748B', bg: '#64748B10', border: '#64748B30' }
@@ -303,7 +302,7 @@ function StudentResultView({ exam, userId, t }) {
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>{t('exam.your_result')}</p>
       <div style={{ padding: '20px', borderRadius: 14, background: col.bg, border: `2px solid ${col.border}`, marginBottom: 20, textAlign: 'center' }}>
         <p style={{ fontSize: 40, fontWeight: 900, color: col.color, margin: 0 }}>{result.percentage}%</p>
-        <p style={{ fontSize: 14, fontWeight: 700, color: col.color, marginTop: 4 }}>{result.total}/{result.max_score} · {result.percentage >= 60 ? t('exam.pass') : t('exam.fail')}</p>
+        <p style={{ fontSize: 14, fontWeight: 700, color: col.color, marginTop: 4 }}>{result.total}/{result.max_score} · {result.percentage >= 70 ? t('exam.pass') : t('exam.fail')}</p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {result.scores.map((sc, qi) => {

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronLeft, ChevronRight, Trash2, Pencil, Star, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog, MoreVertical, GraduationCap } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
-  updateGroup, deleteGroup, updateMembership, removeMember, giveCoins,
+  updateGroup, deleteGroup, updateMembership, removeMember, giveCoins, giveStickers,
   getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement,
   addMemberDirect, searchStudents, toggleGraduate, exportExcel, getAcademyTeachers,
 } from '../api/groups'
@@ -157,6 +157,7 @@ export default function GroupDetail() {
   const [showNewGame,       setShowNewGame]        = useState(false)
   const [announcements,     setAnnouncements]      = useState([])
   const [showAddStudent,       setShowAddStudent]       = useState(false)
+  const [showAddSticker,       setShowAddSticker]       = useState(false)
   const [exportLoading,        setExportLoading]        = useState(false)
   const [showChangeTeacher,    setShowChangeTeacher]    = useState(false)
   const [teachersList,         setTeachersList]         = useState([])
@@ -231,11 +232,9 @@ export default function GroupDetail() {
   }
 
   const handleCoin = async (studentId, membershipId, amount) => {
-    const prev = members.find(m => m.membership_id === membershipId)
     try {
       const { data } = await giveCoins(id, { student: studentId, amount })
-      setMembers(ms => ms.map(m => m.membership_id === membershipId ? { ...m, coin_balance: data.balance, sticker_count: data.sticker_count } : m))
-      if (data.sticker_earned) show(t('group_detail.toast_sticker_earned'), 'success')
+      setMembers(ms => ms.map(m => m.membership_id === membershipId ? { ...m, coin_balance: data.balance } : m))
     } catch { show(t('group_detail.toast_coin_fail'), 'error') }
   }
 
@@ -377,7 +376,6 @@ export default function GroupDetail() {
                 {group.class_time ? group.class_time.replace('-', ' — ') : ''}
               </span>
             )}
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Star size={14} />{group.coin_threshold} {t('group_detail.coins')} = 1 {t('group_detail.stickers')}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5,
               color: group.telegram_chat_id ? '#0EA5E9' : 'var(--text-muted)',
               background: group.telegram_chat_id ? 'rgba(14,165,233,0.1)' : 'rgba(0,0,0,0.04)',
@@ -424,6 +422,9 @@ export default function GroupDetail() {
                           <UserCog size={14} /> O'qituvchi
                         </button>
                       )}
+                      <button onClick={() => { setShowActions(false); setShowAddSticker(true) }} style={menuItemStyle('#F59E0B')}>
+                        <Star size={14} /> {t('group_detail.add_sticker')}
+                      </button>
                       <button onClick={() => { setShowActions(false); handleExport() }} disabled={exportLoading} style={menuItemStyle('#10B981')}>
                         {exportLoading ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <FileDown size={14} />} Excel
                       </button>
@@ -579,6 +580,8 @@ export default function GroupDetail() {
         onCreated={g => { setGames(gs => [g, ...gs]); setShowNewGame(false); show(t('quiz.toast_game_created'), 'success') }} />
       <AddStudentModal open={showAddStudent} onClose={() => setShowAddStudent(false)} groupId={id}
         onAdded={m => { setMembers(ms => [...ms, m]); show(t('group_detail.toast_student_added'), 'success') }} />
+      <AddStickerModal open={showAddSticker} onClose={() => setShowAddSticker(false)} groupId={id} members={members}
+        onAdded={(studentId, stickerCount) => setMembers(ms => ms.map(m => m.id === studentId ? { ...m, sticker_count: stickerCount } : m))} />
 
       {/* Change Teacher modal (admin only) */}
       <Modal open={showChangeTeacher} onClose={() => setShowChangeTeacher(false)} title="Guruh o'qituvchisini o'zgartirish">
@@ -847,7 +850,7 @@ const WEEKDAYS = [
 function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
   const { show } = useToast(); const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', coin_threshold: 10, class_days: [], class_time_start: '', class_time_end: '', telegram_chat_id: '', language: 'uz' })
+  const [form, setForm] = useState({ name: '', description: '', class_days: [], class_time_start: '', class_time_end: '', telegram_chat_id: '', language: 'uz' })
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -856,7 +859,6 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
       setForm({
         name: group.name,
         description: group.description || '',
-        coin_threshold: group.coin_threshold || 10,
         class_days: Array.isArray(group.class_days) ? group.class_days : [],
         class_time_start: parts[0] || '',
         class_time_end: parts[1] || '',
@@ -900,11 +902,6 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
           <label style={labelStyle}>{t('groups.description')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('groups.description_optional')}</span></label>
           <textarea style={{ ...inputStyle(false), marginTop: 6, resize: 'vertical', minHeight: 72 }}
             value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>{t('group_detail.coin_threshold_label')}</label>
-          <input type="number" min={1} max={100} style={{ ...inputStyle(false), marginTop: 6 }}
-            value={form.coin_threshold} onChange={e => setForm(f => ({ ...f, coin_threshold: Number(e.target.value) }))} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>{t('groups.class_days')}</label>
@@ -1118,6 +1115,62 @@ function AddStudentModal({ open, onClose, groupId, onAdded }) {
           </div>
         ))}
       </div>
+    </Modal>
+  )
+}
+
+// ── Add Sticker Modal ───────────────────────────────────────────────────────
+
+function AddStickerModal({ open, onClose, groupId, members, onAdded }) {
+  const { show } = useToast(); const { t } = useTranslation()
+  const [studentId, setStudentId] = useState('')
+  const [amount,    setAmount]    = useState('')
+  const [loading,   setLoading]   = useState(false)
+
+  useEffect(() => {
+    if (open) { setStudentId(''); setAmount('') }
+  }, [open])
+
+  const submit = async e => {
+    e.preventDefault()
+    if (!studentId || !amount) return
+    setLoading(true)
+    try {
+      const { data } = await giveStickers(groupId, { student: Number(studentId), amount: Number(amount) })
+      onAdded(Number(studentId), data.sticker_count)
+      show(t('group_detail.toast_sticker_added'), 'success')
+      onClose()
+    } catch {
+      show(t('group_detail.toast_sticker_fail'), 'error')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={t('group_detail.add_sticker')}>
+      <form onSubmit={submit}>
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>{t('group_detail.select_student')}</label>
+          <select style={{ ...inputStyle(false), marginTop: 6 }} value={studentId} onChange={e => setStudentId(e.target.value)} autoFocus>
+            <option value="">{t('group_detail.select_student_placeholder')}</option>
+            {members.map(m => (
+              <option key={m.id} value={m.id}>{m.first_name} {m.last_name} (@{m.username})</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={labelStyle}>{t('group_detail.sticker_amount_label')}</label>
+          <input type="number" style={{ ...inputStyle(false), marginTop: 6 }}
+            value={amount} onChange={e => setAmount(e.target.value)} placeholder="10" />
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={ghostBtn}>{t('group_detail.cancel')}</button>
+          <motion.button type="submit" disabled={loading || !studentId || !amount} whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }}
+            style={{ ...primaryBtn, opacity: (loading || !studentId || !amount) ? 0.7 : 1 }}>
+            {loading && <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />}
+            {loading ? t('group_detail.adding') : t('group_detail.add_sticker_submit')}
+          </motion.button>
+        </div>
+      </form>
     </Modal>
   )
 }

@@ -17,8 +17,7 @@ const scheduleStr = g => {
 }
 
 const PCT_COLOR = pct =>
-  pct >= 80 ? { color: '#16A34A', bg: '#16A34A12', border: '#16A34A30' }
-  : pct >= 50 ? { color: '#D97706', bg: '#D9770612', border: '#D9770630' }
+  pct >= 70 ? { color: '#16A34A', bg: '#16A34A12', border: '#16A34A30' }
   : { color: '#DC2626', bg: '#DC262612', border: '#DC262630' }
 
 export default function Exams() {
