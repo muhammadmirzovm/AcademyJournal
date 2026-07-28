@@ -54,7 +54,7 @@ def reschedule(academy):
     if academy.report_time:
         _scheduler.add_job(
             _run_daily,
-            CronTrigger(hour=academy.report_time.hour, minute=academy.report_time.minute),
+            CronTrigger(hour=academy.report_time.hour, minute=academy.report_time.minute, timezone='UTC'),
             id=daily_id,
             args=[academy.id],
         )
@@ -71,6 +71,7 @@ def reschedule(academy):
                 day_of_week='sun',
                 hour=academy.weekly_report_time.hour,
                 minute=academy.weekly_report_time.minute,
+                timezone='UTC',
             ),
             id=weekly_id,
             args=[academy.id],

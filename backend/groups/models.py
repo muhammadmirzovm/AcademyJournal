@@ -62,6 +62,27 @@ class Lesson(models.Model):
         return f'{self.group.name} — {self.title}'
 
 
+class GroupDayOff(models.Model):
+    SICK    = 'sick'
+    HOLIDAY = 'holiday'
+    OTHER   = 'other'
+    REASON_CHOICES = [(SICK, 'Teacher sick'), (HOLIDAY, 'Holiday'), (OTHER, 'Other')]
+
+    group      = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='day_offs')
+    date       = models.DateField()
+    reason     = models.CharField(max_length=10, choices=REASON_CHOICES, default=OTHER)
+    note       = models.CharField(max_length=200, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='marked_day_offs')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('group', 'date')
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.group.name} — no lesson on {self.date} ({self.reason})'
+
+
 class Attendance(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='attendances')

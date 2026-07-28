@@ -13,8 +13,10 @@ MSG = {
         'header':    "📋 *Kunlik hisobot* — {date}\n🏫 {academy}\n\n",
         'no_groups': "Bugun darsi bo'ladigan guruhlar yo'q.",
         'intro_bad': "❌ *Bugun dars yaratmagan o'qituvchilar:*\n",
+        'intro_off': "\n📌 *Bugun dars yo'q (oldindan belgilangan):*\n",
         'intro_ok':  "\n✅ *Dars yaratgan o'qituvchilar:*\n",
         'bad_row':   "• {teacher} — {group}\n",
+        'off_row':   "• {group} — {reason}\n",
         'ok_row':    "• {teacher} — {group}\n",
         'all_ok':    "✅ Barcha o'qituvchilar bugun dars yaratdi!",
         'reminder':  (
@@ -28,8 +30,10 @@ MSG = {
         'header':    "📋 *Ежедневный отчёт* — {date}\n🏫 {academy}\n\n",
         'no_groups': "Сегодня нет групп с занятиями.",
         'intro_bad': "❌ *Учителя, не создавшие урок сегодня:*\n",
+        'intro_off': "\n📌 *Сегодня нет урока (отмечено заранее):*\n",
         'intro_ok':  "\n✅ *Создали урок:*\n",
         'bad_row':   "• {teacher} — {group}\n",
+        'off_row':   "• {group} — {reason}\n",
         'ok_row':    "• {teacher} — {group}\n",
         'all_ok':    "✅ Все учителя создали урок сегодня!",
         'reminder':  (
@@ -39,6 +43,11 @@ MSG = {
             "Войдите в AcademyJournal и создайте урок."
         ),
     },
+}
+
+REASON_LABEL = {
+    'uz': {'sick': "o'qituvchi kasal", 'holiday': 'bayram', 'other': 'boshqa sabab'},
+    'ru': {'sick': 'учитель болен', 'holiday': 'праздник', 'other': 'другая причина'},
 }
 
 
@@ -65,7 +74,7 @@ def run_report_for_academy(academy, only_chat_id=None):
     only_chat_id: when set, send the report only to that Telegram chat (manual /dailyreport).
                   Skips admin DMs and teacher reminders.
     """
-    from groups.models import Group, Lesson
+    from groups.models import Group, Lesson, GroupDayOff
 
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
     if not token:
@@ -81,11 +90,17 @@ def run_report_for_academy(academy, only_chat_id=None):
         if isinstance(g.class_days, list) and weekday in g.class_days
     ]
 
-    no_lesson, has_lesson = [], []
+    day_off_map = {
+        d.group_id: d for d in GroupDayOff.objects.filter(group__in=groups_today, date=today)
+    }
+
+    no_lesson, has_lesson, day_off = [], [], []
     for g in groups_today:
         t_name = f'{g.teacher.first_name} {g.teacher.last_name}'.strip() or g.teacher.username
         if Lesson.objects.filter(group=g, date=today).exists():
             has_lesson.append((g, t_name))
+        elif g.id in day_off_map:
+            day_off.append((g, t_name, day_off_map[g.id]))
         else:
             no_lesson.append((g, t_name))
 
@@ -94,12 +109,18 @@ def run_report_for_academy(academy, only_chat_id=None):
         msg = m['header'].format(date=today.strftime('%d.%m.%Y'), academy=academy.name)
         if not groups_today:
             msg += m['no_groups']
-        elif not no_lesson:
+        elif not no_lesson and not day_off:
             msg += m['all_ok']
         else:
-            msg += m['intro_bad']
-            for g, t in no_lesson:
-                msg += m['bad_row'].format(teacher=t, group=g.name)
+            if no_lesson:
+                msg += m['intro_bad']
+                for g, t in no_lesson:
+                    msg += m['bad_row'].format(teacher=t, group=g.name)
+            if day_off:
+                msg += m['intro_off']
+                for g, t, d in day_off:
+                    reason = REASON_LABEL[lang].get(d.reason, d.reason)
+                    msg += m['off_row'].format(group=g.name, reason=reason)
             if has_lesson:
                 msg += m['intro_ok']
                 for g, t in has_lesson:

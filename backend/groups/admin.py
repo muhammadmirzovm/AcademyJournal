@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, GroupDayOff
 
 @admin.register(Group)
 class GroupAdmin(admin.ModelAdmin):
@@ -10,6 +10,11 @@ class GroupAdmin(admin.ModelAdmin):
 class LessonAdmin(admin.ModelAdmin):
     list_display = ('title', 'group', 'date')
     list_filter = ('group',)
+
+@admin.register(GroupDayOff)
+class GroupDayOffAdmin(admin.ModelAdmin):
+    list_display = ('group', 'date', 'reason', 'created_by', 'created_at')
+    list_filter = ('reason', 'group')
 
 admin.site.register(GroupMembership)
 admin.site.register(Attendance)

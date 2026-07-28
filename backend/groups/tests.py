@@ -79,6 +79,35 @@ def test_attendance_saved(teacher_client, group, student):
 
 
 @pytest.mark.django_db
+def test_daily_report_skips_day_off_groups(academy, teacher, monkeypatch):
+    import datetime
+    from groups.models import GroupDayOff
+    from users.management.commands import send_daily_report as report_mod
+
+    fixed_date = datetime.date(2026, 8, 3)  # Monday
+    assert fixed_date.weekday() == 0
+    monkeypatch.setattr(report_mod.timezone, 'localdate', lambda: fixed_date)
+    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 'test-token')
+
+    sent = []
+    monkeypatch.setattr(report_mod, '_send', lambda token, chat_id, text: sent.append((chat_id, text)))
+
+    g_forgot = Group.objects.create(name='Forgot', teacher=teacher, class_days=[0])
+    g_dayoff = Group.objects.create(name='DayOff', teacher=teacher, class_days=[0])
+    GroupDayOff.objects.create(group=g_dayoff, date=fixed_date, reason='sick', created_by=teacher)
+
+    teacher.telegram_id = 555
+    teacher.save()
+
+    report_mod.run_report_for_academy(academy)
+
+    reminder_texts = [text for chat_id, text in sent if chat_id == teacher.telegram_id]
+    assert len(reminder_texts) == 1
+    assert 'Forgot' in reminder_texts[0]
+    assert 'DayOff' not in reminder_texts[0]
+
+
+@pytest.mark.django_db
 def test_student_cannot_create_group(student):
     client = APIClient()
     res = client.post('/api/auth/login/', {'username': 'student1', 'password': 'pass1234'})

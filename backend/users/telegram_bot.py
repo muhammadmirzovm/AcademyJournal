@@ -4,7 +4,9 @@ Telegram bot for AcademyJournal — webhook mode.
 
 import os
 import logging
+from datetime import date as date_cls, timedelta
 from asgiref.sync import sync_to_async
+from django.utils import timezone
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot, BotCommand, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
@@ -40,12 +42,14 @@ MSG = {
             "📌 Buyruqlar:\n"
             "/mygroups — guruhlaringiz statistikasi\n"
             "/struggling — qiynalayotgan o'quvchilar\n"
+            "/nolesson — bugun/boshqa kuni dars yo'qligini belgilash\n"
             "/help — barcha buyruqlar"
         ),
         'welcome_admin': (
             "Salom, {name}! 👋  Hisobingiz ulangan ✅\n\n"
             "📌 Buyruqlar:\n"
             "/academy — akademiya statistikasi\n"
+            "/holiday — bayram kunini belgilash\n"
             "/help — barcha buyruqlar"
         ),
         'welcome_parent': (
@@ -90,11 +94,13 @@ MSG = {
             "📚 *AcademyJournal Bot*\n\n"
             "/mygroups — guruhlaringiz statistikasi\n"
             "/struggling — qiynalayotgan o'quvchilar\n"
+            "/nolesson — bugun/boshqa kuni dars yo'qligini belgilash\n"
             "/help — shu ro'yxat"
         ),
         'help_admin': (
             "📚 *AcademyJournal Bot*\n\n"
             "/academy — akademiya statistikasi\n"
+            "/holiday — bayram kunini belgilash\n"
             "/help — shu ro'yxat"
         ),
         'help_parent': (
@@ -139,6 +145,30 @@ MSG = {
         'struggling_item':   "\n👤 {name} ({group})\n• Ball: {score}% | Davomat: {att}%",
         'struggling_none':   "✅ Hamma yaxshi o'qiyapti!",
 
+        # ── /nolesson & /holiday ───────────────────────────────────────────
+        'nl_ask_date':        "Qaysi sana uchun *dars yo'q* deb belgilaymiz?",
+        'nl_ask_custom_date': "Sanani KK.OO formatida yozing (masalan: 25.03):",
+        'nl_bad_date':        "❌ Sana formati noto'g'ri. Masalan: 25.03",
+        'nl_no_groups':       "📭 Bu sanada sizda belgilanadigan guruh topilmadi.",
+        'nl_ask_group':       "*{date}* — qaysi guruh uchun?",
+        'nl_ask_reason':      "Sababi?",
+        'nl_done':            "✅ *{group}* guruhi uchun *{date}* kuni dars yo'q deb belgilandi.\nO'qituvchiga eslatma yuborilmaydi.",
+        'nl_already':         "Bu guruh uchun *{date}* kuni allaqachon belgilangan.",
+        'nl_cancelled':       "Bekor qilindi.",
+        'reason_sick':        "🤒 O'qituvchi kasal",
+        'reason_holiday':     "🎉 Bayram",
+        'reason_other':       "📌 Boshqa sabab",
+        'date_today':         "Bugun",
+        'date_tomorrow':      "Ertaga",
+        'date_custom':        "📅 Sanani kiriting",
+        'cancel_btn':         "❌ Bekor qilish",
+        'hol_admin_only':     "Bu buyruq faqat admin uchun.",
+        'hol_ask_date':       "Qaysi sana *bayram* (butun akademiya uchun dars yo'q) deb belgilansin?",
+        'hol_confirm':        "❗ *{date}* kuni akademiyadagi *barcha* guruhlar uchun dars yo'q deb belgilanadi.\nTasdiqlaysizmi?",
+        'hol_confirm_yes':    "✅ Ha, tasdiqlayman",
+        'hol_done':           "✅ *{date}* — {count} ta guruh uchun bayram deb belgilandi.",
+        'hol_cancelled':      "Bekor qilindi.",
+
         # ── Parent: recent lessons ─────────────────────────────────────────
         'lessons_header': "📅 *So'nggi darslar* ({shown} ta, jami {total} ta):\n",
         'lessons_child':  "\n👤 *{name}* — {group}",
@@ -177,12 +207,14 @@ MSG = {
             "📌 Команды:\n"
             "/mygroups — статистика групп\n"
             "/struggling — отстающие ученики\n"
+            "/nolesson — отметить «нет урока» на сегодня/другой день\n"
             "/help — все команды"
         ),
         'welcome_admin': (
             "Привет, {name}! 👋  Аккаунт привязан ✅\n\n"
             "📌 Команды:\n"
             "/academy — статистика академии\n"
+            "/holiday — отметить праздничный день\n"
             "/help — все команды"
         ),
         'welcome_parent': (
@@ -227,11 +259,13 @@ MSG = {
             "📚 *AcademyJournal Bot*\n\n"
             "/mygroups — статистика групп\n"
             "/struggling — отстающие ученики\n"
+            "/nolesson — отметить «нет урока» на сегодня/другой день\n"
             "/help — этот список"
         ),
         'help_admin': (
             "📚 *AcademyJournal Bot*\n\n"
             "/academy — статистика академии\n"
+            "/holiday — отметить праздничный день\n"
             "/help — этот список"
         ),
         'help_parent': (
@@ -276,6 +310,30 @@ MSG = {
         'struggling_item':   "\n👤 {name} ({group})\n• Оценки: {score}% | Посещаемость: {att}%",
         'struggling_none':   "✅ Все учатся хорошо!",
 
+        # ── /nolesson & /holiday ───────────────────────────────────────────
+        'nl_ask_date':        "На какую дату отметить, что *урока не будет*?",
+        'nl_ask_custom_date': "Введите дату в формате ДД.ММ (например: 25.03):",
+        'nl_bad_date':        "❌ Неверный формат даты. Например: 25.03",
+        'nl_no_groups':       "📭 На эту дату нет групп для отметки.",
+        'nl_ask_group':       "*{date}* — для какой группы?",
+        'nl_ask_reason':      "Причина?",
+        'nl_done':            "✅ Для группы *{group}* на *{date}* отмечено «нет урока».\nНапоминание учителю не будет отправлено.",
+        'nl_already':         "Для этой группы на *{date}* уже отмечено.",
+        'nl_cancelled':       "Отменено.",
+        'reason_sick':        "🤒 Учитель болен",
+        'reason_holiday':     "🎉 Праздник",
+        'reason_other':       "📌 Другая причина",
+        'date_today':         "Сегодня",
+        'date_tomorrow':      "Завтра",
+        'date_custom':        "📅 Ввести дату",
+        'cancel_btn':         "❌ Отмена",
+        'hol_admin_only':     "Эта команда только для админа.",
+        'hol_ask_date':       "На какую дату отметить *праздник* (нет урока для всей академии)?",
+        'hol_confirm':        "❗ На *{date}* будет отмечено «нет урока» для *всех* групп академии.\nПодтверждаете?",
+        'hol_confirm_yes':    "✅ Да, подтверждаю",
+        'hol_done':           "✅ *{date}* — отмечено для {count} групп как праздник.",
+        'hol_cancelled':      "Отменено.",
+
         # ── Parent: recent lessons ─────────────────────────────────────────
         'lessons_header': "📅 *Последние уроки* ({shown} из {total}):\n",
         'lessons_child':  "\n👤 *{name}* — {group}",
@@ -309,11 +367,11 @@ MENU_BUTTONS = {
         ],
         'teacher': [
             ['👥 Guruhlar',          '⚠️ Qiynalayotganlar'],
-            ['❓ Yordam'],
+            ["🚫 Dars yo'q",         '❓ Yordam'],
         ],
         'admin': [
             ['🏫 Akademiya',      '📅 Kunlik hisobot'],
-            ['❓ Yordam'],
+            ['🎉 Bayram',         '❓ Yordam'],
         ],
         'parent': [
             ['📊 Statistika',       "📅 So'nggi darslar"],
@@ -327,11 +385,11 @@ MENU_BUTTONS = {
         ],
         'teacher': [
             ['👥 Группы',             '⚠️ Отстающие'],
-            ['❓ Помощь'],
+            ['🚫 Нет урока',          '❓ Помощь'],
         ],
         'admin': [
             ['🏫 Академия',           '📅 Ежедневный отчёт'],
-            ['❓ Помощь'],
+            ['🎉 Праздник',           '❓ Помощь'],
         ],
         'parent': [
             ['📊 Статистика',         '📅 Последние уроки'],
@@ -350,6 +408,8 @@ BUTTON_ACTIONS = {
     '🏫 Akademiya':        'academy',
     '📅 Kunlik hisobot':   'dailyreport',
     "📅 So'nggi darslar":  'lessons',
+    "🚫 Dars yo'q":        'nolesson',
+    '🎉 Bayram':           'holiday',
     '❓ Yordam':           'help',
     # RU
     '📊 Статистика':        'mystats',
@@ -360,6 +420,8 @@ BUTTON_ACTIONS = {
     '🏫 Академия':          'academy',
     '📅 Ежедневный отчёт':  'dailyreport',
     '📅 Последние уроки':   'lessons',
+    '🚫 Нет урока':         'nolesson',
+    '🎉 Праздник':          'holiday',
     '❓ Помощь':            'help',
 }
 
@@ -943,6 +1005,14 @@ async def username_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Menu button handler ───────────────────────────────────────────────────────
 
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    awaiting = context.user_data.get('awaiting')
+    if awaiting == 'nl_date':
+        await _handle_nl_custom_date(update, context)
+        return
+    if awaiting == 'hol_date':
+        await _handle_hol_custom_date(update, context)
+        return
+
     action = BUTTON_ACTIONS.get(update.message.text)
     if action == 'mystats':
         await mystats(update, context)
@@ -960,6 +1030,10 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await dailyreport_cmd(update, context)
     elif action == 'lessons':
         await lessons_cmd(update, context)
+    elif action == 'nolesson':
+        await nolesson_cmd(update, context)
+    elif action == 'holiday':
+        await holiday_cmd(update, context)
     elif action == 'help':
         await help_cmd(update, context)
 
@@ -1071,6 +1145,274 @@ def _get_academy_tg_group(chat_id):
     return AcademyTelegramGroup.objects.filter(chat_id=chat_id).select_related('academy').first()
 
 
+# ── /nolesson & /holiday ─────────────────────────────────────────────────────
+
+def _parse_short_date(text):
+    parts = text.strip().replace('/', '.').replace('-', '.').split('.')
+    if len(parts) < 2:
+        return None
+    try:
+        day, month = int(parts[0]), int(parts[1])
+        today = timezone.localdate()
+        d = date_cls(today.year, month, day)
+        if d < today:
+            d = date_cls(today.year + 1, month, day)
+        return d
+    except (ValueError, IndexError):
+        return None
+
+
+def _date_keyboard(prefix, lang):
+    m = MSG[lang]
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(m['date_today'],    callback_data=f'{prefix}_date_today'),
+            InlineKeyboardButton(m['date_tomorrow'], callback_data=f'{prefix}_date_tomorrow'),
+        ],
+        [InlineKeyboardButton(m['date_custom'], callback_data=f'{prefix}_date_custom')],
+        [InlineKeyboardButton(m['cancel_btn'],  callback_data=f'{prefix}_cancel')],
+    ])
+
+
+def _nl_group_keyboard(groups, lang):
+    rows = [[InlineKeyboardButton(g.name, callback_data=f'nl_group_{g.id}')] for g in groups]
+    rows.append([InlineKeyboardButton(MSG[lang]['cancel_btn'], callback_data='nl_cancel')])
+    return InlineKeyboardMarkup(rows)
+
+
+def _nl_reason_keyboard(lang):
+    m = MSG[lang]
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(m['reason_sick'],    callback_data='nl_reason_sick')],
+        [InlineKeyboardButton(m['reason_holiday'], callback_data='nl_reason_holiday')],
+        [InlineKeyboardButton(m['reason_other'],   callback_data='nl_reason_other')],
+    ])
+
+
+def _hol_confirm_keyboard(lang):
+    m = MSG[lang]
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton(m['hol_confirm_yes'], callback_data='hol_confirm'),
+        InlineKeyboardButton(m['cancel_btn'],      callback_data='hol_cancel'),
+    ]])
+
+
+def _teacher_groups_for_date(telegram_id, target_date):
+    from groups.models import Group, GroupDayOff
+    user = _get_user(telegram_id)
+    if not user:
+        return []
+    weekday = target_date.weekday()
+    already = set(
+        GroupDayOff.objects.filter(date=target_date, group__teacher=user).values_list('group_id', flat=True)
+    )
+    return [
+        g for g in Group.objects.filter(teacher=user, is_graduated=False)
+        if isinstance(g.class_days, list) and weekday in g.class_days and g.id not in already
+    ]
+
+
+async def _nolesson_show_groups(reply_fn, telegram_id, target_date, lang, context):
+    m = MSG[lang]
+    groups = await sync_to_async(_teacher_groups_for_date)(telegram_id, target_date)
+    if not groups:
+        await reply_fn(m['nl_no_groups'])
+        context.user_data.pop('nl_flow', None)
+        return
+    context.user_data['nl_flow'] = {'lang': lang, 'date': target_date.isoformat()}
+    await reply_fn(
+        m['nl_ask_group'].format(date=target_date.strftime('%d.%m.%Y')),
+        reply_markup=_nl_group_keyboard(groups, lang),
+        parse_mode='Markdown',
+    )
+
+
+async def nolesson_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    user = await sync_to_async(_get_user)(telegram_id)
+    lang = (user.telegram_lang if user else None) or 'uz'
+    m = MSG[lang]
+    if not user or user.role not in ('teacher', 'admin'):
+        await update.message.reply_text(m['no_data'])
+        return
+    context.user_data['nl_flow'] = {'lang': lang}
+    await update.message.reply_text(m['nl_ask_date'], reply_markup=_date_keyboard('nl', lang), parse_mode='Markdown')
+
+
+async def nolesson_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    flow = context.user_data.get('nl_flow')
+    if flow is None:
+        return
+    lang = flow.get('lang', 'uz')
+    m = MSG[lang]
+    choice = query.data.split('_')[-1]
+    if choice == 'custom':
+        context.user_data['awaiting'] = 'nl_date'
+        await query.edit_message_text(m['nl_ask_custom_date'])
+        return
+    target_date = timezone.localdate() if choice == 'today' else timezone.localdate() + timedelta(days=1)
+    await _nolesson_show_groups(query.edit_message_text, query.from_user.id, target_date, lang, context)
+
+
+async def nolesson_group_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    flow = context.user_data.get('nl_flow')
+    if not flow or 'date' not in flow:
+        return
+    lang = flow.get('lang', 'uz')
+    flow['group_id'] = int(query.data.split('_')[-1])
+    context.user_data['nl_flow'] = flow
+    await query.edit_message_text(MSG[lang]['nl_ask_reason'], reply_markup=_nl_reason_keyboard(lang))
+
+
+def _create_day_off(telegram_id, group_id, target_date, reason):
+    from groups.models import Group, GroupDayOff
+    user = _get_user(telegram_id)
+    group = Group.objects.get(id=group_id)
+    obj, created = GroupDayOff.objects.get_or_create(
+        group=group, date=target_date,
+        defaults={'reason': reason, 'created_by': user},
+    )
+    return group.name, created
+
+
+async def nolesson_reason_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    flow = context.user_data.pop('nl_flow', None)
+    if not flow or 'group_id' not in flow or 'date' not in flow:
+        return
+    lang = flow.get('lang', 'uz')
+    m = MSG[lang]
+    reason = query.data.split('_')[-1]
+    target_date = date_cls.fromisoformat(flow['date'])
+
+    group_name, created = await sync_to_async(_create_day_off)(
+        query.from_user.id, flow['group_id'], target_date, reason
+    )
+    date_str = target_date.strftime('%d.%m.%Y')
+    if created:
+        await query.edit_message_text(m['nl_done'].format(group=group_name, date=date_str), parse_mode='Markdown')
+    else:
+        await query.edit_message_text(m['nl_already'].format(date=date_str), parse_mode='Markdown')
+
+
+async def nolesson_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    flow = context.user_data.pop('nl_flow', None)
+    context.user_data.pop('awaiting', None)
+    lang = (flow or {}).get('lang', 'uz')
+    await query.edit_message_text(MSG[lang]['nl_cancelled'])
+
+
+async def _handle_nl_custom_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.pop('awaiting', None)
+    flow = context.user_data.get('nl_flow') or {}
+    lang = flow.get('lang', 'uz')
+    m = MSG[lang]
+    target_date = _parse_short_date(update.message.text)
+    if not target_date:
+        context.user_data['awaiting'] = 'nl_date'
+        await update.message.reply_text(m['nl_bad_date'])
+        return
+    await _nolesson_show_groups(update.message.reply_text, update.effective_user.id, target_date, lang, context)
+
+
+async def holiday_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    user = await sync_to_async(_get_user)(telegram_id)
+    lang = (user.telegram_lang if user else None) or 'uz'
+    m = MSG[lang]
+    if not user or user.role != 'admin':
+        await update.message.reply_text(m['hol_admin_only'])
+        return
+    context.user_data['hol_flow'] = {'lang': lang}
+    await update.message.reply_text(m['hol_ask_date'], reply_markup=_date_keyboard('hol', lang), parse_mode='Markdown')
+
+
+async def holiday_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    flow = context.user_data.get('hol_flow')
+    if flow is None:
+        return
+    lang = flow.get('lang', 'uz')
+    m = MSG[lang]
+    choice = query.data.split('_')[-1]
+    if choice == 'custom':
+        context.user_data['awaiting'] = 'hol_date'
+        await query.edit_message_text(m['nl_ask_custom_date'])
+        return
+    target_date = timezone.localdate() if choice == 'today' else timezone.localdate() + timedelta(days=1)
+    context.user_data['hol_flow'] = {'lang': lang, 'date': target_date.isoformat()}
+    await query.edit_message_text(
+        m['hol_confirm'].format(date=target_date.strftime('%d.%m.%Y')),
+        reply_markup=_hol_confirm_keyboard(lang), parse_mode='Markdown',
+    )
+
+
+async def _handle_hol_custom_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.pop('awaiting', None)
+    flow = context.user_data.get('hol_flow') or {}
+    lang = flow.get('lang', 'uz')
+    m = MSG[lang]
+    target_date = _parse_short_date(update.message.text)
+    if not target_date:
+        context.user_data['awaiting'] = 'hol_date'
+        await update.message.reply_text(m['nl_bad_date'])
+        return
+    context.user_data['hol_flow'] = {'lang': lang, 'date': target_date.isoformat()}
+    await update.message.reply_text(
+        m['hol_confirm'].format(date=target_date.strftime('%d.%m.%Y')),
+        reply_markup=_hol_confirm_keyboard(lang), parse_mode='Markdown',
+    )
+
+
+def _create_academy_holiday(telegram_id, target_date):
+    from groups.models import Group, GroupDayOff
+    user = _get_user(telegram_id)
+    if not user or not user.academy_id:
+        return 0
+    groups = Group.objects.filter(teacher__academy_id=user.academy_id, is_graduated=False)
+    count = 0
+    for g in groups:
+        _, created = GroupDayOff.objects.get_or_create(
+            group=g, date=target_date,
+            defaults={'reason': 'holiday', 'created_by': user},
+        )
+        if created:
+            count += 1
+    return count
+
+
+async def holiday_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    flow = context.user_data.pop('hol_flow', None)
+    if not flow or 'date' not in flow:
+        return
+    lang = flow.get('lang', 'uz')
+    m = MSG[lang]
+    target_date = date_cls.fromisoformat(flow['date'])
+    count = await sync_to_async(_create_academy_holiday)(query.from_user.id, target_date)
+    await query.edit_message_text(
+        m['hol_done'].format(date=target_date.strftime('%d.%m.%Y'), count=count), parse_mode='Markdown'
+    )
+
+
+async def holiday_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    flow = context.user_data.pop('hol_flow', None)
+    context.user_data.pop('awaiting', None)
+    lang = (flow or {}).get('lang', 'uz')
+    await query.edit_message_text(MSG[lang]['hol_cancelled'])
+
+
 async def dailyreport_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     from users.management.commands.send_daily_report import run_report_for_academy
@@ -1144,7 +1486,16 @@ def get_application():
     app.add_handler(CommandHandler('help',       help_cmd,     filters=private))
     app.add_handler(CommandHandler('chatid',      chatid_cmd))
     app.add_handler(CommandHandler('dailyreport', dailyreport_cmd))
+    app.add_handler(CommandHandler('nolesson',    nolesson_cmd, filters=private))
+    app.add_handler(CommandHandler('holiday',     holiday_cmd,  filters=private))
     app.add_handler(CallbackQueryHandler(language_callback, pattern=r'^lang_(uz|ru)$'))
+    app.add_handler(CallbackQueryHandler(nolesson_date_callback,   pattern=r'^nl_date_(today|tomorrow|custom)$'))
+    app.add_handler(CallbackQueryHandler(nolesson_group_callback,  pattern=r'^nl_group_\d+$'))
+    app.add_handler(CallbackQueryHandler(nolesson_reason_callback, pattern=r'^nl_reason_(sick|holiday|other)$'))
+    app.add_handler(CallbackQueryHandler(nolesson_cancel_callback, pattern=r'^nl_cancel$'))
+    app.add_handler(CallbackQueryHandler(holiday_date_callback,    pattern=r'^hol_date_(today|tomorrow|custom)$'))
+    app.add_handler(CallbackQueryHandler(holiday_confirm_callback, pattern=r'^hol_confirm$'))
+    app.add_handler(CallbackQueryHandler(holiday_cancel_callback,  pattern=r'^hol_cancel$'))
 
     async_to_sync(app.initialize)()
 
