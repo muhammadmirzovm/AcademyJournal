@@ -44,7 +44,7 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
           SECRET_KEY: ci-secret-key
           DEBUG: 'true'
-        run: pytest users/tests.py groups/tests.py -v
+        run: pytest users/tests.py groups/tests.py rewards/tests.py -v
         working-directory: backend
 
   deploy:

@@ -10,7 +10,8 @@
     "settings": "Настройки",
     "language": "Язык",
     "students": "Ученики",
-    "exams": "Экзамены"
+    "exams": "Экзамены",
+    "rewards": "Награды"
   },
   "students": {
     "title": "Все ученики",
@@ -927,5 +928,39 @@
     "register": "Регистрация",
     "contact": "Контакты",
     "rights": "Все права защищены."
+  },
+  "rewards": {
+    "title": "Каталог наград",
+    "subtitle": "Выберите награду за ваши стикеры",
+    "add_button": "Добавить награду",
+    "cat_all": "Все",
+    "cat_snack": "Перекус",
+    "cat_stationery": "Канцтовары",
+    "cat_merch": "Мерч",
+    "cat_discount": "Скидка",
+    "cat_other": "Другое",
+    "no_rewards": "В этой категории пока нет наград.",
+    "no_rewards_sub": "Скоро появятся награды.",
+    "create_modal_title": "Добавить новую награду",
+    "name_label": "Название",
+    "icon_label": "Иконка (эмодзи)",
+    "icon_optional": "(необязательно)",
+    "description_label": "Описание",
+    "description_optional": "(необязательно)",
+    "price_label": "Цена (стикеры)",
+    "stock_label": "Количество",
+    "category_label": "Категория",
+    "status_label": "Статус",
+    "status_available": "В продаже",
+    "status_coming_soon": "Скоро",
+    "status_hidden": "Скрыто",
+    "cancel": "Отмена",
+    "create_btn": "Добавить",
+    "creating": "Добавление...",
+    "toast_created": "Награда добавлена!",
+    "toast_load_fail": "Не удалось загрузить награды.",
+    "toast_create_fail": "Не удалось добавить награду.",
+    "err_name_required": "Введите название.",
+    "err_price_required": "Введите цену."
   }
 }

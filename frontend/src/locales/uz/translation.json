@@ -10,7 +10,8 @@
     "settings": "Sozlamalar",
     "language": "Til",
     "students": "O'quvchilar",
-    "exams": "Imtihonlar"
+    "exams": "Imtihonlar",
+    "rewards": "Sovg'alar"
   },
   "students": {
     "title": "Barcha o'quvchilar",
@@ -927,5 +928,39 @@
     "register": "Ro'yxatdan o'tish",
     "contact": "Aloqa",
     "rights": "Barcha huquqlar himoyalangan."
+  },
+  "rewards": {
+    "title": "Sovg'alar katalogi",
+    "subtitle": "Tangachalaringizga sovg'a tanlang",
+    "add_button": "Sovg'a qo'shish",
+    "cat_all": "Barchasi",
+    "cat_snack": "Yengil taom",
+    "cat_stationery": "Kantselyariya",
+    "cat_merch": "Merch",
+    "cat_discount": "Chegirma",
+    "cat_other": "Boshqa",
+    "no_rewards": "Bu turkumda hozircha sovg'a yo'q.",
+    "no_rewards_sub": "Tez orada sovg'alar qo'shiladi.",
+    "create_modal_title": "Yangi sovg'a qo'shish",
+    "name_label": "Nomi",
+    "icon_label": "Ikonka (emoji)",
+    "icon_optional": "(ixtiyoriy)",
+    "description_label": "Tavsif",
+    "description_optional": "(ixtiyoriy)",
+    "price_label": "Narxi (tangacha)",
+    "stock_label": "Miqdori (dona)",
+    "category_label": "Turkum",
+    "status_label": "Holati",
+    "status_available": "Sotuvda",
+    "status_coming_soon": "Tez kunda",
+    "status_hidden": "Yashirilgan",
+    "cancel": "Bekor qilish",
+    "create_btn": "Qo'shish",
+    "creating": "Qo'shilmoqda...",
+    "toast_created": "Sovg'a qo'shildi!",
+    "toast_load_fail": "Sovg'alarni yuklashda xatolik.",
+    "toast_create_fail": "Sovg'a qo'shishda xatolik.",
+    "err_name_required": "Nomini kiriting.",
+    "err_price_required": "Narxini kiriting."
   }
 }

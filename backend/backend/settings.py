@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'quiz',
     'academies',
     'auditlog',
+    'rewards',
 ]
 
 MIDDLEWARE = [

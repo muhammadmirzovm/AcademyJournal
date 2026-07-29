@@ -10,7 +10,8 @@
     "settings": "Settings",
     "language": "Language",
     "students": "Students",
-    "exams": "Exams"
+    "exams": "Exams",
+    "rewards": "Rewards"
   },
   "students": {
     "title": "All Students",
@@ -927,5 +928,39 @@
     "register": "Sign up",
     "contact": "Contact",
     "rights": "All rights reserved."
+  },
+  "rewards": {
+    "title": "Rewards catalog",
+    "subtitle": "Pick a reward for your stickers",
+    "add_button": "Add reward",
+    "cat_all": "All",
+    "cat_snack": "Snack",
+    "cat_stationery": "Stationery",
+    "cat_merch": "Merch",
+    "cat_discount": "Discount",
+    "cat_other": "Other",
+    "no_rewards": "No rewards in this category yet.",
+    "no_rewards_sub": "Rewards will be added soon.",
+    "create_modal_title": "Add new reward",
+    "name_label": "Name",
+    "icon_label": "Icon (emoji)",
+    "icon_optional": "(optional)",
+    "description_label": "Description",
+    "description_optional": "(optional)",
+    "price_label": "Price (stickers)",
+    "stock_label": "Stock",
+    "category_label": "Category",
+    "status_label": "Status",
+    "status_available": "Available",
+    "status_coming_soon": "Coming soon",
+    "status_hidden": "Hidden",
+    "cancel": "Cancel",
+    "create_btn": "Add",
+    "creating": "Adding...",
+    "toast_created": "Reward added!",
+    "toast_load_fail": "Failed to load rewards.",
+    "toast_create_fail": "Failed to add reward.",
+    "err_name_required": "Enter a name.",
+    "err_price_required": "Enter a price."
   }
 }

@@ -22,6 +22,7 @@ import Students from './pages/Students'
 import ForgotPassword from './pages/ForgotPassword'
 import NotFound from './pages/NotFound'
 import Exams from './pages/Exams'
+import Rewards from './pages/Rewards'
 
 function AppShell() {
   const { loading } = useAuth()
@@ -55,6 +56,7 @@ function AppShell() {
             <Route path="/settings"          element={<ProtectedRoute roles={['teacher','admin']}><Settings /></ProtectedRoute>} />
             <Route path="/students"          element={<ProtectedRoute roles={['admin','teacher']}><Students /></ProtectedRoute>} />
             <Route path="/exams"             element={<ProtectedRoute><Exams /></ProtectedRoute>} />
+            <Route path="/rewards"           element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
             <Route path="*"                  element={<NotFound />} />
           </Routes>
         </Layout>
