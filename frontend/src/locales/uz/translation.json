@@ -961,6 +961,15 @@
     "toast_load_fail": "Sovg'alarni yuklashda xatolik.",
     "toast_create_fail": "Sovg'a qo'shishda xatolik.",
     "err_name_required": "Nomini kiriting.",
-    "err_price_required": "Narxini kiriting."
+    "err_price_required": "Narxini kiriting.",
+    "edit_reward": "Tahrirlash",
+    "delete_reward": "O'chirish",
+    "delete_confirm": "O'chirish?",
+    "edit_modal_title": "Sovg'ani tahrirlash",
+    "save_btn": "Saqlash",
+    "toast_updated": "Sovg'a yangilandi!",
+    "toast_update_fail": "Sovg'ani yangilashda xatolik.",
+    "toast_deleted": "Sovg'a o'chirildi.",
+    "toast_delete_fail": "Sovg'ani o'chirishda xatolik."
   }
 }

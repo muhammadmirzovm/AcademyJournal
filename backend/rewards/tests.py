@@ -55,3 +55,35 @@ def test_only_admin_can_create_reward(admin_user, student_user):
     res = admin_client.post('/api/rewards/', payload, format='json')
     assert res.status_code == 201
     assert Reward.objects.filter(name='New Reward').exists()
+
+
+@pytest.mark.django_db
+def test_only_admin_can_edit_reward(admin_user, student_user):
+    reward = Reward.objects.create(name='Editable', price=100, stock=5)
+
+    student_client = _client_for('rw_student')
+    res = student_client.patch(f'/api/rewards/{reward.id}/', {'price': 200}, format='json')
+    assert res.status_code == 403
+    reward.refresh_from_db()
+    assert reward.price == 100
+
+    admin_client = _client_for('rw_admin')
+    res = admin_client.patch(f'/api/rewards/{reward.id}/', {'price': 200}, format='json')
+    assert res.status_code == 200
+    reward.refresh_from_db()
+    assert reward.price == 200
+
+
+@pytest.mark.django_db
+def test_only_admin_can_delete_reward(admin_user, student_user):
+    reward = Reward.objects.create(name='Deletable', price=100)
+
+    student_client = _client_for('rw_student')
+    res = student_client.delete(f'/api/rewards/{reward.id}/')
+    assert res.status_code == 403
+    assert Reward.objects.filter(id=reward.id).exists()
+
+    admin_client = _client_for('rw_admin')
+    res = admin_client.delete(f'/api/rewards/{reward.id}/')
+    assert res.status_code == 204
+    assert not Reward.objects.filter(id=reward.id).exists()

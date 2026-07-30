@@ -961,6 +961,15 @@
     "toast_load_fail": "Не удалось загрузить награды.",
     "toast_create_fail": "Не удалось добавить награду.",
     "err_name_required": "Введите название.",
-    "err_price_required": "Введите цену."
+    "err_price_required": "Введите цену.",
+    "edit_reward": "Редактировать",
+    "delete_reward": "Удалить",
+    "delete_confirm": "Удалить?",
+    "edit_modal_title": "Редактировать награду",
+    "save_btn": "Сохранить",
+    "toast_updated": "Награда обновлена!",
+    "toast_update_fail": "Не удалось обновить награду.",
+    "toast_deleted": "Награда удалена.",
+    "toast_delete_fail": "Не удалось удалить награду."
   }
 }

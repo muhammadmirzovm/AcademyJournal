@@ -961,6 +961,15 @@
     "toast_load_fail": "Failed to load rewards.",
     "toast_create_fail": "Failed to add reward.",
     "err_name_required": "Enter a name.",
-    "err_price_required": "Enter a price."
+    "err_price_required": "Enter a price.",
+    "edit_reward": "Edit",
+    "delete_reward": "Delete",
+    "delete_confirm": "Delete?",
+    "edit_modal_title": "Edit reward",
+    "save_btn": "Save",
+    "toast_updated": "Reward updated!",
+    "toast_update_fail": "Failed to update reward.",
+    "toast_deleted": "Reward deleted.",
+    "toast_delete_fail": "Failed to delete reward."
   }
 }
