@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Plus, Minus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight, Pencil, FileDown, Trash2 } from 'lucide-react'
@@ -34,25 +34,44 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
 
   const [rows, setRows]     = useState(init)
   const [saving, setSaving] = useState(false)
+  const [autoSaveState, setAutoSaveState] = useState('idle') // idle | pending | saving | saved | error
 
-  const toggleAbsent = si =>
+  const mountedRef   = useRef(false)
+  const saveTimerRef = useRef(null)
+
+  // Bumped only by actual grading-data edits (not the open/collapse toggle
+  // below), so autosave doesn't fire just from expanding a student's card.
+  const [dataVersion, setDataVersion] = useState(0)
+  const bump = () => setDataVersion(v => v + 1)
+
+  const toggleAbsent = si => {
     setRows(r => r.map((row, i) => i !== si ? row : { ...row, absent: !row.absent, open: row.absent ? row.open : false }))
+    bump()
+  }
 
-  const setScore = (si, qi, val) =>
+  const setScore = (si, qi, val) => {
     setRows(r => r.map((row, i) => i !== si ? row : { ...row, scores: row.scores.map((s, j) => j !== qi ? s : val) }))
+    bump()
+  }
 
-  const setComment = (si, qi, val) =>
+  const setComment = (si, qi, val) => {
     setRows(r => r.map((row, i) => i !== si ? row : { ...row, comments: row.comments.map((c, j) => j !== qi ? c : val) }))
+    bump()
+  }
 
   const toggleOpen = si =>
     setRows(r => r.map((row, i) => i !== si ? row : { ...row, open: !row.open }))
 
-  const addQuestion = si =>
+  const addQuestion = si => {
     setRows(r => r.map((row, i) => i !== si ? row : { ...row, scores: [...row.scores, 0], comments: [...row.comments, ''] }))
+    bump()
+  }
 
-  const removeQuestion = si =>
+  const removeQuestion = si => {
     setRows(r => r.map((row, i) => (i !== si || row.scores.length <= 1) ? row
       : { ...row, scores: row.scores.slice(0, -1), comments: row.comments.slice(0, -1) }))
+    bump()
+  }
 
   const pct = row => {
     if (row.absent || row.scores.length === 0) return null
@@ -60,17 +79,48 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
     return Math.round(total / (row.scores.length * 5) * 100)
   }
 
+  const buildResults = () => rows.map(r => ({
+    student:  r.student,
+    absent:   r.absent,
+    scores:   r.absent ? [] : r.scores,
+    comments: r.absent ? [] : r.comments,
+  }))
+
+  // Autosave: persist progress in the background so a refresh mid-grading
+  // never loses already-entered scores/comments. Skips the very first
+  // render (init from existing results shouldn't trigger a save).
+  useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return }
+    setAutoSaveState('pending')
+    clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(async () => {
+      setAutoSaveState('saving')
+      try {
+        await submitExam(groupId, exam.id, { results: buildResults(), finish: false })
+        setAutoSaveState('saved')
+      } catch { setAutoSaveState('error') }
+    }, 1500)
+    return () => clearTimeout(saveTimerRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataVersion])
+
+  // Warn before an accidental refresh/close while a save hasn't landed yet.
+  useEffect(() => {
+    const handler = e => {
+      if (autoSaveState === 'pending' || autoSaveState === 'saving') {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [autoSaveState])
+
   const save = async () => {
+    clearTimeout(saveTimerRef.current)
     setSaving(true)
     try {
-      await submitExam(groupId, exam.id, {
-        results: rows.map(r => ({
-          student:  r.student,
-          absent:   r.absent,
-          scores:   r.absent ? [] : r.scores,
-          comments: r.absent ? [] : r.comments,
-        })),
-      })
+      await submitExam(groupId, exam.id, { results: buildResults(), finish: true })
       show(t('exam.saved_toast'), 'success')
       onDone()
     } catch { show('Error saving results', 'error') }
@@ -89,11 +139,26 @@ function ScoringScreen({ exam, members, groupId, onDone, t }) {
             {absentCount > 0 && <span style={{ marginLeft: 8, color: '#64748B', fontWeight: 600 }}>· {absentCount} {t('exam.absent_count')}</span>}
           </p>
         </div>
-        <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-          {saving ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <CheckCircle2 size={14} />}
-          {saving ? t('exam.saving') : t('exam.save_all')}
-        </motion.button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {!saving && (autoSaveState === 'pending' || autoSaveState === 'saving') && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
+              <Loader2 size={12} style={{ animation: 'spin 0.7s linear infinite' }} /> {t('exam.autosaving')}
+            </span>
+          )}
+          {!saving && autoSaveState === 'saved' && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--success)' }}>
+              <CheckCircle2 size={12} /> {t('exam.autosaved')}
+            </span>
+          )}
+          {!saving && autoSaveState === 'error' && (
+            <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>{t('exam.autosave_error')}</span>
+          )}
+          <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <CheckCircle2 size={14} />}
+            {saving ? t('exam.saving') : t('exam.save_all')}
+          </motion.button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

@@ -9,6 +9,8 @@ import Modal from '../components/ui/Modal'
 import { CardSkeleton } from '../components/ui/Skeleton'
 
 const CATEGORIES = ['snack', 'stationery', 'merch', 'discount', 'other']
+const NAME_MAX_LENGTH = 40
+const DESCRIPTION_MAX_LENGTH = 100
 
 const BADGE_COLORS = {
   'badge-soon':    '#F59E0B',
@@ -132,7 +134,8 @@ function RewardCard({ reward, index, isAdmin, onEdit, onDelete }) {
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
       whileHover={!isInactive ? { y: -3, boxShadow: 'var(--shadow-lg)' } : {}}
       style={{
-        position: 'relative', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
+        position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%',
+        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
         padding: 20, textAlign: 'center', boxShadow: 'var(--shadow-sm)', transition: 'box-shadow 0.2s',
         opacity: isInactive ? 0.55 : 1, filter: isInactive ? 'grayscale(45%)' : 'none',
       }}>
@@ -142,9 +145,15 @@ function RewardCard({ reward, index, isAdmin, onEdit, onDelete }) {
         </span>
       )}
       <div style={{ fontSize: 44, lineHeight: 1, marginBottom: 10 }}>{reward.icon || '🎁'}</div>
-      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{reward.name}</p>
-      {reward.description && <p style={{ fontSize: 12, color: 'var(--text-muted)', minHeight: 30, marginBottom: 10 }}>{reward.description}</p>}
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 800, fontSize: 16, color: 'var(--accent)', background: 'var(--accent-bg)', borderRadius: 8, padding: '4px 12px' }}>
+      <p style={{
+        fontWeight: 700, fontSize: 15, marginBottom: 4, width: '100%',
+        overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+      }}>{reward.name}</p>
+      <p style={{
+        fontSize: 12, color: 'var(--text-muted)', width: '100%', minHeight: 32, marginBottom: 10,
+        overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+      }}>{reward.description}</p>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 800, fontSize: 16, color: 'var(--accent)', background: 'var(--accent-bg)', borderRadius: 8, padding: '4px 12px', marginTop: 'auto' }}>
         <Star size={14} color="var(--accent)" fill="var(--accent)" /> {reward.price}
       </span>
 
@@ -216,8 +225,8 @@ function RewardFormModal({ open, reward, onClose, onSaved }) {
     <Modal open={open} onClose={onClose} title={t(isEdit ? 'rewards.edit_modal_title' : 'rewards.create_modal_title')}>
       <form onSubmit={submit}>
         <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>{t('rewards.name_label')}</label>
-          <input style={{ ...inputStyle(!!error), marginTop: 6 }} value={form.name}
+          <label style={labelStyle}>{t('rewards.name_label')} <span style={{ color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none' }}>{form.name.length}/{NAME_MAX_LENGTH}</span></label>
+          <input style={{ ...inputStyle(!!error), marginTop: 6 }} value={form.name} maxLength={NAME_MAX_LENGTH}
             onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setError('') }} autoFocus />
         </div>
         <div style={{ marginBottom: 16 }}>
@@ -227,7 +236,7 @@ function RewardFormModal({ open, reward, onClose, onSaved }) {
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>{t('rewards.description_label')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('rewards.description_optional')}</span></label>
-          <textarea style={{ ...inputStyle(false), marginTop: 6, resize: 'vertical', minHeight: 64 }}
+          <textarea style={{ ...inputStyle(false), marginTop: 6, resize: 'vertical', minHeight: 64 }} maxLength={DESCRIPTION_MAX_LENGTH}
             value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
         </div>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>

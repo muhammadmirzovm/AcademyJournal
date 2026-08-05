@@ -95,6 +95,51 @@ def test_add_stickers_direct(teacher_client, group, student):
 
 
 @pytest.mark.django_db
+def test_exam_autosave_persists_without_finishing_or_notifying(teacher_client, group, student, monkeypatch):
+    from groups.models import GroupMembership, Exam
+
+    GroupMembership.objects.create(group=group, student=student)
+    exam = Exam.objects.create(group=group, name='Midterm', question_count=3, status=Exam.ACTIVE)
+
+    notified = []
+    monkeypatch.setattr('groups.views._notify_exam_finished', lambda *a, **k: notified.append(a))
+
+    res = teacher_client.post(f'/api/groups/{group.id}/exams/{exam.id}/submit/', {
+        'results': [{'student': student.id, 'scores': [4, 5, 3], 'comments': ['', '', '']}],
+        'finish': False,
+    }, format='json')
+    assert res.status_code == 200
+
+    exam.refresh_from_db()
+    assert exam.status == Exam.ACTIVE  # autosave must not finish the exam
+    assert notified == []  # and must not notify students/parents
+
+    result = exam.results.get(student=student)
+    assert result.scores == [4, 5, 3]  # but the scores are actually persisted
+
+
+@pytest.mark.django_db
+def test_exam_finish_marks_finished_and_notifies(teacher_client, group, student, monkeypatch):
+    from groups.models import GroupMembership, Exam
+
+    GroupMembership.objects.create(group=group, student=student)
+    exam = Exam.objects.create(group=group, name='Midterm', question_count=3, status=Exam.ACTIVE)
+
+    notified = []
+    monkeypatch.setattr('groups.views._notify_exam_finished', lambda *a, **k: notified.append(a))
+
+    res = teacher_client.post(f'/api/groups/{group.id}/exams/{exam.id}/submit/', {
+        'results': [{'student': student.id, 'scores': [4, 5, 3], 'comments': ['', '', '']}],
+        'finish': True,
+    }, format='json')
+    assert res.status_code == 200
+
+    exam.refresh_from_db()
+    assert exam.status == Exam.FINISHED
+    assert len(notified) == 1
+
+
+@pytest.mark.django_db
 def test_daily_report_skips_day_off_groups(academy, teacher, monkeypatch):
     import datetime
     from groups.models import GroupDayOff

@@ -979,7 +979,14 @@ class ExamDetailView(APIView):
 class ExamSubmitView(APIView):
     """
     POST /groups/{gid}/exams/{eid}/submit/
-    Body: { results: [{ student: id, scores: [0-5, ...] }, ...] }
+    Body: { results: [{ student: id, scores: [0-5, ...] }, ...], finish: bool }
+
+    Scores are always persisted per-student (upsert), so this doubles as an
+    autosave endpoint while a teacher is still grading. Pass finish=false to
+    save progress without marking the exam finished or notifying students —
+    the frontend calls this on every change while grading is in progress, and
+    only sends finish=true from the explicit "save results" button. Omitting
+    `finish` defaults to true so older clients keep their original behavior.
     """
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -988,6 +995,7 @@ class ExamSubmitView(APIView):
         if not (request.user.role == 'admin' or exam.group.teacher == request.user):
             return Response({'detail': 'Only the teacher or admin can submit exam results.'}, status=403)
         results_data = request.data.get('results', [])
+        finish = request.data.get('finish', True)
         was_already_finished = exam.status == Exam.FINISHED
         existing = {r.student_id: r for r in exam.results.all()}
 
@@ -1023,15 +1031,16 @@ class ExamSubmitView(APIView):
                 },
             )
 
-        exam.status = Exam.FINISHED
-        exam.save(update_fields=['status'])
+        if finish:
+            exam.status = Exam.FINISHED
+            exam.save(update_fields=['status'])
 
-        if changed_student_ids:
-            try:
-                _notify_exam_finished(exam, changed_student_ids, send_group_summary=not was_already_finished)
-            except Exception:
-                import logging
-                logging.getLogger(__name__).error('exam_finished notify error', exc_info=True)
+            if changed_student_ids:
+                try:
+                    _notify_exam_finished(exam, changed_student_ids, send_group_summary=not was_already_finished)
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).error('exam_finished notify error', exc_info=True)
 
         return Response(ExamSerializer(exam).data)
 
