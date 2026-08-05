@@ -466,7 +466,12 @@
     "end_lesson": "Darsni yakunlash",
     "ending": "Xabar yuborilmoqda…",
     "toast_ended": "Dars yakunlandi — {{count}} ta o'quvchi xabardor qilindi!",
-    "toast_fail_end": "Xabar yuborishda xatolik."
+    "toast_fail_end": "Xabar yuborishda xatolik.",
+    "end_confirm_title": "Darsni yakunlaysizmi?",
+    "end_warn_no_homework": "Uy vazifasi hali kiritilmagan.",
+    "end_warn_unscored": "{{count}} ta o'quvchiga hali baho qo'yilmagan.",
+    "end_anyway": "Baribir yakunlash",
+    "cancel": "Bekor qilish"
   },
   "profile": {
     "edit": "Profilni tahrirlash",

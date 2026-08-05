@@ -466,7 +466,12 @@
     "end_lesson": "End Lesson",
     "ending": "Notifying…",
     "toast_ended": "Lesson ended — {{count}} students notified!",
-    "toast_fail_end": "Failed to send notifications."
+    "toast_fail_end": "Failed to send notifications.",
+    "end_confirm_title": "End this lesson?",
+    "end_warn_no_homework": "No homework has been assigned yet.",
+    "end_warn_unscored": "{{count}} students haven't been scored yet.",
+    "end_anyway": "End anyway",
+    "cancel": "Cancel"
   },
   "profile": {
     "edit": "Edit profile",

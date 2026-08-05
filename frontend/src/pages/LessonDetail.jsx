@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Save, Loader2, CheckSquare, Star, BookOpen, Users, ClipboardList, BellRing } from 'lucide-react'
+import { ChevronRight, Save, Loader2, CheckSquare, Star, BookOpen, Users, ClipboardList, BellRing, AlertTriangle } from 'lucide-react'
 import { getGroup, getMembers, getLessons, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import Modal from '../components/ui/Modal'
 
 export default function LessonDetail() {
   const { groupId, lessonId } = useParams()
@@ -23,10 +24,16 @@ export default function LessonDetail() {
   const [tab, setTab]               = useState('attendance')
   const [loading, setLoading]       = useState(true)
   const [ending, setEnding]         = useState(false)
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
 
   const isTeacher = user?.role === 'teacher' && group?.teacher === user?.id
 
+  const hasHomework  = !!homework.assignment?.trim()
+  const scoredIds    = new Set(scores.map(s => s.student))
+  const unscoredCount = members.filter(m => !scoredIds.has(m.id)).length
+
   const handleEndLesson = async () => {
+    setShowEndConfirm(false)
     setEnding(true)
     try {
       const { data } = await endLesson(groupId, lessonId)
@@ -35,6 +42,14 @@ export default function LessonDetail() {
       show(t('lesson.toast_fail_end'), 'error')
     } finally {
       setEnding(false)
+    }
+  }
+
+  const attemptEndLesson = () => {
+    if (!hasHomework || unscoredCount > 0) {
+      setShowEndConfirm(true)
+    } else {
+      handleEndLesson()
     }
   }
 
@@ -86,7 +101,7 @@ export default function LessonDetail() {
           <motion.button
             whileHover={{ translateY: -1 }}
             whileTap={{ scale: 0.97 }}
-            onClick={handleEndLesson}
+            onClick={attemptEndLesson}
             disabled={ending}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -141,6 +156,30 @@ export default function LessonDetail() {
           )}
         </motion.div>
       </AnimatePresence>
+
+      <Modal open={showEndConfirm} onClose={() => setShowEndConfirm(false)} title={t('lesson.end_confirm_title')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
+          {!hasHomework && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', borderRadius: 9, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <AlertTriangle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('lesson.end_warn_no_homework')}</span>
+            </div>
+          )}
+          {unscoredCount > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', borderRadius: 9, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <AlertTriangle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('lesson.end_warn_unscored', { count: unscoredCount })}</span>
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={() => setShowEndConfirm(false)} style={ghostBtn}>{t('lesson.cancel')}</button>
+          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleEndLesson}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+            <BellRing size={14} /> {t('lesson.end_anyway')}
+          </motion.button>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -540,3 +579,4 @@ function Spinner() {
 }
 
 const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 7, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }
+const ghostBtn   = { padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }
