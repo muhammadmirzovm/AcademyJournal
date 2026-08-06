@@ -11,7 +11,7 @@ STATUS_COLORS = {
 
 @admin.register(Reward)
 class RewardAdmin(admin.ModelAdmin):
-    list_display   = ('icon_preview', 'name', 'price', 'stock', 'status_badge', 'category', 'sort_order')
+    list_display   = ('image_preview', 'name', 'price', 'stock', 'status_badge', 'category', 'sort_order')
     list_editable  = ('price', 'stock', 'sort_order')
     list_filter    = ('status', 'category')
     search_fields  = ('name', 'description')
@@ -19,10 +19,12 @@ class RewardAdmin(admin.ModelAdmin):
     actions        = ('make_available', 'make_coming_soon', 'make_hidden')
 
     @admin.display(description='')
-    def icon_preview(self, obj):
-        if not obj.icon:
-            return '—'
-        return format_html('<span style="font-size:22px">{}</span>', obj.icon)
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="width:32px;height:32px;object-fit:cover;border-radius:6px">', obj.image.url)
+        if obj.icon:
+            return format_html('<span style="font-size:22px">{}</span>', obj.icon)
+        return '—'
 
     @admin.display(description='Holat')
     def status_badge(self, obj):

@@ -8,7 +8,7 @@ class RewardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reward
         fields = (
-            'id', 'name', 'description', 'icon', 'price', 'stock',
+            'id', 'name', 'description', 'icon', 'image', 'price', 'stock',
             'category', 'status', 'sort_order', 'badge', 'created_at',
         )
         read_only_fields = ('id', 'created_at')

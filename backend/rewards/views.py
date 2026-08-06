@@ -11,12 +11,12 @@ class RewardListCreateView(APIView):
 
     def get(self, request):
         rewards = Reward.objects.exclude(status=Reward.Status.HIDDEN)
-        return Response(RewardSerializer(rewards, many=True).data)
+        return Response(RewardSerializer(rewards, many=True, context={'request': request}).data)
 
     def post(self, request):
         if request.user.role != 'admin':
             return Response({'detail': 'Only an admin can add rewards.'}, status=403)
-        serializer = RewardSerializer(data=request.data)
+        serializer = RewardSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=201)
@@ -29,7 +29,7 @@ class RewardDetailView(APIView):
         if request.user.role != 'admin':
             return Response({'detail': 'Only an admin can edit rewards.'}, status=403)
         reward = get_object_or_404(Reward, pk=pk)
-        serializer = RewardSerializer(reward, data=request.data, partial=True)
+        serializer = RewardSerializer(reward, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)

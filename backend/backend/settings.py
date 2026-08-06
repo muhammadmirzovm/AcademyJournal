@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'academies',
     'auditlog',
     'rewards',
+    'coins',
 ]
 
 MIDDLEWARE = [

@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
 import { CardSkeleton } from '../components/ui/Skeleton'
 
-const CATEGORIES = ['snack', 'stationery', 'merch', 'discount', 'other']
+const CATEGORIES = ['snack', 'stationery', 'merch', 'discount', 'coupon', 'other']
 const NAME_MAX_LENGTH = 40
 const DESCRIPTION_MAX_LENGTH = 100
 
@@ -144,7 +144,11 @@ function RewardCard({ reward, index, isAdmin, onEdit, onDelete }) {
           {reward.badge.label}
         </span>
       )}
-      <div style={{ fontSize: 44, lineHeight: 1, marginBottom: 10 }}>{reward.icon || '🎁'}</div>
+      {reward.image ? (
+        <img src={reward.image} alt={reward.name} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, marginBottom: 10 }} />
+      ) : (
+        <div style={{ fontSize: 44, lineHeight: 1, marginBottom: 10 }}>{reward.icon || '🎁'}</div>
+      )}
       <p style={{
         fontWeight: 700, fontSize: 15, marginBottom: 4, width: '100%',
         overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
@@ -197,24 +201,51 @@ function RewardFormModal({ open, reward, onClose, onSaved }) {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
 
   useEffect(() => {
     if (open) {
       setForm(reward
         ? { name: reward.name, description: reward.description || '', icon: reward.icon || '', price: reward.price, stock: reward.stock, category: reward.category, status: reward.status }
         : emptyForm)
+      setImageFile(null)
+      setImagePreview(reward?.image || '')
       setError('')
     }
   }, [open, reward])
+
+  const handleImageChange = e => {
+    const file = e.target.files[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
 
   const submit = async e => {
     e.preventDefault()
     if (!form.name.trim()) { setError(t('rewards.err_name_required')); return }
     if (!form.price || Number(form.price) <= 0) { setError(t('rewards.err_price_required')); return }
     setLoading(true)
-    const payload = { ...form, price: Number(form.price), stock: Number(form.stock) || 0 }
     try {
-      const { data } = isEdit ? await updateReward(reward.id, payload) : await createReward(payload)
+      let data
+      if (imageFile) {
+        const fd = new FormData()
+        fd.append('name', form.name)
+        fd.append('description', form.description)
+        fd.append('icon', form.icon)
+        fd.append('price', Number(form.price))
+        fd.append('stock', Number(form.stock) || 0)
+        fd.append('category', form.category)
+        fd.append('status', form.status)
+        fd.append('image', imageFile)
+        const res = isEdit ? await updateReward(reward.id, fd) : await createReward(fd)
+        data = res.data
+      } else {
+        const payload = { ...form, price: Number(form.price), stock: Number(form.stock) || 0 }
+        const res = isEdit ? await updateReward(reward.id, payload) : await createReward(payload)
+        data = res.data
+      }
       onSaved(data, isEdit)
     } catch {
       show(t(isEdit ? 'rewards.toast_update_fail' : 'rewards.toast_create_fail'), 'error')
@@ -233,6 +264,15 @@ function RewardFormModal({ open, reward, onClose, onSaved }) {
           <label style={labelStyle}>{t('rewards.icon_label')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('rewards.icon_optional')}</span></label>
           <input style={{ ...inputStyle(false), marginTop: 6, maxWidth: 100 }} maxLength={8} placeholder="🎁"
             value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>{t('rewards.image_label')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('rewards.icon_optional')}</span></label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6 }}>
+            {imagePreview && (
+              <img src={imagePreview} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} />
+            )}
+            <input type="file" accept="image/*" onChange={handleImageChange} style={{ fontSize: 13, color: 'var(--text-muted)' }} />
+          </div>
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>{t('rewards.description_label')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('rewards.description_optional')}</span></label>

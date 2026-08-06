@@ -1,8 +1,12 @@
+from io import BytesIO
+
 import pytest
+from PIL import Image
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from academies.models import Academy
-from rewards.models import Reward
+from rewards.models import IMAGE_MAX_DIMENSION, Reward
 
 User = get_user_model()
 
@@ -87,3 +91,41 @@ def test_only_admin_can_delete_reward(admin_user, student_user):
     res = admin_client.delete(f'/api/rewards/{reward.id}/')
     assert res.status_code == 204
     assert not Reward.objects.filter(id=reward.id).exists()
+
+
+@pytest.mark.django_db
+def test_oversized_image_is_shrunk_and_normalized_to_jpeg():
+    buf = BytesIO()
+    Image.new('RGB', (1200, 900), color=(200, 50, 50)).save(buf, format='PNG')
+    buf.seek(0)
+    upload = SimpleUploadedFile('big.png', buf.read(), content_type='image/png')
+
+    reward = Reward.objects.create(name='Big Image Reward', price=10, image=upload)
+    reward.refresh_from_db()
+
+    with Image.open(reward.image.path) as img:
+        assert img.width <= IMAGE_MAX_DIMENSION
+        assert img.height <= IMAGE_MAX_DIMENSION
+        assert img.format == 'JPEG'
+    assert reward.image.name.startswith('rewards/')
+    assert 'rewards/rewards/' not in reward.image.name
+
+
+@pytest.mark.django_db
+def test_coupon_category_accepted(admin_user):
+    admin_client = _client_for('rw_admin')
+    res = admin_client.post('/api/rewards/', {
+        'name': 'Kupon', 'price': 200, 'category': 'coupon', 'status': 'coming_soon',
+    }, format='json')
+    assert res.status_code == 201
+    assert res.data['category'] == 'coupon'
+
+
+@pytest.mark.django_db
+def test_initial_rewards_were_seeded_by_migration():
+    seeded_names = {
+        'Ichimlik (kichik)', 'Ichimlik / shirinlik', 'Snack + ichimlik seti',
+        "Kupon 100 000 so'm", "Kupon 200 000 so'm",
+    }
+    existing = set(Reward.objects.filter(name__in=seeded_names).values_list('name', flat=True))
+    assert existing == seeded_names
