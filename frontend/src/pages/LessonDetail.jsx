@@ -784,55 +784,94 @@ function CloseScreen({ groupId, lessonId, game, presentMembers, onClosed, onBack
     } finally { setSaving(false) }
   }
 
-  const medalFor = id => first === id ? '🥇' : second === id ? '🥈' : third === id ? '🥉' : null
-
   return (
     <div style={{ border: '1.5px solid var(--accent)', borderRadius: 14, padding: 20 }}>
-      <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 16 }}>{t('game.close_title')}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+        <Trophy size={18} color="var(--accent)" />
+        <p style={{ fontWeight: 800, fontSize: 15 }}>{t('game.close_title')}</p>
+      </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
-        <PlaceSelect label="🥇" value={first} onChange={v => handlePick('first', v)} members={presentMembers} exclude={[second, third]} t={t} />
-        <PlaceSelect label="🥈" value={second} onChange={v => handlePick('second', v)} members={presentMembers} exclude={[first, third]} t={t} />
+      <div style={{
+        display: 'grid', gap: 12, marginBottom: 22,
+        gridTemplateColumns: `repeat(auto-fit, minmax(170px, 1fr))`,
+      }}>
+        <PlaceSelect meta={MEDAL_META.first} value={first} coins={rules.p1}
+          onChange={v => handlePick('first', v)} members={presentMembers} exclude={[second, third]} t={t} />
+        <PlaceSelect meta={MEDAL_META.second} value={second} coins={rules.p2}
+          onChange={v => handlePick('second', v)} members={presentMembers} exclude={[first, third]} t={t} />
         {game.can_pick_third && (
-          <PlaceSelect label="🥉" value={third} onChange={v => handlePick('third', v)} members={presentMembers} exclude={[first, second]} t={t} />
+          <PlaceSelect meta={MEDAL_META.third} value={third} coins={rules.p3}
+            onChange={v => handlePick('third', v)} members={presentMembers} exclude={[first, second]} t={t} />
         )}
       </div>
 
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginBottom: 14 }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-          {t('game.attended_label')}
-        </p>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {t('game.attended_label')}
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('game.effort_hint')}</p>
+        </div>
         {presentMembers.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('game.no_one_present')}</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {presentMembers.map(m => {
-              const medal = medalFor(m.id)
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {presentMembers.map((m, i) => {
+              const medalPlace = first === m.id ? 'first' : second === m.id ? 'second' : third === m.id ? 'third' : null
               const name = `${m.first_name} ${m.last_name}`.trim() || m.username
-              if (medal) {
+
+              if (medalPlace) {
+                const meta = MEDAL_META[medalPlace]
+                const coins = meta.coins(rules)
                 return (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', fontSize: 13 }}>
-                    <span style={{ fontSize: 16 }}>{medal}</span> {name}
-                  </div>
+                  <motion.div key={m.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, background: meta.bg, border: `1.5px solid ${meta.color}`, borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface)', border: `1.5px solid ${meta.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>
+                      {meta.emoji}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <p style={{ fontWeight: 600, fontSize: 14 }}>{name}</p>
+                      <p style={{ fontSize: 12, color: meta.color, fontWeight: 600 }}>{t(meta.labelKey)}</p>
+                    </div>
+                    <CoinBadge amount={coins} color={meta.color} />
+                  </motion.div>
                 )
               }
+
               const eff = efforts[m.id]
               const Icon = eff === 2 ? Star : eff === 1 ? CheckSquare : Square
               const color = eff === 2 ? '#F59E0B' : eff === 1 ? 'var(--success)' : 'var(--text-muted)'
+              const stateLabel = eff === 2 ? t('game.effort_good') : eff === 1 ? t('game.effort_ok') : t('game.effort_none')
+              const coins = eff === 2 ? rules.effort_max : eff === 1 ? rules.effort_min : 0
               return (
-                <button key={m.id} onClick={() => cycleEffort(m.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: 8, color: 'var(--text)' }}>
-                  <Icon size={16} color={color} fill={eff !== 0 ? color : 'none'} /> {name}
-                </button>
+                <motion.button key={m.id} onClick={() => cycleEffort(m.id)}
+                  initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
+                  whileTap={{ scale: 0.99 }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)',
+                    border: `1.5px solid ${eff !== 0 ? color : 'var(--border)'}`, borderRadius: 10, padding: '10px 14px',
+                    cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'border-color 0.15s',
+                  }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: eff !== 0 ? `color-mix(in srgb, ${color} 14%, transparent)` : 'var(--bg)', border: `1.5px solid ${eff !== 0 ? color : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={16} color={color} fill={eff !== 0 ? color : 'none'} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 100 }}>
+                    <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{name}</p>
+                    <p style={{ fontSize: 12, color, fontWeight: 600 }}>{stateLabel}</p>
+                  </div>
+                  <CoinBadge amount={coins} color={color} muted={eff === 0} />
+                </motion.button>
               )
             })}
           </div>
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('game.total_distributing')}</span>
-        <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--accent)' }}>{total}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--accent-bg)', borderRadius: 10, padding: '12px 16px', marginBottom: 18 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>{t('game.total_distributing')}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 18, color: 'var(--accent)' }}>
+          <Star size={16} color="var(--accent)" fill="var(--accent)" /> {total}
+        </span>
       </div>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -847,11 +886,34 @@ function CloseScreen({ groupId, lessonId, game, presentMembers, onClosed, onBack
   )
 }
 
-function PlaceSelect({ label, value, onChange, members, exclude, t }) {
+const MEDAL_META = {
+  first:  { emoji: '🥇', color: '#D97706', bg: 'rgba(217,119,6,0.08)',   labelKey: 'game.place_1', coins: rules => rules.p1 },
+  second: { emoji: '🥈', color: '#64748B', bg: 'rgba(100,116,139,0.10)', labelKey: 'game.place_2', coins: rules => rules.p2 },
+  third:  { emoji: '🥉', color: '#B45309', bg: 'rgba(180,83,9,0.08)',    labelKey: 'game.place_3', coins: rules => rules.p3 },
+}
+
+function CoinBadge({ amount, color, muted }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 22 }}>{label}</span>
-      <select value={value} onChange={e => onChange(e.target.value)} style={selectStyle}>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 12,
+      color: muted ? 'var(--text-muted)' : color, background: muted ? 'var(--bg)' : `color-mix(in srgb, ${color} 12%, transparent)`,
+      borderRadius: 999, padding: '4px 10px', flexShrink: 0,
+    }}>
+      <Star size={11} color={muted ? 'var(--text-muted)' : color} fill={muted ? 'none' : color} /> {amount > 0 ? `+${amount}` : amount}
+    </span>
+  )
+}
+
+function PlaceSelect({ meta, value, coins, onChange, members, exclude, t }) {
+  return (
+    <div style={{ border: `1.5px solid ${value ? meta.color : 'var(--border)'}`, background: value ? meta.bg : 'var(--surface)', borderRadius: 12, padding: '12px 14px', transition: 'all 0.2s' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13, color: value ? meta.color : 'var(--text-muted)' }}>
+          <span style={{ fontSize: 18 }}>{meta.emoji}</span> {t(meta.labelKey)}
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: meta.color }}>+{coins}</span>
+      </div>
+      <select value={value} onChange={e => onChange(e.target.value)} style={{ ...selectStyle, width: '100%', minWidth: 0 }}>
         <option value="">{t('game.pick_placeholder')}</option>
         {members.filter(m => !exclude.includes(m.id)).map(m => (
           <option key={m.id} value={m.id}>{`${m.first_name} ${m.last_name}`.trim() || m.username}</option>
