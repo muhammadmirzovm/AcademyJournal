@@ -200,6 +200,23 @@ def test_can_pick_third_flag_respects_min_group_size(teacher_client, teacher, ac
 
 
 @pytest.mark.django_db
+def test_start_response_includes_can_pick_third(teacher_client, lesson, group, students):
+    # Regression: the start response used to omit this flag, so the 3rd-place
+    # picker stayed hidden in the same session until the page was reloaded.
+    _mark_present(lesson, students)  # 5 present, but group has 5 members total < default min of 6
+    res = teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')
+    assert res.status_code == 201
+    assert res.data['can_pick_third'] is False
+
+    sixth = User.objects.create_user(username='g_student5', password='pass1234', role='student', academy=group.teacher.academy)
+    GroupMembership.objects.create(group=group, student=sixth)
+    lesson2 = Lesson.objects.create(group=group, title='Second Lesson', date='2026-08-04')
+    res2 = teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson2.id}/game/start/')
+    assert res2.status_code == 201
+    assert res2.data['can_pick_third'] is True
+
+
+@pytest.mark.django_db
 def test_group_game_history_visible_to_any_authenticated_user(teacher_client, lesson, group, students):
     _mark_present(lesson, students)
     teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')

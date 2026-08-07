@@ -19,14 +19,17 @@ def _is_teacher_or_admin(request, group):
     return request.user.role == 'admin' or group.teacher == request.user
 
 
+def _can_pick_third(lesson, setting):
+    return lesson.group.memberships.count() >= setting.min_group_for_3rd
+
+
 class LessonGameView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, group_pk, lesson_pk):
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
         setting = CoinSetting.get()
-        member_count = lesson.group.memberships.count()
-        can_pick_third = member_count >= setting.min_group_for_3rd
+        can_pick_third = _can_pick_third(lesson, setting)
 
         game = Game.objects.filter(lesson=lesson).first()
         if game:
@@ -84,7 +87,9 @@ class GameStartView(APIView):
         except IntegrityError:
             return Response({'detail': "Bugun bu guruh uchun o'yin allaqachon boshlangan."}, status=400)
 
-        return Response(GameSerializer(game).data, status=201)
+        data = GameSerializer(game).data
+        data['can_pick_third'] = _can_pick_third(lesson, setting)
+        return Response(data, status=201)
 
 
 class GameCancelView(APIView):
