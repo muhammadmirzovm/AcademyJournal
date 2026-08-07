@@ -2,6 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from django.db.models import Sum, Count
 from django.http import HttpResponse
 from asgiref.sync import async_to_sync
@@ -221,7 +222,11 @@ class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
         lesson = self.get_object()
         if lesson.group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher or admin can delete lessons.'}, status=403)
-        return super().destroy(request, *args, **kwargs)
+        game = getattr(lesson, 'game', None)
+        with transaction.atomic():
+            if game is not None and game.status == game.Status.CLOSED:
+                game.reverse_awarded_coins(actor=request.user)
+            return super().destroy(request, *args, **kwargs)
 
 
 # ── Attendance ────────────────────────────────────────────────────────────────

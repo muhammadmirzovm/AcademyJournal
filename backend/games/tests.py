@@ -215,3 +215,32 @@ def test_group_game_history_visible_to_any_authenticated_user(teacher_client, le
     assert res2.status_code == 200
     assert len(res2.data) == 1
     assert res2.data[0]['status'] == 'closed'
+
+
+@pytest.mark.django_db
+def test_deleting_lesson_reverses_awarded_coins(teacher_client, lesson, group, students):
+    _mark_present(lesson, students)
+    teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')
+    teacher_client.post(
+        f'/api/groups/{group.id}/lessons/{lesson.id}/game/close/',
+        {'first': students[0].id, 'second': students[1].id, 'efforts': {}}, format='json',
+    )
+    assert CoinTransaction.balance_for(students[0]) == 5
+    assert CoinTransaction.balance_for(students[1]) == 4
+
+    res = teacher_client.delete(f'/api/groups/{group.id}/lessons/{lesson.id}/')
+    assert res.status_code == 204
+
+    assert CoinTransaction.balance_for(students[0]) == 0
+    assert CoinTransaction.balance_for(students[1]) == 0
+    assert not Game.objects.filter(lesson_id=lesson.id).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_lesson_with_unclosed_game_awards_nothing_to_reverse(teacher_client, lesson, group, students):
+    _mark_present(lesson, students)
+    teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')
+
+    res = teacher_client.delete(f'/api/groups/{group.id}/lessons/{lesson.id}/')
+    assert res.status_code == 204
+    assert CoinTransaction.balance_for(students[0]) == 0
