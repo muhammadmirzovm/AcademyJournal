@@ -20,5 +20,6 @@ urlpatterns = [
     path('api/', include('quiz.urls')),
     path('api/', include('academies.urls')),
     path('api/', include('rewards.urls')),
+    path('api/', include('games.urls')),
     re_path(r'^(?!api/|admin/|static/|media/).*$', serve_spa),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

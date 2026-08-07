@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'auditlog',
     'rewards',
     'coins',
+    'games',
 ]
 
 MIDDLEWARE = [

@@ -11,6 +11,7 @@ import {
 } from '../api/groups'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
 import ExamsTab from '../components/ExamsTab'
+import GameHistoryTab from '../components/GameHistoryTab'
 import { getGames, createGame, deleteGame, getTopics, duplicateGame } from '../api/quiz'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -455,6 +456,7 @@ export default function GroupDetail() {
           { key: 'games',         label: t('quiz.games') },
           { key: 'announcements', label: t('ann.tab') },
           { key: 'exams',         label: t('exam.tab') },
+          { key: 'winners',       label: t('game.history_tab') },
         ].map(item => (
           <button key={item.key} className="tab-btn" onClick={() => setTab(item.key)} style={{
             padding: '8px 18px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, textTransform: 'capitalize', whiteSpace: 'nowrap',
@@ -565,6 +567,9 @@ export default function GroupDetail() {
           groupId={id}
         />
       )}
+
+      {/* Winners history tab */}
+      {tab === 'winners' && <GameHistoryTab groupId={id} t={t} />}
 
       {/* Modals */}
       <AddLessonModal open={showAddLesson} onClose={() => setShowAddLesson(false)} groupId={id}

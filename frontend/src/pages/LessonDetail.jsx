@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Save, Loader2, CheckSquare, Star, BookOpen, Users, ClipboardList, BellRing, AlertTriangle } from 'lucide-react'
-import { getGroup, getMembers, getLessons, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
+import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy } from 'lucide-react'
+import { getGroup, getMembers, getLesson, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
+import { getLessonGame, startGame, cancelGame, closeGame } from '../api/games'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
@@ -69,7 +70,7 @@ export default function LessonDetail() {
       setScores(s.data)
       setJournal(j.data)
       setHomework(hw.data)
-      getLessons(groupId).then(r => setLesson(r.data.find(l => String(l.id) === String(lessonId))))
+      getLesson(groupId, lessonId).then(r => setLesson(r.data))
     }).catch(() => show(t('lesson.toast_fail_load'), 'error'))
     .finally(() => setLoading(false))
   }, [groupId, lessonId])
@@ -122,6 +123,12 @@ export default function LessonDetail() {
       <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 24 }}>
         {lesson ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
       </p>
+
+      {isTeacher && lesson && (
+        <div style={{ marginBottom: 24 }}>
+          <GameBlock groupId={groupId} lessonId={lessonId} lesson={lesson} members={members} attendance={attendance} />
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none' }}>
@@ -542,6 +549,337 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
           {savingSubmission ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
           {savingSubmission ? t('lesson.saving') : homework.submissions.length ? t('lesson.update_homework') : t('lesson.submit_homework')}
         </motion.button>
+      </div>
+    </div>
+  )
+}
+
+// ── Winning game ──────────────────────────────────────────────────────────────
+
+const UZBEK_DAYS = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba']
+const selectStyle = { padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', minWidth: 150 }
+
+function GameBlock({ groupId, lessonId, lesson, members, attendance }) {
+  const [game, setGame]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [closing, setClosing] = useState(false)
+
+  const load = () => {
+    setLoading(true)
+    getLessonGame(groupId, lessonId).then(r => setGame(r.data)).catch(() => {}).finally(() => setLoading(false))
+  }
+  useEffect(load, [groupId, lessonId])
+
+  const presentIds = new Set(attendance.filter(a => a.present).map(a => a.student))
+  const presentMembers = members.filter(m => presentIds.has(m.id))
+
+  if (loading || !game) {
+    return <div style={{ height: 84, borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }} />
+  }
+
+  if (game.status === 'not_started') {
+    return <NotStartedCard groupId={groupId} lessonId={lessonId} lesson={lesson} game={game} onStarted={setGame} />
+  }
+
+  if (game.status === 'in_progress') {
+    if (closing) {
+      return game.is_individual
+        ? <IndividualCloseScreen groupId={groupId} lessonId={lessonId} presentMembers={presentMembers}
+            onClosed={g => { setGame(g); setClosing(false) }} onBack={() => setClosing(false)} />
+        : <CloseScreen groupId={groupId} lessonId={lessonId} game={game} presentMembers={presentMembers}
+            onClosed={g => { setGame(g); setClosing(false) }} onBack={() => setClosing(false)} />
+    }
+    return <InProgressCard groupId={groupId} lessonId={lessonId}
+      onCancelled={load} onFinishClick={() => setClosing(true)} startedAt={game.started_at} />
+  }
+
+  return <ClosedResultsCard game={game} />
+}
+
+function NotStartedCard({ groupId, lessonId, lesson, game, onStarted }) {
+  const { t } = useTranslation(); const { show } = useToast()
+  const [starting, setStarting] = useState(false)
+  const dayName = UZBEK_DAYS[new Date(lesson.date).getDay()]
+  const rules = game.rules
+  const big = game.is_big_day
+
+  const start = async () => {
+    setStarting(true)
+    try {
+      const { data } = await startGame(groupId, lessonId)
+      onStarted(data)
+      show(t('game.toast_started'), 'success')
+    } catch (err) {
+      show(err.response?.data?.detail || t('game.toast_start_fail'), 'error')
+    } finally { setStarting(false) }
+  }
+
+  return (
+    <div style={{ border: `1.5px solid ${big ? '#008E00' : 'var(--border)'}`, borderRadius: 14, padding: 20, background: big ? 'rgba(0,142,0,0.05)' : 'var(--surface)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <Trophy size={18} color={big ? '#008E00' : 'var(--text-muted)'} />
+        <p style={{ fontWeight: 800, fontSize: 15 }}>{t('game.title')}</p>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
+        {dayName} — {big ? <span style={{ color: '#008E00', fontWeight: 700 }}>{t('game.big_day')} ×2</span> : t('game.normal_day')}
+      </p>
+
+      {game.is_individual ? (
+        <p style={{ fontSize: 14, marginBottom: 14 }}>🎯 {rules.individual} {t('game.coins_short')}</p>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 18, marginBottom: 14 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, fontSize: 15 }}>🥇 {rules.p1}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, fontSize: 15 }}>🥈 {rules.p2}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, fontSize: 15 }}>🥉 {rules.p3}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('game.effort_range', { min: rules.effort_min, max: rules.effort_max })}</span>
+        </div>
+      )}
+
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+        {t('game.attended_count', { count: game.attended_count })} · {t('game.total_preview', { total: game.total_preview })}
+      </p>
+
+      <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={start} disabled={starting}
+        style={{ ...primaryBtn, opacity: starting ? 0.7 : 1 }}>
+        {starting && <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />}
+        {starting ? t('game.starting') : t('game.start_btn')}
+      </motion.button>
+    </div>
+  )
+}
+
+function InProgressCard({ groupId, lessonId, startedAt, onCancelled, onFinishClick }) {
+  const { t } = useTranslation(); const { show } = useToast()
+  const [cancelling, setCancelling] = useState(false)
+
+  const cancel = async () => {
+    setCancelling(true)
+    try {
+      await cancelGame(groupId, lessonId)
+      onCancelled()
+      show(t('game.toast_cancelled'), 'info')
+    } catch { show(t('game.toast_cancel_fail'), 'error') }
+    finally { setCancelling(false) }
+  }
+
+  return (
+    <div style={{ border: '1.5px solid var(--accent)', borderRadius: 14, padding: 20, background: 'var(--accent-bg)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <Trophy size={18} color="var(--accent)" />
+        <p style={{ fontWeight: 800, fontSize: 15 }}>{t('game.in_progress_title')}</p>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+        {t('game.started_at', { time: new Date(startedAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) })}
+      </p>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={onFinishClick} style={primaryBtn}>
+          <Trophy size={14} /> {t('game.finish_btn')}
+        </motion.button>
+        <button onClick={cancel} disabled={cancelling} style={{ ...ghostBtn, opacity: cancelling ? 0.7 : 1 }}>
+          {cancelling ? t('game.cancelling') : t('game.cancel_btn')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function IndividualCloseScreen({ groupId, lessonId, presentMembers, onClosed, onBack }) {
+  const { t } = useTranslation(); const { show } = useToast()
+  const [completed, setCompleted] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const student = presentMembers[0]
+
+  const submit = async () => {
+    setSaving(true)
+    try {
+      const { data } = await closeGame(groupId, lessonId, { completed })
+      onClosed(data)
+      show(t('game.toast_closed'), 'success')
+    } catch (err) {
+      show(err.response?.data?.detail || t('game.toast_close_fail'), 'error')
+    } finally { setSaving(false) }
+  }
+
+  if (!student) {
+    return (
+      <div style={{ border: '1.5px solid var(--border)', borderRadius: 14, padding: 20 }}>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{t('game.no_one_present')}</p>
+        <button onClick={onBack} style={ghostBtn}>{t('game.back_btn')}</button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ border: '1.5px solid var(--accent)', borderRadius: 14, padding: 20 }}>
+      <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 14 }}>{`${student.first_name} ${student.last_name}`.trim() || student.username}</p>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <button onClick={() => setCompleted(true)}
+          style={{ flex: 1, minWidth: 140, padding: 14, borderRadius: 10, border: `1.5px solid ${completed ? 'var(--success)' : 'var(--border)'}`, background: completed ? 'rgba(5,150,105,0.1)' : 'transparent', color: completed ? 'var(--success)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer' }}>
+          ✅ {t('game.completed_btn')}
+        </button>
+        <button onClick={() => setCompleted(false)}
+          style={{ flex: 1, minWidth: 140, padding: 14, borderRadius: 10, border: `1.5px solid ${!completed ? 'var(--danger)' : 'var(--border)'}`, background: !completed ? 'rgba(220,38,38,0.1)' : 'transparent', color: !completed ? 'var(--danger)' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer' }}>
+          ☐ {t('game.not_completed_btn')}
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <button onClick={onBack} style={ghostBtn}>{t('game.back_btn')}</button>
+        <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={submit} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
+          {saving && <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />}
+          {saving ? t('game.closing') : t('game.confirm_close_btn')}
+        </motion.button>
+      </div>
+    </div>
+  )
+}
+
+function CloseScreen({ groupId, lessonId, game, presentMembers, onClosed, onBack }) {
+  const { t } = useTranslation(); const { show } = useToast()
+  const [first, setFirst]     = useState('')
+  const [second, setSecond]   = useState('')
+  const [third, setThird]     = useState('')
+  const [efforts, setEfforts] = useState(() => Object.fromEntries(presentMembers.map(m => [m.id, 1])))
+  const [saving, setSaving]   = useState(false)
+
+  const rules = game.applied_rules
+  const showGoodState = rules.effort_min !== rules.effort_max
+
+  const handlePick = (place, value) => {
+    const v = value ? Number(value) : ''
+    if (place === 'first')  { setFirst(v);  if (second === v) setSecond(''); if (third === v) setThird('') }
+    if (place === 'second') { setSecond(v); if (first === v) setFirst('');   if (third === v) setThird('') }
+    if (place === 'third')  { setThird(v);  if (first === v) setFirst('');   if (second === v) setSecond('') }
+  }
+
+  const cycleEffort = id => setEfforts(e => {
+    const cur = e[id]
+    const next = showGoodState ? (cur + 1) % 3 : (cur === 0 ? 1 : 0)
+    return { ...e, [id]: next }
+  })
+
+  const placedIds = new Set([first, second, third].filter(v => v !== ''))
+
+  const total = (() => {
+    let sum = 0
+    if (first)  sum += rules.p1
+    if (second) sum += rules.p2
+    if (third)  sum += rules.p3
+    presentMembers.forEach(m => {
+      if (!placedIds.has(m.id)) {
+        const eff = efforts[m.id]
+        sum += eff === 2 ? rules.effort_max : eff === 1 ? rules.effort_min : 0
+      }
+    })
+    return sum
+  })()
+
+  const submit = async () => {
+    setSaving(true)
+    try {
+      const { data } = await closeGame(groupId, lessonId, { first: first || null, second: second || null, third: third || null, efforts })
+      onClosed(data)
+      show(t('game.toast_closed'), 'success')
+    } catch (err) {
+      show(err.response?.data?.detail || t('game.toast_close_fail'), 'error')
+    } finally { setSaving(false) }
+  }
+
+  const medalFor = id => first === id ? '🥇' : second === id ? '🥈' : third === id ? '🥉' : null
+
+  return (
+    <div style={{ border: '1.5px solid var(--accent)', borderRadius: 14, padding: 20 }}>
+      <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 16 }}>{t('game.close_title')}</p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
+        <PlaceSelect label="🥇" value={first} onChange={v => handlePick('first', v)} members={presentMembers} exclude={[second, third]} t={t} />
+        <PlaceSelect label="🥈" value={second} onChange={v => handlePick('second', v)} members={presentMembers} exclude={[first, third]} t={t} />
+        {game.can_pick_third && (
+          <PlaceSelect label="🥉" value={third} onChange={v => handlePick('third', v)} members={presentMembers} exclude={[first, second]} t={t} />
+        )}
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginBottom: 14 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+          {t('game.attended_label')}
+        </p>
+        {presentMembers.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('game.no_one_present')}</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {presentMembers.map(m => {
+              const medal = medalFor(m.id)
+              const name = `${m.first_name} ${m.last_name}`.trim() || m.username
+              if (medal) {
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', fontSize: 13 }}>
+                    <span style={{ fontSize: 16 }}>{medal}</span> {name}
+                  </div>
+                )
+              }
+              const eff = efforts[m.id]
+              const Icon = eff === 2 ? Star : eff === 1 ? CheckSquare : Square
+              const color = eff === 2 ? '#F59E0B' : eff === 1 ? 'var(--success)' : 'var(--text-muted)'
+              return (
+                <button key={m.id} onClick={() => cycleEffort(m.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: 8, color: 'var(--text)' }}>
+                  <Icon size={16} color={color} fill={eff !== 0 ? color : 'none'} /> {name}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('game.total_distributing')}</span>
+        <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--accent)' }}>{total}</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <button onClick={onBack} style={ghostBtn}>{t('game.back_btn')}</button>
+        <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={submit} disabled={saving || presentMembers.length === 0}
+          style={{ ...primaryBtn, opacity: (saving || presentMembers.length === 0) ? 0.7 : 1 }}>
+          {saving && <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />}
+          {saving ? t('game.closing') : t('game.confirm_close_btn')}
+        </motion.button>
+      </div>
+    </div>
+  )
+}
+
+function PlaceSelect({ label, value, onChange, members, exclude, t }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 22 }}>{label}</span>
+      <select value={value} onChange={e => onChange(e.target.value)} style={selectStyle}>
+        <option value="">{t('game.pick_placeholder')}</option>
+        {members.filter(m => !exclude.includes(m.id)).map(m => (
+          <option key={m.id} value={m.id}>{`${m.first_name} ${m.last_name}`.trim() || m.username}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+function ClosedResultsCard({ game }) {
+  const { t } = useTranslation()
+  const medalFor = r => r.place === 1 ? '🥇' : r.place === 2 ? '🥈' : r.place === 3 ? '🥉' : null
+
+  return (
+    <div style={{ border: '1.5px solid var(--success)', borderRadius: 14, padding: 20, background: 'rgba(5,150,105,0.05)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Trophy size={18} color="var(--success)" />
+        <p style={{ fontWeight: 800, fontSize: 15 }}>{t('game.closed_title')}</p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {game.results.map(r => (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', background: 'var(--surface)', borderRadius: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13 }}>{medalFor(r) && <span style={{ marginRight: 6 }}>{medalFor(r)}</span>}{r.student_name}</span>
+            <span style={{ fontWeight: 700, fontSize: 13, color: r.coins > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
+              {r.coins > 0 ? `+${r.coins}` : '0'} {t('game.coins_short')}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )

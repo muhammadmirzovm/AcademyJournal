@@ -15,6 +15,7 @@ export const giveCoins          = (gid, data)          => api.post(`/groups/${gi
 export const giveStickers       = (gid, data)          => api.post(`/groups/${gid}/stickers/`, data)
 
 export const getLessons         = (gid, page = 1)      => api.get(`/groups/${gid}/lessons/?page=${page}`)
+export const getLesson          = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/`)
 export const createLesson       = (gid, data)          => api.post(`/groups/${gid}/lessons/`, data)
 export const updateLesson       = (gid, lid, data)     => api.patch(`/groups/${gid}/lessons/${lid}/`, data)
 export const deleteLesson       = (gid, lid)           => api.delete(`/groups/${gid}/lessons/${lid}/`)
