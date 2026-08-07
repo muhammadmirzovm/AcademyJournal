@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'rewards',
     'coins',
     'games',
+    'purchases',
 ]
 
 MIDDLEWARE = [

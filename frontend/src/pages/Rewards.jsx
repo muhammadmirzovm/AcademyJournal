@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Gift, Plus, Loader2, Star, Pencil, Trash2 } from 'lucide-react'
+import { Gift, Plus, Minus, Loader2, Star, Pencil, Trash2, ShoppingCart, Receipt, Copy, Check } from 'lucide-react'
 import { getRewards, createReward, updateReward, deleteReward } from '../api/rewards'
+import { purchaseReward, getMyPurchases } from '../api/purchases'
+import { getMyBalance } from '../api/coins'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
@@ -23,18 +25,45 @@ export default function Rewards() {
   const { show }  = useToast()
   const { t }     = useTranslation()
   const isAdmin   = user?.role === 'admin'
+  const isStudent = user?.role === 'student'
 
   const [rewards, setRewards]             = useState([])
   const [loading, setLoading]             = useState(true)
   const [showCreate, setShowCreate]       = useState(false)
   const [editingReward, setEditingReward] = useState(null)
   const [category, setCategory]           = useState('all')
+  const [view, setView]                   = useState('shop') // 'shop' | 'mine'
+  const [balance, setBalance]             = useState(null)
+  const [buyingReward, setBuyingReward]   = useState(null)
+  const [receipt, setReceipt]             = useState(null)
+  const [myPurchases, setMyPurchases]     = useState([])
+  const [purchasesLoading, setPurchasesLoading] = useState(false)
 
   const load = () => {
     setLoading(true)
     getRewards().then(r => setRewards(r.data)).catch(() => show(t('rewards.toast_load_fail'), 'error')).finally(() => setLoading(false))
   }
   useEffect(load, [])
+
+  const loadBalance = () => {
+    if (!isStudent) return
+    getMyBalance().then(r => setBalance(r.data.balance)).catch(() => {})
+  }
+  useEffect(loadBalance, [isStudent])
+
+  const loadMyPurchases = () => {
+    setPurchasesLoading(true)
+    getMyPurchases().then(r => setMyPurchases(r.data)).catch(() => {}).finally(() => setPurchasesLoading(false))
+  }
+  useEffect(() => { if (isStudent && view === 'mine') loadMyPurchases() }, [isStudent, view])
+
+  const handlePurchased = (purchase, quantity) => {
+    setRewards(rs => rs.map(r => r.id === buyingReward.id ? { ...r, stock: r.stock - quantity } : r))
+    setBalance(b => (b ?? 0) - purchase.total_price)
+    setBuyingReward(null)
+    setReceipt(purchase)
+    show(t('rewards.toast_purchased'), 'success')
+  }
 
   const counts = useMemo(() => {
     const c = { all: rewards.length }
@@ -76,13 +105,36 @@ export default function Rewards() {
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{t('rewards.title')}</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('rewards.subtitle')}</p>
         </div>
-        {isAdmin && (
-          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreate(true)} style={primaryBtn}>
-            <Plus size={15} /> {t('rewards.add_button')}
-          </motion.button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {isStudent && (
+            <>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 15, color: 'var(--accent)', background: 'var(--accent-bg)', borderRadius: 8, padding: '7px 14px' }}>
+                <Star size={15} color="var(--accent)" fill="var(--accent)" /> {balance ?? '—'}
+              </span>
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 7, overflow: 'hidden' }}>
+                <button onClick={() => setView('shop')}
+                  style={{ padding: '8px 14px', border: 'none', background: view === 'shop' ? 'var(--accent)' : 'var(--surface)', color: view === 'shop' ? '#fff' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  {t('rewards.view_shop')}
+                </button>
+                <button onClick={() => setView('mine')}
+                  style={{ padding: '8px 14px', border: 'none', borderLeft: '1px solid var(--border)', background: view === 'mine' ? 'var(--accent)' : 'var(--surface)', color: view === 'mine' ? '#fff' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  {t('rewards.view_mine')}
+                </button>
+              </div>
+            </>
+          )}
+          {isAdmin && (
+            <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setShowCreate(true)} style={primaryBtn}>
+              <Plus size={15} /> {t('rewards.add_button')}
+            </motion.button>
+          )}
+        </div>
       </div>
 
+      {isStudent && view === 'mine' ? (
+        <MyPurchasesList purchases={myPurchases} loading={purchasesLoading} onOpenReceipt={setReceipt} />
+      ) : (
+        <>
       {!loading && rewards.length > 0 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
           {[{ key: 'all', label: t('rewards.cat_all') }, ...CATEGORIES.map(cat => ({ key: cat, label: t(`rewards.cat_${cat}`) }))].map(tab => {
@@ -110,25 +162,32 @@ export default function Rewards() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 18 }}>
           {visible.map((r, i) => (
-            <RewardCard key={r.id} reward={r} index={i} isAdmin={isAdmin}
-              onEdit={() => setEditingReward(r)} onDelete={() => handleDelete(r.id)} />
+            <RewardCard key={r.id} reward={r} index={i} isAdmin={isAdmin} isStudent={isStudent} balance={balance}
+              onEdit={() => setEditingReward(r)} onDelete={() => handleDelete(r.id)} onBuy={() => setBuyingReward(r)} />
           ))}
         </div>
+      )}
+        </>
       )}
 
       <RewardFormModal open={showCreate || !!editingReward} reward={editingReward}
         onClose={() => { setShowCreate(false); setEditingReward(null) }}
         onSaved={handleSaved} />
+
+      <BuyModal reward={buyingReward} balance={balance} onClose={() => setBuyingReward(null)} onPurchased={handlePurchased} />
+      <ReceiptModal purchase={receipt} onClose={() => setReceipt(null)} />
     </div>
   )
 }
 
-function RewardCard({ reward, index, isAdmin, onEdit, onDelete }) {
+function RewardCard({ reward, index, isAdmin, isStudent, balance, onEdit, onDelete, onBuy }) {
   const { t } = useTranslation()
   const [confirm, setConfirm] = useState(false)
   const isSoldOut  = reward.status === 'available' && reward.stock <= 0
   const isInactive = reward.status === 'coming_soon' || isSoldOut
   const badgeColor = reward.badge ? BADGE_COLORS[reward.badge.kind] : null
+  const canBuy = isStudent && reward.status === 'available' && reward.stock > 0
+  const canAfford = balance == null || balance >= reward.price
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
@@ -175,6 +234,14 @@ function RewardCard({ reward, index, isAdmin, onEdit, onDelete }) {
             </>
           )}
         </div>
+      )}
+
+      {canBuy && (
+        <motion.button whileHover={canAfford ? { translateY: -1 } : {}} whileTap={canAfford ? { scale: 0.97 } : {}}
+          onClick={onBuy} disabled={!canAfford}
+          style={{ ...primaryBtn, marginTop: 14, width: '100%', justifyContent: 'center', opacity: canAfford ? 1 : 0.5, cursor: canAfford ? 'pointer' : 'not-allowed' }}>
+          <ShoppingCart size={14} /> {t(canAfford ? 'rewards.buy_button' : 'rewards.not_enough')}
+        </motion.button>
       )}
     </motion.div>
   )
@@ -317,6 +384,192 @@ function RewardFormModal({ open, reward, onClose, onSaved }) {
         </div>
       </form>
     </Modal>
+  )
+}
+
+function BuyModal({ reward, balance, onClose, onPurchased }) {
+  const { t } = useTranslation()
+  const { show } = useToast()
+  const [quantity, setQuantity] = useState(1)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => { if (reward) setQuantity(1) }, [reward])
+
+  if (!reward) return null
+  const maxAffordable = balance == null ? reward.stock : Math.max(0, Math.floor(balance / reward.price))
+  const maxQuantity = Math.max(1, Math.min(reward.stock, maxAffordable))
+  const total = reward.price * quantity
+  const remaining = (balance ?? 0) - total
+
+  const submit = async () => {
+    setLoading(true)
+    try {
+      const res = await purchaseReward(reward.id, quantity)
+      onPurchased(res.data, quantity)
+    } catch (err) {
+      show(err?.response?.data?.detail || t('rewards.toast_purchase_fail'), 'error')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={!!reward} onClose={onClose} title={t('rewards.buy_modal_title')}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        {reward.image ? (
+          <img src={reward.image} alt={reward.name} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8 }} />
+        ) : (
+          <div style={{ fontSize: 36, lineHeight: 1 }}>{reward.icon || '🎁'}</div>
+        )}
+        <div>
+          <p style={{ fontWeight: 700, fontSize: 15 }}>{reward.name}</p>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+            <Star size={12} color="var(--accent)" fill="var(--accent)" /> {reward.price} {t('rewards.each')}
+          </span>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <label style={labelStyle}>{t('rewards.quantity_label')}</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
+          <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} style={{ ...iconActionBtn, opacity: quantity <= 1 ? 0.4 : 1 }}>
+            <Minus size={14} />
+          </button>
+          <span style={{ fontSize: 18, fontWeight: 700, minWidth: 24, textAlign: 'center' }}>{quantity}</span>
+          <button type="button" onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))} disabled={quantity >= maxQuantity} style={{ ...iconActionBtn, opacity: quantity >= maxQuantity ? 0.4 : 1 }}>
+            <Plus size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 20, fontSize: 13 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ color: 'var(--text-muted)' }}>{t('rewards.total_label')}</span>
+          <span style={{ fontWeight: 700 }}>{total}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ color: 'var(--text-muted)' }}>{t('rewards.remaining_balance')}</span>
+          <span style={{ fontWeight: 700, color: remaining < 0 ? 'var(--danger)' : 'var(--text)' }}>{remaining}</span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <button type="button" onClick={onClose} style={ghostBtn}>{t('rewards.cancel')}</button>
+        <motion.button type="button" disabled={loading || remaining < 0} whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }}
+          onClick={submit} style={{ ...primaryBtn, opacity: loading || remaining < 0 ? 0.6 : 1 }}>
+          {loading && <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />}
+          {loading ? t('rewards.buying') : t('rewards.confirm_buy')}
+        </motion.button>
+      </div>
+    </Modal>
+  )
+}
+
+function ReceiptModal({ purchase, onClose }) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+  if (!purchase) return null
+
+  const copyCode = () => {
+    navigator.clipboard?.writeText(purchase.code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <Modal open={!!purchase} onClose={onClose} title={t('rewards.receipt_title')}>
+      <div style={{ textAlign: 'center' }}>
+        {purchase.reward_image ? (
+          <img src={purchase.reward_image} alt={purchase.reward_name} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 10, margin: '0 auto 10px' }} />
+        ) : (
+          <div style={{ fontSize: 40, lineHeight: 1, marginBottom: 10 }}>{purchase.reward_icon || '🎁'}</div>
+        )}
+        <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{purchase.reward_name}</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
+          {purchase.quantity} × {purchase.price_at_order} = {purchase.total_price} {t('rewards.coins_suffix')}
+        </p>
+
+        <div style={{ background: 'var(--bg)', border: '1.5px dashed var(--border)', borderRadius: 12, padding: '18px 12px', marginBottom: 16 }}>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('rewards.code_label')}</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: '0.15em', fontFamily: 'monospace' }}>{purchase.code}</span>
+            <button type="button" onClick={copyCode} style={iconActionBtn} title={t('rewards.copy_code')}>
+              {copied ? <Check size={14} color="var(--accent)" /> : <Copy size={14} color="var(--text-muted)" />}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+          <StatusBadge status={purchase.status} t={t} />
+          {purchase.expires_at && purchase.status === 'active' && (
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center' }}>
+              {t('rewards.expires_on')} {new Date(purchase.expires_at).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 20 }}>{t('rewards.receipt_disclaimer')}</p>
+
+        <button type="button" onClick={onClose} style={{ ...primaryBtn, width: '100%', justifyContent: 'center' }}>{t('rewards.close')}</button>
+      </div>
+    </Modal>
+  )
+}
+
+function StatusBadge({ status, t }) {
+  const colors = { active: '#0EA5E9', issued: '#16A34A', expired: '#DC2626' }
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, color: '#fff', background: colors[status] || 'var(--text-muted)' }}>
+      {t(`rewards.status_${status}_purchase`)}
+    </span>
+  )
+}
+
+function MyPurchasesList({ purchases, loading, onOpenReceipt }) {
+  const { t } = useTranslation()
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+        <Loader2 size={22} style={{ animation: 'spin 0.7s linear infinite', color: 'var(--text-muted)' }} />
+      </div>
+    )
+  }
+
+  if (purchases.length === 0) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', paddingTop: 60, paddingBottom: 60 }}>
+        <div style={{ width: 64, height: 64, background: 'var(--accent-bg)', border: '1px solid var(--accent)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <Receipt size={28} color="var(--accent)" />
+        </div>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{t('rewards.no_purchases')}</h3>
+      </motion.div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {purchases.map((p, i) => {
+        const clickable = p.status === 'active'
+        return (
+          <motion.div key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+            onClick={clickable ? () => onOpenReceipt(p) : undefined}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 12, padding: '12px 16px', cursor: clickable ? 'pointer' : 'default',
+            }}>
+            {p.reward_image ? (
+              <img src={p.reward_image} alt={p.reward_name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+            ) : (
+              <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>{p.reward_icon || '🎁'}</div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{p.reward_name} {p.quantity > 1 && `× ${p.quantity}`}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.code}</p>
+            </div>
+            <StatusBadge status={p.status} t={t} />
+          </motion.div>
+        )
+      })}
+    </div>
   )
 }
 
