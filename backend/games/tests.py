@@ -1,10 +1,13 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APIClient
 from academies.models import Academy
 from groups.models import Attendance, Group, GroupMembership, Lesson
 from coins.models import CoinSetting, CoinTransaction
 from games.models import Game
+from rewards.models import Reward
+from purchases.models import Purchase
 
 User = get_user_model()
 
@@ -260,4 +263,31 @@ def test_deleting_lesson_with_unclosed_game_awards_nothing_to_reverse(teacher_cl
 
     res = teacher_client.delete(f'/api/groups/{group.id}/lessons/{lesson.id}/')
     assert res.status_code == 204
+    assert CoinTransaction.balance_for(students[0]) == 0
+
+
+@pytest.mark.django_db
+def test_deleting_lesson_reversal_floors_at_zero_if_coins_already_spent(teacher_client, lesson, group, students):
+    # Student places 1st (+5), then spends most of it on a reward before the
+    # teacher deletes the lesson — the reversal must not push them negative.
+    _mark_present(lesson, students)
+    teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')
+    teacher_client.post(
+        f'/api/groups/{group.id}/lessons/{lesson.id}/game/close/',
+        {'first': students[0].id, 'efforts': {}}, format='json',
+    )
+    assert CoinTransaction.balance_for(students[0]) == 5
+
+    reward = Reward.objects.create(name='Snack', price=3, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.SNACK)
+    Purchase.objects.create(
+        student=students[0], reward=reward, quantity=1, price_at_order=3, total_price=3,
+        code='ABC123', expires_at=timezone.now() + timezone.timedelta(days=14),
+    )
+    CoinTransaction.objects.create(student=students[0], amount=-3, type=CoinTransaction.Type.PURCHASE, reason='Snack')
+    assert CoinTransaction.balance_for(students[0]) == 2
+
+    res = teacher_client.delete(f'/api/groups/{group.id}/lessons/{lesson.id}/')
+    assert res.status_code == 204
+
+    # Floored at 0, not -3 — the 3 already-spent coins aren't clawed back.
     assert CoinTransaction.balance_for(students[0]) == 0

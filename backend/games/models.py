@@ -38,13 +38,19 @@ class Game(models.Model):
         return f'{self.group.name} — {self.date} ({self.status})'
 
     def reverse_awarded_coins(self, actor=None):
-        """Offsets every coin this game handed out with a reversing ledger
-        entry — called when the underlying lesson is deleted, so a removed
-        lesson never leaves stray coins on a student's balance."""
+        """Offsets coins this game handed out with a reversing ledger entry —
+        called when the underlying lesson is deleted. Capped at the
+        student's current balance so someone who already spent those coins
+        (e.g. on a reward) is never pushed negative; already-redeemed coins
+        simply aren't recoverable."""
         from coins.models import CoinTransaction
         for result in self.results.filter(coins__gt=0).select_related('student'):
+            balance = CoinTransaction.balance_for(result.student)
+            reversal = min(result.coins, balance)
+            if reversal <= 0:
+                continue
             CoinTransaction.objects.create(
-                student=result.student, amount=-result.coins, type=CoinTransaction.Type.ADJUSTMENT,
+                student=result.student, amount=-reversal, type=CoinTransaction.Type.ADJUSTMENT,
                 reason=f"Dars o'chirildi: {self.group.name} — {self.date}", created_by=actor,
             )
 
