@@ -12,7 +12,8 @@
     "students": "Students",
     "exams": "Exams",
     "rewards": "Rewards",
-    "coin_report": "Coin report"
+    "coin_report": "Coin report",
+    "scanner": "Scanner"
   },
   "students": {
     "title": "All Students",
@@ -1051,5 +1052,21 @@
     "spend_by_category": "Spend by category",
     "purchases_suffix": "purchases",
     "no_purchases": "No purchases yet."
+  },
+  "scanner": {
+    "title": "Purchase scanner",
+    "subtitle": "Enter a student's redemption code to check and hand out their reward.",
+    "code_placeholder": "CODE",
+    "not_found": "No purchase found with this code.",
+    "lookup_fail": "Failed to look up the code.",
+    "coins_suffix": "coins",
+    "status_active": "Pending",
+    "status_issued": "Issued",
+    "status_expired": "Expired",
+    "issue_btn": "Mark as issued",
+    "issuing": "Marking...",
+    "toast_issued": "Marked as issued!",
+    "toast_issue_fail": "Failed to mark as issued.",
+    "scan_another": "Scan another code"
   }
 }

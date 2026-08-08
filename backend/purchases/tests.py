@@ -162,3 +162,98 @@ def test_admin_expire_and_refund_action(student, admin_user, reward):
     assert purchase.status == Purchase.Status.EXPIRED
     assert CoinTransaction.balance_for(student) == balance_after_purchase + purchase.total_price
     assert reward.stock == stock_after_purchase + purchase.quantity
+
+
+@pytest.mark.django_db
+def test_lookup_finds_purchase_by_code(student, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    code = res.data['code']
+
+    lookup = _client_for('p_admin').get(f'/api/purchases/lookup/{code}/')
+    assert lookup.status_code == 200
+    assert lookup.data['code'] == code
+    assert lookup.data['student_username'] == 'p_student'
+    assert lookup.data['reward_name'] == 'Ichimlik'
+    assert lookup.data['status'] == 'active'
+
+
+@pytest.mark.django_db
+def test_lookup_is_case_insensitive(student, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    code = res.data['code']
+
+    lookup = _client_for('p_admin').get(f'/api/purchases/lookup/{code.lower()}/')
+    assert lookup.status_code == 200
+    assert lookup.data['code'] == code
+
+
+@pytest.mark.django_db
+def test_lookup_unknown_code_returns_404(admin_user):
+    res = _client_for('p_admin').get('/api/purchases/lookup/ZZZZZZ/')
+    assert res.status_code == 404
+
+
+@pytest.mark.django_db
+def test_lookup_requires_admin(student, teacher, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    code = res.data['code']
+
+    for username in ('p_student', 'p_teacher'):
+        lookup = _client_for(username).get(f'/api/purchases/lookup/{code}/')
+        assert lookup.status_code == 403
+
+
+@pytest.mark.django_db
+def test_issue_marks_purchase_issued(student, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase_id = res.data['id']
+
+    issue = _client_for('p_admin').post(f'/api/purchases/{purchase_id}/issue/')
+    assert issue.status_code == 200
+    assert issue.data['status'] == 'issued'
+
+    purchase = Purchase.objects.get(id=purchase_id)
+    assert purchase.status == Purchase.Status.ISSUED
+    assert purchase.issued_by == admin_user
+    assert purchase.issued_at is not None
+
+
+@pytest.mark.django_db
+def test_issue_rejects_already_issued(student, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase_id = res.data['id']
+
+    client = _client_for('p_admin')
+    first = client.post(f'/api/purchases/{purchase_id}/issue/')
+    assert first.status_code == 200
+
+    second = client.post(f'/api/purchases/{purchase_id}/issue/')
+    assert second.status_code == 400
+
+
+@pytest.mark.django_db
+def test_issue_rejects_expired_purchase(student, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase = Purchase.objects.get(id=res.data['id'])
+    purchase.status = Purchase.Status.EXPIRED
+    purchase.save(update_fields=['status'])
+
+    issue = _client_for('p_admin').post(f'/api/purchases/{purchase.id}/issue/')
+    assert issue.status_code == 400
+
+
+@pytest.mark.django_db
+def test_issue_requires_admin(student, teacher, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase_id = res.data['id']
+
+    for username in ('p_student', 'p_teacher'):
+        issue = _client_for(username).post(f'/api/purchases/{purchase_id}/issue/')
+        assert issue.status_code == 403

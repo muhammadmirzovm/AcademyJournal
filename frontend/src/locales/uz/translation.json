@@ -12,7 +12,8 @@
     "students": "O'quvchilar",
     "exams": "Imtihonlar",
     "rewards": "Sovg'alar",
-    "coin_report": "Tangacha hisoboti"
+    "coin_report": "Tangacha hisoboti",
+    "scanner": "Skaner"
   },
   "students": {
     "title": "Barcha o'quvchilar",
@@ -1051,5 +1052,21 @@
     "spend_by_category": "Turkum bo'yicha xarajat",
     "purchases_suffix": "xarid",
     "no_purchases": "Hali xarid qilinmagan."
+  },
+  "scanner": {
+    "title": "Xarid skaneri",
+    "subtitle": "O'quvchining kodini kiriting va sovg'asini bering.",
+    "code_placeholder": "KOD",
+    "not_found": "Bunday kod bilan xarid topilmadi.",
+    "lookup_fail": "Kodni tekshirishda xatolik.",
+    "coins_suffix": "tangacha",
+    "status_active": "Kutilmoqda",
+    "status_issued": "Berildi",
+    "status_expired": "Muddati o'tgan",
+    "issue_btn": "Berildi deb belgilash",
+    "issuing": "Belgilanmoqda...",
+    "toast_issued": "Berildi deb belgilandi!",
+    "toast_issue_fail": "Belgilashda xatolik.",
+    "scan_another": "Boshqa kodni tekshirish"
   }
 }

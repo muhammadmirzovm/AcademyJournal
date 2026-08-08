@@ -11,7 +11,7 @@ from rewards.models import Reward
 
 from .codes import generate_unique_code
 from .models import Purchase
-from .serializers import PurchaseSerializer
+from .serializers import AdminPurchaseSerializer, PurchaseSerializer
 
 # Not admin-configurable — a fixed anti-hoarding rule for the coupon
 # category specifically, distinct from CoinSetting's other knobs.
@@ -78,3 +78,45 @@ class MyPurchasesView(APIView):
     def get(self, request):
         purchases = Purchase.objects.filter(student=request.user).select_related('reward')
         return Response(PurchaseSerializer(purchases, many=True, context={'request': request}).data)
+
+
+class PurchaseLookupView(APIView):
+    """Admin scanner: look up a purchase by its redemption code."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, code):
+        if request.user.role != 'admin':
+            return Response({'detail': "Faqat admin tekshira oladi."}, status=403)
+
+        code = code.strip().upper()
+        purchase = Purchase.objects.filter(code=code).select_related('student', 'reward').first()
+        if not purchase:
+            return Response({'detail': "Bunday kod topilmadi."}, status=404)
+
+        return Response(AdminPurchaseSerializer(purchase, context={'request': request}).data)
+
+
+class PurchaseIssueView(APIView):
+    """Admin scanner: mark a purchase as issued (sovg'a berildi)."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': "Faqat admin belgilay oladi."}, status=403)
+
+        with transaction.atomic():
+            purchase = get_object_or_404(Purchase.objects.select_for_update().select_related('student', 'reward'), pk=pk)
+
+            if purchase.status == Purchase.Status.ISSUED:
+                return Response({'detail': "Bu xarid allaqachon berilgan."}, status=400)
+            if purchase.status == Purchase.Status.EXPIRED or purchase.is_expired:
+                return Response({'detail': "Bu xaridning muddati o'tgan."}, status=400)
+
+            purchase.status = Purchase.Status.ISSUED
+            purchase.issued_by = request.user
+            purchase.issued_at = timezone.now()
+            purchase.save(update_fields=['status', 'issued_by', 'issued_at'])
+
+        return Response(AdminPurchaseSerializer(purchase, context={'request': request}).data)

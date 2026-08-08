@@ -12,7 +12,8 @@
     "students": "Ученики",
     "exams": "Экзамены",
     "rewards": "Награды",
-    "coin_report": "Отчёт по монетам"
+    "coin_report": "Отчёт по монетам",
+    "scanner": "Сканер"
   },
   "students": {
     "title": "Все ученики",
@@ -1051,5 +1052,21 @@
     "spend_by_category": "Расходы по категориям",
     "purchases_suffix": "покупок",
     "no_purchases": "Пока нет покупок."
+  },
+  "scanner": {
+    "title": "Сканер покупок",
+    "subtitle": "Введите код ученика, чтобы проверить и выдать награду.",
+    "code_placeholder": "КОД",
+    "not_found": "Покупка с таким кодом не найдена.",
+    "lookup_fail": "Не удалось проверить код.",
+    "coins_suffix": "монет",
+    "status_active": "Ожидает",
+    "status_issued": "Выдано",
+    "status_expired": "Истёк",
+    "issue_btn": "Отметить как выдано",
+    "issuing": "Отметка...",
+    "toast_issued": "Отмечено как выдано!",
+    "toast_issue_fail": "Не удалось отметить.",
+    "scan_another": "Проверить другой код"
   }
 }

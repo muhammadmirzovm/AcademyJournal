@@ -20,3 +20,15 @@ class PurchaseSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         url = obj.reward.image.url
         return request.build_absolute_uri(url) if request else url
+
+
+class AdminPurchaseSerializer(PurchaseSerializer):
+    student_name     = serializers.SerializerMethodField()
+    student_username = serializers.CharField(source='student.username', read_only=True)
+    is_expired       = serializers.BooleanField(read_only=True)
+
+    class Meta(PurchaseSerializer.Meta):
+        fields = PurchaseSerializer.Meta.fields + ('student_name', 'student_username', 'is_expired')
+
+    def get_student_name(self, obj):
+        return f'{obj.student.first_name} {obj.student.last_name}'.strip() or obj.student.username
