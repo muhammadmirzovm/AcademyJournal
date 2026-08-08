@@ -32,6 +32,11 @@ class CoinSetting(models.Model):
     edit_window_hours      = models.PositiveIntegerField(default=24)
     purchase_expires_days  = models.PositiveIntegerField(default=14)
 
+    # Faqat hisobot/moliyaviy baholash uchun — o'yin hisob-kitobiga ta'sir qilmaydi.
+    coin_value_som = models.PositiveIntegerField(
+        default=0, help_text="1 tangachaning taxminiy real qiymati (so'mda) — faqat hisobot sahifasida ishlatiladi.",
+    )
+
     class Meta:
         verbose_name = 'Tangacha sozlamasi'
         verbose_name_plural = 'Tangacha sozlamalari'

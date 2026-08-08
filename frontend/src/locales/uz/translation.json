@@ -11,7 +11,8 @@
     "language": "Til",
     "students": "O'quvchilar",
     "exams": "Imtihonlar",
-    "rewards": "Sovg'alar"
+    "rewards": "Sovg'alar",
+    "coin_report": "Tangacha hisoboti"
   },
   "students": {
     "title": "Barcha o'quvchilar",
@@ -1048,5 +1049,18 @@
     "history_tab": "G'oliblar tarixi",
     "history_empty": "Hali yakunlangan o'yin yo'q.",
     "history_place": "{{place}}-o'rin"
+  },
+  "coin_report": {
+    "title": "Tangacha hisoboti",
+    "subtitle": "Nechta tangacha hali sarflanmagan va bu real pulda qanchaga tushishi mumkin.",
+    "toast_load_fail": "Hisobotni yuklashda xatolik.",
+    "no_value_hint": "Real pulda taxminiy majburiyatni ko'rish uchun Admin → Coin setting bo'limida \"1 tangacha = ? so'm\" qiymatini kiriting.",
+    "outstanding_balance": "Ochiq qoldiq",
+    "estimated_liability": "Taxminiy majburiyat",
+    "issued_30d": "Berilgan (oxirgi 30 kun)",
+    "spent_30d": "Sarflangan (oxirgi 30 kun)",
+    "spend_by_category": "Turkum bo'yicha xarajat",
+    "purchases_suffix": "xarid",
+    "no_purchases": "Hali xarid qilinmagan."
   }
 }

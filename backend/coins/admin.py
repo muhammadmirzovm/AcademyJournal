@@ -24,6 +24,11 @@ class CoinSettingAdmin(admin.ModelAdmin):
         ("Qoidalar", {
             'fields': ('min_group_for_3rd', 'max_games_per_week', 'edit_window_hours', 'purchase_expires_days'),
         }),
+        ("Hisobot", {
+            'fields': ('coin_value_som',),
+            'description': "Bu qiymat o'yin/xarid hisob-kitobiga ta'sir qilmaydi — faqat 'Tangacha hisoboti' sahifasida "
+                            "ochiq qoldiqni so'mga aylantirish uchun ishlatiladi.",
+        }),
     )
     readonly_fields = ('live_preview',)
 

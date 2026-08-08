@@ -11,7 +11,8 @@
     "language": "Language",
     "students": "Students",
     "exams": "Exams",
-    "rewards": "Rewards"
+    "rewards": "Rewards",
+    "coin_report": "Coin report"
   },
   "students": {
     "title": "All Students",
@@ -1048,5 +1049,18 @@
     "history_tab": "Winners history",
     "history_empty": "No finished games yet.",
     "history_place": "{{place}} place"
+  },
+  "coin_report": {
+    "title": "Coin report",
+    "subtitle": "How many coins are outstanding and what they're worth in real money.",
+    "toast_load_fail": "Failed to load the report.",
+    "no_value_hint": "Set \"1 coin = ? so'm\" in Admin → Coin setting to see a real-money liability estimate.",
+    "outstanding_balance": "Outstanding balance",
+    "estimated_liability": "Estimated liability",
+    "issued_30d": "Issued (last 30 days)",
+    "spent_30d": "Spent (last 30 days)",
+    "spend_by_category": "Spend by category",
+    "purchases_suffix": "purchases",
+    "no_purchases": "No purchases yet."
   }
 }
