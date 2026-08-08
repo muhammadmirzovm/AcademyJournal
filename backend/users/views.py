@@ -192,33 +192,22 @@ class UserStatsView(APIView):
         total   = Attendance.objects.filter(student=user).count()
         present = Attendance.objects.filter(student=user, present=True).count()
 
-        from groups.models import GroupMembership, CoinTransaction
-        total_stickers = (
-            GroupMembership.objects.filter(student=user)
-            .aggregate(total=Sum('sticker_count'))['total'] or 0
-        )
-
-        coin_txns = (
-            CoinTransaction.objects.filter(student=user)
-            .order_by('created_at')
-        )
-        # Cumulative lifetime coins earned, aggregated per day. Sticker
-        # conversions (auto negative txns) are skipped so the trend keeps
-        # rising instead of sawtoothing each time a sticker is earned.
+        from coins.models import CoinTransaction as GlobalCoinTransaction
+        coin_txns = GlobalCoinTransaction.objects.filter(student=user).order_by('created_at')
+        # Running balance over time, aggregated per day (earning from games
+        # raises it, redeeming a reward lowers it — this is the real balance,
+        # not a lifetime-earned counter).
         from collections import OrderedDict
-        earned = 0
+        balance = 0
         daily = OrderedDict()
         for txn in coin_txns:
-            is_sticker_conversion = txn.amount < 0 and (txn.note or '').endswith('sticker(s) earned')
-            if is_sticker_conversion:
-                continue
-            earned = max(0, earned + txn.amount)
+            balance += txn.amount
             day = str(txn.created_at.date())
             if day in daily:
-                daily[day]['total']   = earned
+                daily[day]['total']   = balance
                 daily[day]['amount'] += txn.amount
             else:
-                daily[day] = {'date': day, 'amount': txn.amount, 'total': earned, 'note': None}
+                daily[day] = {'date': day, 'amount': txn.amount, 'total': balance}
         coin_trend = list(daily.values())
 
         student_groups = Group.objects.filter(memberships__student=user).distinct()
@@ -266,7 +255,6 @@ class UserStatsView(APIView):
 
         return Response({
             'role': 'student',
-            'total_stickers': total_stickers,
             'score_trend': score_trend,
             'coin_trend': coin_trend,
             'schedule': schedule,
@@ -362,10 +350,8 @@ class AdminStatsView(APIView):
                     'last_name':     m.student.last_name,
                     'total_score':   0,
                     'total_possible': 0,
-                    'sticker_count': 0,
                     'group_names':   set(),
                 }
-            student_map[sid]['sticker_count'] += m.sticker_count
             student_map[sid]['group_names'].add(m.group.name)
             join_date   = m.joined_at.date()
             lessons     = m.group.lessons.filter(date__gte=join_date)
@@ -386,10 +372,9 @@ class AdminStatsView(APIView):
                 'username':      s['username'],
                 'display_name':  full or s['username'],
                 'comprehension': comp,
-                'sticker_count': s['sticker_count'],
                 'groups':        sorted(s['group_names']),
             })
-        top_students = sorted(top_students, key=lambda x: (x['comprehension'], x['sticker_count']), reverse=True)[:5]
+        top_students = sorted(top_students, key=lambda x: x['comprehension'], reverse=True)[:5]
 
         # ── Analytics charts ──────────────────────────────────────────────────
         from django.db.models import Count

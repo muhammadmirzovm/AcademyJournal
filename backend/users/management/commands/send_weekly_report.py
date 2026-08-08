@@ -65,7 +65,8 @@ def _week_range():
 
 
 def _build_message(parent, week_start, week_end):
-    from groups.models import GroupMembership, Attendance, Score, CoinTransaction
+    from groups.models import GroupMembership, Attendance, Score
+    from coins.models import CoinTransaction
 
     lang = (getattr(parent, 'telegram_lang', None) or 'uz')
     lang = lang if lang in MSG else 'uz'
@@ -78,6 +79,15 @@ def _build_message(parent, week_start, week_end):
         child = ps.student
         name  = f'{child.first_name} {child.last_name}'.strip() or child.username
         text += m['child'].format(name=name)
+
+        # Coins are a global (app-wide) balance now, not per-group, so this is
+        # reported once per child rather than inside each group's block below.
+        child_coins = CoinTransaction.objects.filter(
+            student=child, created_at__date__gte=week_start, created_at__date__lte=week_end,
+        ).values_list('amount', flat=True)
+        total_child_coins = sum(c for c in child_coins if c > 0)
+        if total_child_coins:
+            text += m['coins'].format(coins=total_child_coins)
 
         memberships = list(GroupMembership.objects.filter(student=child, group__is_graduated=False).select_related('group'))
         if not memberships:

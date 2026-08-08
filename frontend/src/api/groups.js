@@ -11,8 +11,6 @@ export const addMemberDirect    = (id, user_id)        => api.post(`/groups/${id
 export const searchStudents     = (search)             => api.get('/auth/admin/students/', { params: { search, page_size: 20 } })
 export const updateMembership   = (gid, mid, data)     => api.patch(`/groups/${gid}/members/${mid}/`, data)
 export const removeMember       = (gid, mid)           => api.delete(`/groups/${gid}/members/${mid}/`)
-export const giveCoins          = (gid, data)          => api.post(`/groups/${gid}/coins/`, data)
-export const giveStickers       = (gid, data)          => api.post(`/groups/${gid}/stickers/`, data)
 
 export const getLessons         = (gid, page = 1)      => api.get(`/groups/${gid}/lessons/?page=${page}`)
 export const getLesson          = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/`)

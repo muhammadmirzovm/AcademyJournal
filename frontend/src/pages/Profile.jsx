@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
-  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Star, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle, Gem, UserCheck, ClipboardCheck,
+  Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle, Gem, UserCheck, ClipboardCheck,
 } from 'lucide-react'
 import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword, connectTelegram, disconnectTelegram, getNotifyInfo, sendDirectNotification } from '../api/users'
 import { useAuth } from '../context/AuthContext'
@@ -394,23 +394,6 @@ export default function Profile() {
         </motion.div>
       )}
 
-      {/* Sticker showcase — students only */}
-      {profile.role === 'student' && (() => {
-        const stickerCount = stats?.total_stickers || 0
-        return (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginBottom: 24, boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-              <div style={{ ...chartIconWrap, background: 'rgba(217,119,6,0.1)' }}>
-                <Star size={16} color="#D97706" fill="#D97706" />
-              </div>
-              <p style={{ fontWeight: 700, fontSize: 14 }}>{t('profile.stickers')}</p>
-            </div>
-            <StickerShowcase count={stickerCount} t={t} />
-          </motion.div>
-        )
-      })()}
-
       {/* Parent link + Telegram status — student profiles, visible to self/teacher/admin */}
       {profile.role === 'student' && parentInfo && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
@@ -597,63 +580,6 @@ export default function Profile() {
           show={show}
         />
       )}
-    </div>
-  )
-}
-
-const STAR_ROTATIONS = [-6, 4, -3, 7, -5, 3, -8, 5, -2, 6]
-const STICKER_COLOR  = { color: '#D97706', bg: 'rgba(217,119,6,0.1)', border: 'rgba(217,119,6,0.3)' }
-
-function StickerShowcase({ count, t }) {
-  if (count === 0) {
-    return (
-      <div style={{ textAlign: 'center', padding: '16px 0' }}>
-        <div style={{ fontSize: 36, marginBottom: 8 }}>⭐</div>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('profile.no_stickers')}</p>
-      </div>
-    )
-  }
-
-  const visibleStars = Math.min(count, 10)
-
-  return (
-    <div>
-      {/* Count */}
-      <div style={{ marginBottom: 18 }}>
-        <motion.p
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 280, damping: 20 }}
-          style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, color: STICKER_COLOR.color, fontFamily: 'var(--font-display)', letterSpacing: '-2px' }}
-        >
-          {count}
-        </motion.p>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontWeight: 500 }}>{t('profile.stickers')}</p>
-      </div>
-
-      {/* Decorative star row */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {Array.from({ length: visibleStars }).map((_, i) => (
-          <motion.div key={i}
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: STAR_ROTATIONS[i % STAR_ROTATIONS.length] }}
-            transition={{ type: 'spring', stiffness: 380, damping: 16, delay: 0.28 + i * 0.04 }}
-            whileHover={{ scale: 1.25, rotate: 0 }}
-            style={{ width: 34, height: 34, borderRadius: 9, background: STICKER_COLOR.bg, border: `1.5px solid ${STICKER_COLOR.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'default' }}
-          >
-            <Star size={16} color={STICKER_COLOR.color} fill={STICKER_COLOR.color} />
-          </motion.div>
-        ))}
-        {count > 10 && (
-          <motion.div
-            initial={{ scale: 0 }} animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 16, delay: 0.7 }}
-            style={{ width: 34, height: 34, borderRadius: 9, background: STICKER_COLOR.bg, border: `1.5px solid ${STICKER_COLOR.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: STICKER_COLOR.color }}
-          >
-            +{count - 10}
-          </motion.div>
-        )}
-      </div>
     </div>
   )
 }

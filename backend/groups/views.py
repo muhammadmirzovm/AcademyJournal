@@ -10,7 +10,7 @@ import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement, Exam, ExamResult
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, HomeworkSubmission, Announcement, Exam, ExamResult
 from .serializers import (
     GroupSerializer, MemberSerializer, LessonSerializer,
     AttendanceSerializer, BulkAttendanceSerializer,
@@ -134,15 +134,6 @@ class GroupMembersView(generics.ListAPIView):
                 )
                 comprehension_map[membership.student.id] = round(score_sum / (lesson_count * 5) * 100)
 
-        # ── Coins (bulk) ──────────────────────────────────────────────────────
-        coin_rows = (
-            CoinTransaction.objects
-            .filter(group=group, student_id__in=student_ids)
-            .values('student')
-            .annotate(total=Sum('amount'))
-        )
-        coin_map = {row['student']: max(0, row['total'] or 0) for row in coin_rows}
-
         # ── Attendance rate (per-student join-date scoped) ────────────────────
         attendance_map = {}
         for membership in memberships:
@@ -167,7 +158,6 @@ class GroupMembersView(generics.ListAPIView):
         )
 
         ctx['comprehension_map'] = comprehension_map
-        ctx['coin_map']          = {sid: coin_map.get(sid, 0) for sid in student_ids}
         ctx['attendance_map']    = attendance_map
         return ctx
 
@@ -596,82 +586,6 @@ class EndLessonView(APIView):
                 logging.getLogger(__name__).error(f'Group chat send failed: {e}', exc_info=True)
 
         return Response({'ok': True, 'notified': len(memberships)})
-
-
-# ── Coins ─────────────────────────────────────────────────────────────────────
-
-class CoinView(APIView):
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def post(self, request, pk):
-        group = get_object_or_404(Group, pk=pk)
-        if group.teacher != request.user and request.user.role != 'admin':
-            return Response({'detail': 'Only the teacher or admin can manage coins.'}, status=403)
-
-        student_id = request.data.get('student')
-        amount     = request.data.get('amount')
-        note       = request.data.get('note', '').strip()
-
-        if not student_id or amount is None:
-            return Response({'detail': 'student and amount are required.'}, status=400)
-
-        try:
-            amount = int(amount)
-        except (ValueError, TypeError):
-            return Response({'detail': 'amount must be an integer.'}, status=400)
-
-        if amount == 0:
-            return Response({'detail': 'amount cannot be zero.'}, status=400)
-
-        membership = get_object_or_404(GroupMembership, group=group, student_id=student_id)
-
-        current = (
-            CoinTransaction.objects
-            .filter(group=group, student_id=student_id)
-            .aggregate(total=Sum('amount'))['total'] or 0
-        )
-
-        # Floor at 0
-        if amount < 0:
-            amount = max(amount, -current)
-        if amount == 0:
-            return Response({'balance': current, 'sticker_count': membership.sticker_count, 'sticker_earned': False})
-
-        CoinTransaction.objects.create(group=group, student_id=student_id, amount=amount, note=note)
-        new_balance = current + amount
-
-        return Response({'balance': new_balance})
-
-
-# ── Stickers ──────────────────────────────────────────────────────────────────
-
-class StickerView(APIView):
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def post(self, request, pk):
-        group = get_object_or_404(Group, pk=pk)
-        if group.teacher != request.user and request.user.role != 'admin':
-            return Response({'detail': 'Only the teacher or admin can manage stickers.'}, status=403)
-
-        student_id = request.data.get('student')
-        amount     = request.data.get('amount')
-
-        if not student_id or amount is None:
-            return Response({'detail': 'student and amount are required.'}, status=400)
-
-        try:
-            amount = int(amount)
-        except (ValueError, TypeError):
-            return Response({'detail': 'amount must be an integer.'}, status=400)
-
-        if amount == 0:
-            return Response({'detail': 'amount cannot be zero.'}, status=400)
-
-        membership = get_object_or_404(GroupMembership, group=group, student_id=student_id)
-        membership.sticker_count = max(0, membership.sticker_count + amount)
-        membership.save()
-
-        return Response({'sticker_count': membership.sticker_count})
 
 
 def _notify_announcement(ann, recipients):

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, CoinTransaction, HomeworkSubmission, Announcement, Exam, ExamResult
+from .models import Group, GroupMembership, Lesson, Attendance, Score, Journal, HomeworkSubmission, Announcement, Exam, ExamResult
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -11,9 +11,7 @@ class MemberSerializer(serializers.ModelSerializer):
     username         = serializers.CharField(source='student.username')
     first_name       = serializers.CharField(source='student.first_name')
     last_name        = serializers.CharField(source='student.last_name')
-    sticker_count    = serializers.IntegerField(read_only=True)
     comprehension    = serializers.SerializerMethodField()
-    coin_balance     = serializers.SerializerMethodField()
     attendance_rate  = serializers.SerializerMethodField()
     has_parent       = serializers.SerializerMethodField()
     student_telegram = serializers.SerializerMethodField()
@@ -22,16 +20,12 @@ class MemberSerializer(serializers.ModelSerializer):
         model  = GroupMembership
         fields = (
             'membership_id', 'id', 'username', 'first_name', 'last_name',
-            'joined_at', 'sticker_count',
-            'comprehension', 'coin_balance', 'attendance_rate',
+            'joined_at', 'comprehension', 'attendance_rate',
             'has_parent', 'student_telegram',
         )
 
     def get_comprehension(self, obj):
         return self.context.get('comprehension_map', {}).get(obj.student.id)
-
-    def get_coin_balance(self, obj):
-        return self.context.get('coin_map', {}).get(obj.student.id, 0)
 
     def get_attendance_rate(self, obj):
         return self.context.get('attendance_map', {}).get(obj.student.id)

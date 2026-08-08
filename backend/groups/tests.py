@@ -79,22 +79,6 @@ def test_attendance_saved(teacher_client, group, student):
 
 
 @pytest.mark.django_db
-def test_add_stickers_direct(teacher_client, group, student):
-    from groups.models import GroupMembership
-    GroupMembership.objects.create(group=group, student=student)
-
-    res = teacher_client.post(f'/api/groups/{group.id}/stickers/', {'student': student.id, 'amount': 10})
-    assert res.status_code == 200
-    assert res.data['sticker_count'] == 10
-    assert GroupMembership.objects.get(group=group, student=student).sticker_count == 10
-
-    # Floored at 0, never goes negative.
-    res2 = teacher_client.post(f'/api/groups/{group.id}/stickers/', {'student': student.id, 'amount': -50})
-    assert res2.status_code == 200
-    assert res2.data['sticker_count'] == 0
-
-
-@pytest.mark.django_db
 def test_exam_autosave_persists_without_finishing_or_notifying(teacher_client, group, student, monkeypatch):
     from groups.models import GroupMembership, Exam
 
