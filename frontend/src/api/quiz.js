@@ -11,6 +11,24 @@ export const createQuestion     = (data)              => api.post('/quiz/questio
 export const updateQuestion     = (id, data)          => api.patch(`/quiz/questions/${id}/`, data)
 export const deleteQuestion     = (id)                => api.delete(`/quiz/questions/${id}/`)
 
+export const downloadQuestionTemplate = async () => {
+  const res = await api.get('/quiz/questions/template/', { responseType: 'blob' })
+  const url  = window.URL.createObjectURL(new Blob([res.data]))
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = 'savollar_shabloni.xlsx'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+export const importQuestions = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/quiz/questions/import/', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
+
 export const getGames           = (gid)               => api.get(`/groups/${gid}/games/`)
 export const createGame         = (gid, data)         => api.post(`/groups/${gid}/games/`, data)
 export const getGame            = (gid, gameId)       => api.get(`/groups/${gid}/games/${gameId}/`)

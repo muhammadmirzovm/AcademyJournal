@@ -835,7 +835,16 @@
     "no_banks": "Нет доступных банков вопросов.",
     "save_and_next": "Сохранить и ещё",
     "close_form": "Закрыть",
-    "solo_quiz": "Соло-квиз"
+    "solo_quiz": "Соло-квиз",
+    "download_template": "Скачать шаблон",
+    "import_excel": "Импорт из Excel",
+    "importing": "Импортируем…",
+    "toast_template_fail": "Не удалось скачать шаблон.",
+    "toast_import_fail": "Не удалось импортировать файл.",
+    "import_result_title": "Результат импорта",
+    "import_created": "Добавлено вопросов: {{count}}",
+    "import_errors_title": "Ошибки ({{count}})",
+    "import_row": "Строка {{row}}"
   },
   "exam": {
     "tab": "Экзамены",

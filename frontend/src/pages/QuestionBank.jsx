@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Pencil, BookOpen, Loader2, X, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Pencil, BookOpen, Loader2, X, Check, ChevronLeft, ChevronRight, Download, Upload, AlertTriangle } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/ui/Modal'
@@ -9,6 +9,7 @@ import {
   getTopics, createTopic, deleteTopic,
   getQuestions, createQuestion, updateQuestion, deleteQuestion,
   getQuestionBanks,
+  downloadQuestionTemplate, importQuestions,
 } from '../api/quiz'
 
 const DIFF_COLOR = { easy: '#22C55E', medium: '#F59E0B', hard: '#EF4444' }
@@ -35,6 +36,9 @@ export default function QuestionBank() {
   const [newTopicName,  setNewTopicName]  = useState('')
   const [addingTopic,   setAddingTopic]   = useState(false)
   const [deletingTopic, setDeletingTopic] = useState(null)
+  const [importing,     setImporting]     = useState(false)
+  const [importResult,  setImportResult]  = useState(null)
+  const fileInputRef = useRef(null)
 
   // Persists topic/difficulty/type/points between "Save & Add Another" clicks
   const [formDefaults, setFormDefaults] = useState({ topic: '', difficulty: 'easy', answer_type: 'mcq', points: 1 })
@@ -110,6 +114,32 @@ export default function QuestionBank() {
       show(t('quiz.toast_q_deleted'), 'info')
       refreshTopics()
     } catch { show(t('quiz.toast_q_fail'), 'error') }
+  }
+
+  const handleDownloadTemplate = async () => {
+    try { await downloadQuestionTemplate() }
+    catch { show(t('quiz.toast_template_fail'), 'error') }
+  }
+
+  const handleImportClick = () => fileInputRef.current?.click()
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImporting(true)
+    try {
+      const { data } = await importQuestions(file)
+      setImportResult(data)
+      if (data.created > 0) {
+        load()
+        refreshTopics()
+      }
+    } catch (err) {
+      show(err?.response?.data?.detail || t('quiz.toast_import_fail'), 'error')
+    } finally {
+      setImporting(false)
+    }
   }
 
   const openNew = () => { setEditingQ(null); setShowForm(true) }
@@ -209,6 +239,17 @@ export default function QuestionBank() {
                 <option value="medium">{t('quiz.medium')}</option>
                 <option value="hard">{t('quiz.hard')}</option>
               </select>
+              <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleFileSelected} style={{ display: 'none' }} />
+              <button onClick={handleDownloadTemplate} title={t('quiz.download_template')}
+                style={{ ...ghostBtn, padding: '8px 12px' }}>
+                <Download size={14} /> {t('quiz.download_template')}
+              </button>
+              <button onClick={handleImportClick} disabled={importing} title={t('quiz.import_excel')}
+                style={{ ...ghostBtn, padding: '8px 12px', opacity: importing ? 0.7 : 1 }}>
+                {importing
+                  ? <><Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> {t('quiz.importing')}</>
+                  : <><Upload size={14} /> {t('quiz.import_excel')}</>}
+              </button>
               <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
                 onClick={showForm ? closeForm : openNew}
                 style={{
@@ -343,6 +384,40 @@ export default function QuestionBank() {
             <Trash2 size={14} /> {t('quiz.delete_topic_btn')}
           </motion.button>
         </div>
+      </Modal>
+
+      {/* Import result modal */}
+      <Modal open={!!importResult} onClose={() => setImportResult(null)} title={t('quiz.import_result_title')}>
+        {importResult && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 9, background: importResult.created > 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)', border: `1px solid ${importResult.created > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.2)'}` }}>
+              <Check size={16} color={importResult.created > 0 ? '#22C55E' : 'var(--text-muted)'} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                {t('quiz.import_created', { count: importResult.created })}
+              </span>
+            </div>
+
+            {importResult.errors?.length > 0 && (
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--danger)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertTriangle size={13} /> {t('quiz.import_errors_title', { count: importResult.errors.length })}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+                  {importResult.errors.map((e, i) => (
+                    <div key={i} style={{ fontSize: 12, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 7, padding: '7px 10px' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--danger)' }}>{t('quiz.import_row', { row: e.row })}:</span>{' '}
+                      <span style={{ color: 'var(--text-muted)' }}>{e.messages.join(', ')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setImportResult(null)} style={ghostBtn}>{t('quiz.close_form')}</button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <style>{`

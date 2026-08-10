@@ -1,7 +1,12 @@
+import io
 import random
+import openpyxl
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.db.models import Count
@@ -79,6 +84,207 @@ class QuestionDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.user.role == 'admin':
             return Question.objects.all()
         return Question.objects.filter(created_by=self.request.user)
+
+
+# ── Bulk import ───────────────────────────────────────────────────────────────
+
+TEMPLATE_HEADERS = ['Mavzu', 'Savol matni', 'Turi', 'Variant A', 'Variant B', 'Variant C', 'Variant D',
+                     "To'g'ri javob", 'Qiyinlik', 'Ball', 'Maslahat']
+TEMPLATE_COL_WIDTHS = [18, 40, 12, 16, 16, 16, 16, 14, 10, 8, 24]
+
+DIFFICULTY_MAP = {
+    'oson': Question.EASY, 'easy': Question.EASY,
+    "o'rta": Question.MEDIUM, 'orta': Question.MEDIUM, 'medium': Question.MEDIUM,
+    'qiyin': Question.HARD, 'murakkab': Question.HARD, 'hard': Question.HARD,
+}
+TRUE_VALUES  = {"to'g'ri", 'togri', 'true', 'ha'}
+FALSE_VALUES = {"noto'g'ri", 'notogri', 'false', "yo'q", 'yoq'}
+
+
+class QuestionTemplateView(APIView):
+    """Downloads a blank .xlsx template (+ instructions + filled examples) for
+    bulk-importing questions — the easiest way to fill a large question bank."""
+
+    permission_classes = [IsTeacher]
+
+    def _header_row(self, ws):
+        fill = PatternFill('solid', fgColor='0D9488')
+        bold_white = Font(bold=True, color='FFFFFF')
+        for i, h in enumerate(TEMPLATE_HEADERS, start=1):
+            cell = ws.cell(row=1, column=i, value=h)
+            cell.font = bold_white
+            cell.fill = fill
+        for i, w in enumerate(TEMPLATE_COL_WIDTHS, start=1):
+            ws.column_dimensions[get_column_letter(i)].width = w
+
+    def get(self, request):
+        wb = openpyxl.Workbook()
+
+        ws = wb.active
+        ws.title = 'Savollar'
+        self._header_row(ws)
+
+        help_ws = wb.create_sheet('Yordam')
+        for i, line in enumerate([
+            "TURI ustuniga quyidagilardan birini yozing: mcq, true_false, open",
+            '',
+            'mcq (4 variantli savol):',
+            '  - Variant A, B, C, D ustunlarini to\'ldiring',
+            "  - To'g'ri javob ustuniga A, B, C yoki D deb yozing",
+            '',
+            'true_false (to\'g\'ri/noto\'g\'ri savol):',
+            '  - Variant ustunlarini bo\'sh qoldiring',
+            "  - To'g'ri javob ustuniga TO'G'RI yoki NOTO'G'RI deb yozing",
+            '',
+            'open (ochiq javob):',
+            '  - Variant ustunlarini bo\'sh qoldiring',
+            "  - To'g'ri javob ixtiyoriy (namunaviy javob yozishingiz mumkin, yoki bo'sh qoldiring)",
+            '',
+            "QIYINLIK ustuniga: oson, o'rta yoki qiyin (bo'sh qoldirsangiz 'oson' deb olinadi)",
+            "BALL ustuniga: son (bo'sh qoldirsangiz 1 deb olinadi)",
+            "MAVZU hali mavjud bo'lmasa, avtomatik yaratiladi — oldindan yaratish shart emas.",
+            '',
+            "'Savollar' varag'ini to'ldirib, saytga yuklang. Namuna uchun 'Namuna' varag'iga qarang.",
+        ], start=1):
+            help_ws.cell(row=i, column=1, value=line)
+        help_ws.column_dimensions['A'].width = 75
+
+        example_ws = wb.create_sheet('Namuna')
+        self._header_row(example_ws)
+        for r, row in enumerate([
+            ['Grammatika', 'Present Simple qachon ishlatiladi?', 'mcq',
+             'Doimiy odat va faktlar uchun', "Hozir sodir bo'layotgan harakat uchun",
+             "O'tgan tugallangan harakat uchun", 'Kelasi reja uchun', 'A', 'oson', 1,
+             "Odat va faktlarni eslang"],
+            ['Grammatika', 'London — Angliya poytaxti.', 'true_false', '', '', '', '',
+             "TO'G'RI", 'oson', 1, ''],
+            ['Yozish', "O'zingiz haqingizda 3 ta gap yozing.", 'open', '', '', '', '',
+             '', "o'rta", 2, ''],
+        ], start=2):
+            for c, val in enumerate(row, start=1):
+                example_ws.cell(row=r, column=c, value=val)
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        response = HttpResponse(
+            buf.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="savollar_shabloni.xlsx"'
+        return response
+
+
+class QuestionImportView(APIView):
+    """Bulk-creates questions from an uploaded .xlsx (built from the template
+    above). Valid rows are imported; invalid rows are skipped and reported
+    with their row number and reason, rather than failing the whole file."""
+
+    permission_classes = [IsTeacher]
+
+    def post(self, request):
+        upload = request.FILES.get('file')
+        if not upload:
+            return Response({'detail': "Fayl yuborilmadi."}, status=400)
+
+        try:
+            wb = openpyxl.load_workbook(upload, data_only=True)
+        except Exception:
+            return Response({'detail': "Faylni ochib bo'lmadi — .xlsx formatida ekanligiga ishonch hosil qiling."}, status=400)
+
+        ws = wb['Savollar'] if 'Savollar' in wb.sheetnames else wb.active
+
+        errors = []
+        to_create = []
+        topic_cache = {}
+
+        for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if row is None or all(c is None or str(c).strip() == '' for c in row):
+                continue
+
+            values = list(row) + [None] * (11 - len(row))
+            topic_name, text, qtype, opt_a, opt_b, opt_c, opt_d, correct, difficulty, points, hint = values[:11]
+
+            topic_name = str(topic_name).strip() if topic_name else ''
+            text       = str(text).strip() if text else ''
+            qtype      = str(qtype).strip().lower() if qtype else ''
+
+            row_errors = []
+            if not topic_name:
+                row_errors.append("Mavzu bo'sh")
+            if not text:
+                row_errors.append('Savol matni bo\'sh')
+            if qtype not in (Question.MCQ, Question.TRUE_FALSE, Question.OPEN):
+                row_errors.append(f"Turi noto'g'ri: \"{qtype}\" (mcq / true_false / open bo'lishi kerak)")
+
+            options = None
+            correct_answer = ''
+
+            if qtype == Question.MCQ:
+                opts = {'a': opt_a, 'b': opt_b, 'c': opt_c, 'd': opt_d}
+                missing = [k.upper() for k, v in opts.items() if not v or not str(v).strip()]
+                if missing:
+                    row_errors.append(f"Variant(lar) bo'sh: {', '.join(missing)}")
+                else:
+                    options = {k: str(v).strip() for k, v in opts.items()}
+                letter = str(correct).strip().lower() if correct else ''
+                if letter not in ('a', 'b', 'c', 'd'):
+                    row_errors.append(f"To'g'ri javob noto'g'ri: \"{correct}\" (A/B/C/D bo'lishi kerak)")
+                else:
+                    correct_answer = letter
+            elif qtype == Question.TRUE_FALSE:
+                val = str(correct).strip().lower() if correct else ''
+                if val in TRUE_VALUES:
+                    correct_answer = 'true'
+                elif val in FALSE_VALUES:
+                    correct_answer = 'false'
+                else:
+                    row_errors.append(f"To'g'ri javob noto'g'ri: \"{correct}\" (TO'G'RI yoki NOTO'G'RI bo'lishi kerak)")
+            elif qtype == Question.OPEN:
+                correct_answer = str(correct).strip() if correct else ''
+
+            diff_raw = str(difficulty).strip().lower() if difficulty else ''
+            if not diff_raw:
+                diff = Question.EASY
+            else:
+                diff = DIFFICULTY_MAP.get(diff_raw)
+                if diff is None:
+                    row_errors.append(f"Qiyinlik noto'g'ri: \"{difficulty}\" (oson / o'rta / qiyin)")
+
+            pts = 1
+            if points not in (None, ''):
+                try:
+                    pts = int(points)
+                    if pts < 1:
+                        raise ValueError
+                except (ValueError, TypeError):
+                    row_errors.append(f"Ball noto'g'ri: \"{points}\"")
+
+            if row_errors:
+                errors.append({'row': idx, 'messages': row_errors})
+                continue
+
+            cache_key = topic_name.lower()
+            topic = topic_cache.get(cache_key)
+            if topic is None:
+                topic = Topic.objects.filter(name__iexact=topic_name, created_by=request.user).first()
+                if topic is None:
+                    topic = Topic.objects.create(name=topic_name, created_by=request.user)
+                topic_cache[cache_key] = topic
+
+            to_create.append(Question(
+                topic=topic, text=text, answer_type=qtype, points=pts, difficulty=diff,
+                options=options, correct_answer=correct_answer,
+                hint=str(hint).strip() if hint else '', created_by=request.user,
+            ))
+
+        created_count = 0
+        if to_create:
+            Question.objects.bulk_create(to_create)
+            created_count = len(to_create)
+
+        ok = created_count > 0 or not errors
+        return Response({'created': created_count, 'errors': errors}, status=200 if ok else 400)
 
 
 # ── Question Banks ─────────────────────────────────────────────────────────────

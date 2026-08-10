@@ -835,7 +835,16 @@
     "no_banks": "No question banks available.",
     "save_and_next": "Save & Add Another",
     "close_form": "Close",
-    "solo_quiz": "Solo Quiz"
+    "solo_quiz": "Solo Quiz",
+    "download_template": "Download template",
+    "import_excel": "Import from Excel",
+    "importing": "Importing…",
+    "toast_template_fail": "Failed to download template.",
+    "toast_import_fail": "Failed to import file.",
+    "import_result_title": "Import result",
+    "import_created": "{{count}} question(s) added",
+    "import_errors_title": "Errors ({{count}})",
+    "import_row": "Row {{row}}"
   },
   "exam": {
     "tab": "Exams",

@@ -835,7 +835,16 @@
     "no_banks": "Savollar banki mavjud emas.",
     "save_and_next": "Saqlash va yana qo'sh",
     "close_form": "Yopish",
-    "solo_quiz": "Solo Quiz"
+    "solo_quiz": "Solo Quiz",
+    "download_template": "Shablonni yuklab olish",
+    "import_excel": "Excel'dan import qilish",
+    "importing": "Import qilinmoqda…",
+    "toast_template_fail": "Shablonni yuklab bo'lmadi.",
+    "toast_import_fail": "Faylni import qilib bo'lmadi.",
+    "import_result_title": "Import natijasi",
+    "import_created": "{{count}} ta savol qo'shildi",
+    "import_errors_title": "Xatoliklar ({{count}})",
+    "import_row": "{{row}}-qator"
   },
   "exam": {
     "tab": "Imtihonlar",
