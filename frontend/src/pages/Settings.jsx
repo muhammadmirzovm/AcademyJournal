@@ -6,7 +6,7 @@ import {
   Building2, Link2, Plus, Copy, Check, Trash2,
   Loader2, Users, GraduationCap,
   Clock, Hash, Shield, Sparkles, AlertCircle, UserX, Send,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -850,15 +850,16 @@ function InvitesTab({ academy, userRole }) {
                 </div>
               </div>
 
-              {/* Group (optional, students only) */}
-              {groups.length > 0 && form.role === 'student' && (
+              {/* Group (optional, students only) — graduated groups excluded */}
+              {groups.some(g => !g.is_graduated) && form.role === 'student' && (
                 <div>
                   <label style={labelStyle}>{t('settings.autojoin_group')}</label>
-                  <select style={{ ...inputStyle(false), appearance: 'none' }}
-                    value={form.group} onChange={e => setForm(f => ({ ...f, group: e.target.value }))}>
-                    <option value="">{t('settings.no_group')}</option>
-                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                  </select>
+                  <Dropdown
+                    value={form.group}
+                    onChange={v => setForm(f => ({ ...f, group: v }))}
+                    placeholder={t('settings.no_group')}
+                    options={groups.filter(g => !g.is_graduated).map(g => ({ value: String(g.id), label: g.name }))}
+                  />
                 </div>
               )}
 
@@ -866,15 +867,15 @@ function InvitesTab({ academy, userRole }) {
               {form.role === 'parent' && (
                 <div>
                   <label style={labelStyle}>{t('settings.link_student')}</label>
-                  <select style={{ ...inputStyle(false), appearance: 'none' }}
-                    value={form.student} onChange={e => setForm(f => ({ ...f, student: e.target.value }))}>
-                    <option value="">{t('settings.no_student')}</option>
-                    {students.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {(s.first_name || s.last_name) ? `${s.first_name} ${s.last_name}`.trim() : s.username}
-                      </option>
-                    ))}
-                  </select>
+                  <Dropdown
+                    value={form.student}
+                    onChange={v => setForm(f => ({ ...f, student: v }))}
+                    placeholder={t('settings.no_student')}
+                    options={students.map(s => ({
+                      value: String(s.id),
+                      label: (s.first_name || s.last_name) ? `${s.first_name} ${s.last_name}`.trim() : s.username,
+                    }))}
+                  />
                 </div>
               )}
 
@@ -976,6 +977,51 @@ function InvitesTab({ academy, userRole }) {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Dropdown ──────────────────────────────────────────────────────────────────
+
+function Dropdown({ value, onChange, options, placeholder }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const onClickOutside = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const selected = options.find(o => o.value === value)
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{ ...inputStyle(false), display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
+        <span style={{ color: selected ? 'var(--text)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <ChevronDown size={15} style={{ color: 'var(--text-muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--surface, var(--card))', border: '1px solid var(--border, rgba(0,0,0,0.1))', borderRadius: 10, overflow: 'hidden', maxHeight: 240, overflowY: 'auto', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', zIndex: 50 }}>
+            <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: value === '' ? 'var(--accent-bg)' : 'transparent', color: value === '' ? 'var(--accent)' : 'var(--text-muted)', fontSize: 13, fontWeight: value === '' ? 700 : 500, cursor: 'pointer', fontStyle: 'italic' }}>
+              {placeholder}
+            </button>
+            {options.map(o => (
+              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: o.value === value ? 'var(--accent-bg)' : 'transparent', color: o.value === value ? 'var(--accent)' : 'var(--text)', fontSize: 13, fontWeight: o.value === value ? 700 : 500, cursor: 'pointer' }}>
+                {o.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

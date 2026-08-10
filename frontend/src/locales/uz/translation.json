@@ -271,6 +271,8 @@
     "quick_exams_desc": "Imtihon natijalari va tayyor guruhlar",
     "quick_students_desc": "Barcha o'quvchilar ro'yxati va statistika",
     "quick_questions_desc": "Savol banki va mavzularni boshqarish",
+    "quick_scanner_desc": "Xarid kodini tekshirish va \"berildi\" deb belgilash",
+    "quick_coin_report_desc": "Ochiq qoldiq, majburiyat, turkum bo'yicha xarajat",
     "leaderboard": "O'quvchilar reytingi",
     "at_risk": "E'tibor talab qiladi",
     "below_80": "80% dan past",
@@ -1051,7 +1053,10 @@
     "spent_30d": "Sarflangan (oxirgi 30 kun)",
     "spend_by_category": "Turkum bo'yicha xarajat",
     "purchases_suffix": "xarid",
-    "no_purchases": "Hali xarid qilinmagan."
+    "no_purchases": "Hali xarid qilinmagan.",
+    "purchase_history": "Xaridlar tarixi",
+    "toast_purchases_fail": "Xaridlar tarixini yuklashda xatolik.",
+    "no_group": "Guruhsiz"
   },
   "scanner": {
     "title": "Xarid skaneri",

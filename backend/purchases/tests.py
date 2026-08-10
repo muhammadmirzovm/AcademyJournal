@@ -4,6 +4,7 @@ from django.test import RequestFactory
 from rest_framework.test import APIClient
 from academies.models import Academy
 from coins.models import CoinTransaction
+from groups.models import Group, GroupMembership
 from rewards.models import Reward
 from purchases.admin import PurchaseAdmin
 from purchases.codes import ALPHABET, CODE_LENGTH, generate_unique_code
@@ -257,3 +258,49 @@ def test_issue_requires_admin(student, teacher, reward):
     for username in ('p_student', 'p_teacher'):
         issue = _client_for(username).post(f'/api/purchases/{purchase_id}/issue/')
         assert issue.status_code == 403
+
+
+@pytest.mark.django_db
+def test_admin_list_includes_student_groups(student, admin_user, teacher, reward):
+    group = Group.objects.create(name='Elementary A', teacher=teacher, class_days=[0, 1, 2])
+    GroupMembership.objects.create(group=group, student=student)
+
+    _give_coins(student, 30)
+    _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+
+    res = _client_for('p_admin').get('/api/purchases/admin-list/')
+    assert res.status_code == 200
+    assert res.data['total'] == 1
+    row = res.data['results'][0]
+    assert row['student_groups'] == ['Elementary A']
+    assert row['reward_name'] == 'Ichimlik'
+    assert row['student_username'] == 'p_student'
+
+
+@pytest.mark.django_db
+def test_admin_list_is_paginated_newest_first(student, admin_user, reward):
+    _give_coins(student, 1000)
+    client = _client_for('p_student')
+    codes = []
+    for _ in range(3):
+        res = client.post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+        codes.append(res.data['code'])
+
+    res = _client_for('p_admin').get('/api/purchases/admin-list/', {'page_size': 2})
+    assert res.status_code == 200
+    assert res.data['total'] == 3
+    assert res.data['pages'] == 2
+    assert len(res.data['results']) == 2
+    # Newest first.
+    assert res.data['results'][0]['code'] == codes[-1]
+
+    res2 = _client_for('p_admin').get('/api/purchases/admin-list/', {'page_size': 2, 'page': 2})
+    assert len(res2.data['results']) == 1
+    assert res2.data['results'][0]['code'] == codes[0]
+
+
+@pytest.mark.django_db
+def test_admin_list_requires_admin(student, teacher):
+    for username in ('p_student', 'p_teacher'):
+        res = _client_for(username).get('/api/purchases/admin-list/')
+        assert res.status_code == 403

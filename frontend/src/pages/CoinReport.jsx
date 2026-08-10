@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Coins, Wallet, TrendingUp, TrendingDown, PiggyBank, Info } from 'lucide-react'
+import { Coins, Wallet, TrendingUp, TrendingDown, PiggyBank, Info, Receipt, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { getCoinReport } from '../api/coins'
+import { getAdminPurchases } from '../api/purchases'
 import { useToast } from '../context/ToastContext'
 
 const CATEGORY_COLORS = {
@@ -14,17 +15,36 @@ const CATEGORY_COLORS = {
   other:      '#64748B',
 }
 
+const STATUS_META = {
+  active:  { color: '#0EA5E9', bg: 'rgba(14,165,233,0.08)' },
+  issued:  { color: '#16A34A', bg: 'rgba(22,163,74,0.08)' },
+  expired: { color: '#DC2626', bg: 'rgba(220,38,38,0.08)' },
+}
+
 export default function CoinReport() {
   const { t }    = useTranslation()
   const { show } = useToast()
   const [report, setReport]   = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const [purchases, setPurchases]         = useState([])
+  const [purchasesLoading, setPurchasesLoading] = useState(true)
+  const [page, setPage]   = useState(1)
+  const [pages, setPages] = useState(1)
+
   const load = () => {
     setLoading(true)
     getCoinReport().then(r => setReport(r.data)).catch(() => show(t('coin_report.toast_load_fail'), 'error')).finally(() => setLoading(false))
   }
   useEffect(load, [])
+
+  useEffect(() => {
+    setPurchasesLoading(true)
+    getAdminPurchases(page).then(r => {
+      setPurchases(r.data.results)
+      setPages(r.data.pages)
+    }).catch(() => show(t('coin_report.toast_purchases_fail'), 'error')).finally(() => setPurchasesLoading(false))
+  }, [page])
 
   const som = n => new Intl.NumberFormat('uz-UZ').format(n)
 
@@ -69,9 +89,88 @@ export default function CoinReport() {
               <SpendByCategory rows={report.spend_by_category} t={t} />
             )}
           </div>
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <Receipt size={16} color="var(--text-muted)" />
+              <p style={{ fontWeight: 700, fontSize: 14 }}>{t('coin_report.purchase_history')}</p>
+            </div>
+            <PurchaseHistory
+              purchases={purchases} loading={purchasesLoading}
+              page={page} pages={pages} onPageChange={setPage} t={t}
+            />
+          </div>
         </>
       )}
     </div>
+  )
+}
+
+function PurchaseHistory({ purchases, loading, page, pages, onPageChange, t }) {
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+        <Loader2 size={22} style={{ animation: 'spin 0.7s linear infinite', color: 'var(--text-muted)' }} />
+      </div>
+    )
+  }
+
+  if (purchases.length === 0) {
+    return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('coin_report.no_purchases')}</p>
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {purchases.map(p => {
+          const meta = STATUS_META[p.status] || STATUS_META.active
+          const initials = (p.student_name?.[0] || p.student_username?.[0] || '?').toUpperCase()
+          return (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)' }}>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: 'var(--accent)', flexShrink: 0 }}>
+                {initials}
+              </div>
+              <div style={{ minWidth: 120 }}>
+                <p style={{ fontWeight: 600, fontSize: 13 }}>{p.student_name}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {p.student_groups.length > 0 ? p.student_groups.join(', ') : t('coin_report.no_group')}
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140 }}>
+                {p.reward_image ? (
+                  <img src={p.reward_image} alt="" style={{ width: 22, height: 22, borderRadius: 5, objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: 16 }}>{p.reward_icon || '🎁'}</span>
+                )}
+                <span style={{ fontSize: 13 }}>{p.reward_name} {p.quantity > 1 && `×${p.quantity}`}</span>
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{p.total_price} 🪙</span>
+              <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>{p.code}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, color: meta.color, background: meta.bg }}>
+                {t(`scanner.status_${p.status}`)}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                {new Date(p.created_at).toLocaleDateString()}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+
+      {pages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 18 }}>
+          <button onClick={() => onPageChange(p => Math.max(1, p - 1))} disabled={page === 1}
+            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg)', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.4 : 1, display: 'flex', alignItems: 'center' }}>
+            <ChevronLeft size={16} />
+          </button>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{page} / {pages}</span>
+          <button onClick={() => onPageChange(p => Math.min(pages, p + 1))} disabled={page === pages}
+            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg)', cursor: page === pages ? 'not-allowed' : 'pointer', opacity: page === pages ? 0.4 : 1, display: 'flex', alignItems: 'center' }}>
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 

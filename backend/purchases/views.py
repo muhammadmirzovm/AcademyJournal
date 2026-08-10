@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from coins.models import CoinSetting, CoinTransaction
+from groups.models import GroupMembership
 from rewards.models import Reward
 
 from .codes import generate_unique_code
@@ -78,6 +79,36 @@ class MyPurchasesView(APIView):
     def get(self, request):
         purchases = Purchase.objects.filter(student=request.user).select_related('reward')
         return Response(PurchaseSerializer(purchases, many=True, context={'request': request}).data)
+
+
+class AdminPurchaseListView(APIView):
+    """Admin-only: paginated history of every purchase academy-wide, with
+    each student's current group(s) for context — powers the purchase list
+    on the coin report page."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'detail': "Faqat admin ko'ra oladi."}, status=403)
+
+        qs = Purchase.objects.select_related('student', 'reward').order_by('-created_at')
+        page      = max(1, int(request.query_params.get('page', 1)))
+        page_size = max(1, min(50, int(request.query_params.get('page_size', 20))))
+        total     = qs.count()
+        pages     = max(1, (total + page_size - 1) // page_size)
+        page      = min(page, pages)
+        purchases = list(qs[(page - 1) * page_size: page * page_size])
+
+        group_map = {}
+        for m in GroupMembership.objects.filter(student_id__in=[p.student_id for p in purchases]).select_related('group'):
+            group_map.setdefault(m.student_id, []).append(m.group.name)
+
+        data = AdminPurchaseSerializer(purchases, many=True, context={'request': request}).data
+        for row, purchase in zip(data, purchases):
+            row['student_groups'] = group_map.get(purchase.student_id, [])
+
+        return Response({'results': data, 'total': total, 'pages': pages, 'page': page})
 
 
 class PurchaseLookupView(APIView):

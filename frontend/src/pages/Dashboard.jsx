@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star, MessageCircle, AlertTriangle, BookMarked, ClipboardList } from 'lucide-react'
+import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star, MessageCircle, AlertTriangle, BookMarked, ClipboardList, ScanLine, PiggyBank } from 'lucide-react'
 import { getGroups, joinGroup, getAcademyAnnouncements, createAcademyAnnouncement, deleteAnnouncement } from '../api/groups'
 import { getAdminStats, getTeacherLeaderboard } from '../api/users'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
@@ -201,7 +201,7 @@ export default function Dashboard() {
         <div className="fade-up-3">
 
           {/* Quick access */}
-          <div className="teacher-quick-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 32 }}>
+          <div className="teacher-quick-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 32 }}>
             {[
               {
                 to: '/students', icon: GraduationCap,
@@ -217,6 +217,16 @@ export default function Dashboard() {
                 to: '/questions', icon: BookMarked,
                 label: t('nav.questions'), desc: t('dashboard.quick_questions_desc'),
                 color: '#8B5CF6', grad: 'linear-gradient(135deg, #8B5CF622, #8B5CF608)', border: '#8B5CF633', glow: '#8B5CF6',
+              },
+              {
+                to: '/scanner', icon: ScanLine,
+                label: t('nav.scanner'), desc: t('dashboard.quick_scanner_desc'),
+                color: '#0891B2', grad: 'linear-gradient(135deg, #0891B222, #0891B208)', border: '#0891B233', glow: '#0891B2',
+              },
+              {
+                to: '/coins/report', icon: PiggyBank,
+                label: t('nav.coin_report'), desc: t('dashboard.quick_coin_report_desc'),
+                color: '#DC2626', grad: 'linear-gradient(135deg, #DC262622, #DC262608)', border: '#DC262633', glow: '#DC2626',
               },
             ].map(({ to, icon: Icon, label, desc, color, grad, border, glow }) => (
               <Link key={to} to={to} style={{ textDecoration: 'none' }}>
