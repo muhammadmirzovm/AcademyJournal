@@ -15,6 +15,12 @@ class PurchaseAdmin(admin.ModelAdmin):
     readonly_fields = ('code', 'price_at_order', 'total_price', 'created_at', 'issued_at')
     actions        = ('mark_issued', 'expire_and_refund')
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(student__academy=request.user.academy)
+
     @admin.action(description='Berildi deb belgilash')
     def mark_issued(self, request, queryset):
         for purchase in queryset.filter(status=Purchase.Status.ACTIVE):

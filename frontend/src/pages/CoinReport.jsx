@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Coins, Wallet, TrendingUp, TrendingDown, PiggyBank, Info, Receipt, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { Coins, Wallet, TrendingUp, TrendingDown, Receipt, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { getCoinReport } from '../api/coins'
 import { getAdminPurchases } from '../api/purchases'
 import { useToast } from '../context/ToastContext'
@@ -63,16 +63,8 @@ export default function CoinReport() {
         </div>
       ) : (
         <>
-          {report.coin_value_som === 0 && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--accent-bg)', border: '1px solid var(--accent)', borderRadius: 10, padding: '12px 16px', marginBottom: 18, fontSize: 13 }}>
-              <Info size={16} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>{t('coin_report.no_value_hint')}</span>
-            </div>
-          )}
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 26 }}>
             <StatCard icon={Wallet} label={t('coin_report.outstanding_balance')} value={`${som(report.outstanding_balance)} 🪙`} color="var(--accent)" />
-            <StatCard icon={PiggyBank} label={t('coin_report.estimated_liability')} value={`${som(report.estimated_liability_som)} so'm`} color="#F59E0B" />
             <StatCard icon={TrendingUp} label={t('coin_report.issued_30d')} value={`${som(report.issued_last_30_days)} 🪙`} color="#16A34A" />
             <StatCard icon={TrendingDown} label={t('coin_report.spent_30d')} value={`${som(report.spent_last_30_days)} 🪙`} color="#DC2626" />
           </div>

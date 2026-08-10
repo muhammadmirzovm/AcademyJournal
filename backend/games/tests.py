@@ -23,6 +23,11 @@ def teacher(academy):
 
 
 @pytest.fixture
+def admin_user(academy):
+    return User.objects.create_user(username='g_admin', password='pass1234', role='admin', academy=academy)
+
+
+@pytest.fixture
 def teacher_client(teacher):
     client = APIClient()
     res = client.post('/api/auth/login/', {'username': 'g_teacher', 'password': 'pass1234'})
@@ -139,13 +144,13 @@ def test_absent_student_cannot_be_placed(teacher_client, lesson, group, students
 
 
 @pytest.mark.django_db
-def test_applied_rules_snapshot_immune_to_later_setting_changes(teacher_client, lesson, group, students):
+def test_applied_rules_snapshot_immune_to_later_setting_changes(teacher_client, lesson, group, students, academy):
     _mark_present(lesson, students)
     teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')
     game = Game.objects.get(lesson=lesson)
     assert game.applied_rules['p1'] == 5
 
-    setting = CoinSetting.get()
+    setting = CoinSetting.get(academy)
     setting.place_1_normal = 999
     setting.save()
 
@@ -267,7 +272,7 @@ def test_deleting_lesson_with_unclosed_game_awards_nothing_to_reverse(teacher_cl
 
 
 @pytest.mark.django_db
-def test_deleting_lesson_reversal_floors_at_zero_if_coins_already_spent(teacher_client, lesson, group, students):
+def test_deleting_lesson_reversal_floors_at_zero_if_coins_already_spent(teacher_client, lesson, group, students, academy):
     # Student places 1st (+5), then spends most of it on a reward before the
     # teacher deletes the lesson — the reversal must not push them negative.
     _mark_present(lesson, students)
@@ -278,7 +283,7 @@ def test_deleting_lesson_reversal_floors_at_zero_if_coins_already_spent(teacher_
     )
     assert CoinTransaction.balance_for(students[0]) == 5
 
-    reward = Reward.objects.create(name='Snack', price=3, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.SNACK)
+    reward = Reward.objects.create(academy=academy, name='Snack', price=3, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.SNACK)
     Purchase.objects.create(
         student=students[0], reward=reward, quantity=1, price_at_order=3, total_price=3,
         code='ABC123', expires_at=timezone.now() + timezone.timedelta(days=14),
@@ -291,3 +296,29 @@ def test_deleting_lesson_reversal_floors_at_zero_if_coins_already_spent(teacher_
 
     # Floored at 0, not -3 — the 3 already-spent coins aren't clawed back.
     assert CoinTransaction.balance_for(students[0]) == 0
+
+
+@pytest.mark.django_db
+def test_admin_from_other_academy_cannot_start_game(lesson, group, students):
+    other_academy = Academy.objects.create(name='Other Games Academy', slug='other-games-academy')
+    other_admin = User.objects.create_user(username='other_g_admin', password='pass1234', role='admin', academy=other_academy)
+
+    client = APIClient()
+    res = client.post('/api/auth/login/', {'username': 'other_g_admin', 'password': 'pass1234'})
+    client.credentials(HTTP_AUTHORIZATION=f'Bearer {res.data["access"]}')
+
+    _mark_present(lesson, students)
+    res = client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')
+    assert res.status_code == 403
+    assert not Game.objects.filter(lesson=lesson).exists()
+
+
+@pytest.mark.django_db
+def test_admin_from_same_academy_can_start_game(admin_user, lesson, group, students):
+    client = APIClient()
+    res = client.post('/api/auth/login/', {'username': 'g_admin', 'password': 'pass1234'})
+    client.credentials(HTTP_AUTHORIZATION=f'Bearer {res.data["access"]}')
+
+    _mark_present(lesson, students)
+    res = client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')
+    assert res.status_code == 201

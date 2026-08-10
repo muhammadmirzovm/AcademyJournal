@@ -78,16 +78,21 @@ def test_mistake_is_corrected_with_reversing_entry_not_edit(student):
 
 
 @pytest.mark.django_db
-def test_coin_setting_is_singleton():
-    s1 = CoinSetting.get()
-    s2 = CoinSetting.get()
+def test_coin_setting_is_singleton_per_academy(academy):
+    other_academy = Academy.objects.create(name='Other Academy', slug='other-academy')
+
+    s1 = CoinSetting.get(academy)
+    s2 = CoinSetting.get(academy)
     assert s1.pk == s2.pk
-    assert CoinSetting.objects.count() == 1
+
+    s3 = CoinSetting.get(other_academy)
+    assert s3.pk != s1.pk
+    assert CoinSetting.objects.count() == 2
 
 
 @pytest.mark.django_db
-def test_coin_setting_defaults_match_spec():
-    s = CoinSetting.get()
+def test_coin_setting_defaults_match_spec(academy):
+    s = CoinSetting.get(academy)
     assert (s.place_1_normal, s.place_2_normal, s.place_3_normal) == (5, 4, 3)
     assert (s.place_1_big, s.place_2_big, s.place_3_big) == (10, 8, 6)
     assert s.big_days == '4,5'
@@ -101,25 +106,19 @@ def test_report_requires_admin(student, teacher):
 
 
 @pytest.mark.django_db
-def test_report_outstanding_balance_and_estimated_liability(admin_user, student):
-    setting = CoinSetting.get()
-    setting.coin_value_som = 1500
-    setting.save()
-
+def test_report_outstanding_balance(admin_user, student):
     CoinTransaction.objects.create(student=student, amount=10, type=CoinTransaction.Type.GAME_PLACE, reason="1-o'rin")
     CoinTransaction.objects.create(student=student, amount=-4, type=CoinTransaction.Type.PURCHASE, reason='Ichimlik')
 
     res = _client_for('coin_admin').get('/api/coins/report/')
     assert res.status_code == 200
-    assert res.data['coin_value_som'] == 1500
     assert res.data['outstanding_balance'] == 6
-    assert res.data['estimated_liability_som'] == 9000
 
 
 @pytest.mark.django_db
-def test_report_spend_by_category_excludes_expired_purchases(admin_user, student):
-    snack = Reward.objects.create(name='Ichimlik', price=10, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.SNACK)
-    coupon = Reward.objects.create(name='Kupon', price=150, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.COUPON)
+def test_report_spend_by_category_excludes_expired_purchases(academy, admin_user, student):
+    snack = Reward.objects.create(academy=academy, name='Ichimlik', price=10, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.SNACK)
+    coupon = Reward.objects.create(academy=academy, name='Kupon', price=150, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.COUPON)
 
     expires_at = timezone.now() + timezone.timedelta(days=14)
     Purchase.objects.create(student=student, reward=snack, quantity=1, price_at_order=10, total_price=10, code='AAA111', status=Purchase.Status.ACTIVE, expires_at=expires_at)
@@ -132,3 +131,16 @@ def test_report_spend_by_category_excludes_expired_purchases(admin_user, student
     assert by_category['snack']['coins'] == 20
     assert by_category['snack']['purchase_count'] == 2
     assert 'coupon' not in by_category  # the only coupon purchase was expired
+
+
+@pytest.mark.django_db
+def test_report_excludes_other_academy_data(academy, admin_user, student):
+    other_academy = Academy.objects.create(name='Other Academy 2', slug='other-academy-2')
+    other_student = User.objects.create_user(username='other_academy_student', password='pass1234', role='student', academy=other_academy)
+
+    CoinTransaction.objects.create(student=student, amount=10, type=CoinTransaction.Type.GAME_PLACE, reason="1-o'rin")
+    CoinTransaction.objects.create(student=other_student, amount=999, type=CoinTransaction.Type.GAME_PLACE, reason="boshqa akademiya")
+
+    res = _client_for('coin_admin').get('/api/coins/report/')
+    assert res.status_code == 200
+    assert res.data['outstanding_balance'] == 10  # not 1009 — other academy excluded

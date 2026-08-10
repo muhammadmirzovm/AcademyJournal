@@ -24,6 +24,7 @@ class Reward(models.Model):
         COMING_SOON  = 'coming_soon',  'Tez kunda'
         HIDDEN       = 'hidden',       'Yashirilgan'
 
+    academy     = models.ForeignKey('academies.Academy', on_delete=models.CASCADE, related_name='rewards')
     name        = models.CharField(max_length=120)
     description = models.CharField(max_length=200, blank=True)
     icon        = models.CharField(max_length=8, blank=True, help_text='Emoji, masalan: 🎁')

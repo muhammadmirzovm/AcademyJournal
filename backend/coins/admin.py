@@ -24,11 +24,6 @@ class CoinSettingAdmin(admin.ModelAdmin):
         ("Qoidalar", {
             'fields': ('min_group_for_3rd', 'max_games_per_week', 'edit_window_hours', 'purchase_expires_days'),
         }),
-        ("Hisobot", {
-            'fields': ('coin_value_som',),
-            'description': "Bu qiymat o'yin/xarid hisob-kitobiga ta'sir qilmaydi — faqat 'Tangacha hisoboti' sahifasida "
-                            "ochiq qoldiqni so'mga aylantirish uchun ishlatiladi.",
-        }),
     )
     readonly_fields = ('live_preview',)
 
@@ -39,14 +34,25 @@ class CoinSettingAdmin(admin.ModelAdmin):
     def live_preview(self, obj):
         return mark_safe('<div id="coin-live-preview" style="font-size:14px;font-weight:600;color:#008E00">…</div>')
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(academy=request.user.academy)
+
     def has_add_permission(self, request):
-        return not CoinSetting.objects.exists()
+        if not request.user.academy:
+            return False
+        return not CoinSetting.objects.filter(academy=request.user.academy).exists()
 
     def has_delete_permission(self, request, obj=None):
         return False
 
     def changelist_view(self, request, extra_context=None):
-        obj = CoinSetting.get()
+        if not request.user.academy:
+            self.message_user(request, "Sizning hisobingiz hech qanday akademiyaga bog'lanmagan.", level='error')
+            return redirect('admin:index')
+        obj = CoinSetting.get(request.user.academy)
         return redirect('admin:coins_coinsetting_change', obj.pk)
 
 

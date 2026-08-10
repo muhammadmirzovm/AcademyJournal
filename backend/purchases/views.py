@@ -34,7 +34,7 @@ class RewardPurchaseView(APIView):
             return Response({'detail': "Miqdor kamida 1 bo'lishi kerak."}, status=400)
 
         with transaction.atomic():
-            reward = get_object_or_404(Reward.objects.select_for_update(), pk=reward_id)
+            reward = get_object_or_404(Reward.objects.select_for_update(), pk=reward_id, academy=request.user.academy)
 
             if reward.status != Reward.Status.AVAILABLE:
                 return Response({'detail': "Bu mahsulot hozircha sotuvda emas."}, status=400)
@@ -62,7 +62,7 @@ class RewardPurchaseView(APIView):
                 reason=f'{reward.name} × {quantity}', created_by=request.user,
             )
 
-            setting = CoinSetting.get()
+            setting = CoinSetting.get(request.user.academy)
             purchase = Purchase.objects.create(
                 student=request.user, reward=reward, quantity=quantity,
                 price_at_order=reward.price, total_price=total,
@@ -92,7 +92,7 @@ class AdminPurchaseListView(APIView):
         if request.user.role != 'admin':
             return Response({'detail': "Faqat admin ko'ra oladi."}, status=403)
 
-        qs = Purchase.objects.select_related('student', 'reward').order_by('-created_at')
+        qs = Purchase.objects.filter(student__academy=request.user.academy).select_related('student', 'reward').order_by('-created_at')
         page      = max(1, int(request.query_params.get('page', 1)))
         page_size = max(1, min(50, int(request.query_params.get('page_size', 20))))
         total     = qs.count()
@@ -121,7 +121,7 @@ class PurchaseLookupView(APIView):
             return Response({'detail': "Faqat admin tekshira oladi."}, status=403)
 
         code = code.strip().upper()
-        purchase = Purchase.objects.filter(code=code).select_related('student', 'reward').first()
+        purchase = Purchase.objects.filter(code=code, student__academy=request.user.academy).select_related('student', 'reward').first()
         if not purchase:
             return Response({'detail': "Bunday kod topilmadi."}, status=404)
 
@@ -138,7 +138,10 @@ class PurchaseIssueView(APIView):
             return Response({'detail': "Faqat admin belgilay oladi."}, status=403)
 
         with transaction.atomic():
-            purchase = get_object_or_404(Purchase.objects.select_for_update().select_related('student', 'reward'), pk=pk)
+            purchase = get_object_or_404(
+                Purchase.objects.select_for_update().select_related('student', 'reward'),
+                pk=pk, student__academy=request.user.academy,
+            )
 
             if purchase.status == Purchase.Status.ISSUED:
                 return Response({'detail': "Bu xarid allaqachon berilgan."}, status=400)

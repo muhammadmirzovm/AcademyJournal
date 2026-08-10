@@ -18,6 +18,23 @@ class RewardAdmin(admin.ModelAdmin):
     readonly_fields = ('opened_at', 'created_at', 'updated_at')
     actions        = ('make_available', 'make_coming_soon', 'make_hidden')
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(academy=request.user.academy)
+
+    def get_exclude(self, request, obj=None):
+        excluded = list(super().get_exclude(request, obj) or [])
+        if not request.user.is_superuser:
+            excluded.append('academy')
+        return excluded
+
+    def save_model(self, request, obj, form, change):
+        if not change and not request.user.is_superuser:
+            obj.academy = request.user.academy
+        super().save_model(request, obj, form, change)
+
     @admin.display(description='')
     def image_preview(self, obj):
         if obj.image:

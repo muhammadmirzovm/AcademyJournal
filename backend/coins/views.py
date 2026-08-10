@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from purchases.models import Purchase
 
-from .models import CoinSetting, CoinTransaction
+from .models import CoinTransaction
 
 
 class MyBalanceView(APIView):
@@ -30,9 +30,8 @@ class CoinReportView(APIView):
         if request.user.role != 'admin':
             return Response({'detail': 'Only an admin can view this report.'}, status=403)
 
-        setting = CoinSetting.get()
         cutoff = timezone.now() - timedelta(days=30)
-        student_txns = CoinTransaction.objects.filter(student__role='student')
+        student_txns = CoinTransaction.objects.filter(student__role='student', student__academy=request.user.academy)
 
         outstanding = student_txns.aggregate(s=Sum('amount'))['s'] or 0
         issued_30d = student_txns.filter(amount__gt=0, created_at__gte=cutoff).aggregate(s=Sum('amount'))['s'] or 0
@@ -41,7 +40,8 @@ class CoinReportView(APIView):
         ).aggregate(s=Sum('amount'))['s'] or 0)
 
         spend_by_category = list(
-            Purchase.objects.exclude(status=Purchase.Status.EXPIRED)
+            Purchase.objects.filter(student__academy=request.user.academy)
+            .exclude(status=Purchase.Status.EXPIRED)
             .values('reward__category')
             .annotate(coins=Sum('total_price'), purchase_count=Count('id'))
             .order_by('-coins')
@@ -50,9 +50,7 @@ class CoinReportView(APIView):
             row['category'] = row.pop('reward__category')
 
         return Response({
-            'coin_value_som': setting.coin_value_som,
             'outstanding_balance': outstanding,
-            'estimated_liability_som': outstanding * setting.coin_value_som,
             'issued_last_30_days': issued_30d,
             'spent_last_30_days': spent_30d,
             'spend_by_category': spend_by_category,

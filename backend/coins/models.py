@@ -5,7 +5,10 @@ from django.db.models import Sum
 
 
 class CoinSetting(models.Model):
-    """Singleton — use CoinSetting.get(), never .objects.create() directly."""
+    """One singleton per academy — use CoinSetting.get(academy), never
+    .objects.create() directly."""
+
+    academy = models.OneToOneField('academies.Academy', on_delete=models.CASCADE, related_name='coin_setting')
 
     # Oddiy kun
     place_1_normal    = models.PositiveIntegerField(default=5)
@@ -32,21 +35,16 @@ class CoinSetting(models.Model):
     edit_window_hours      = models.PositiveIntegerField(default=24)
     purchase_expires_days  = models.PositiveIntegerField(default=14)
 
-    # Faqat hisobot/moliyaviy baholash uchun — o'yin hisob-kitobiga ta'sir qilmaydi.
-    coin_value_som = models.PositiveIntegerField(
-        default=0, help_text="1 tangachaning taxminiy real qiymati (so'mda) — faqat hisobot sahifasida ishlatiladi.",
-    )
-
     class Meta:
         verbose_name = 'Tangacha sozlamasi'
         verbose_name_plural = 'Tangacha sozlamalari'
 
     def __str__(self):
-        return 'Tangacha sozlamalari'
+        return f'Tangacha sozlamalari — {self.academy.name}'
 
     @classmethod
-    def get(cls):
-        return cls.objects.first() or cls.objects.create()
+    def get(cls, academy):
+        return cls.objects.get_or_create(academy=academy)[0]
 
 
 class CoinTransaction(models.Model):

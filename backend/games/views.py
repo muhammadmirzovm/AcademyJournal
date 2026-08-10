@@ -16,7 +16,9 @@ from .serializers import GameSerializer
 
 
 def _is_teacher_or_admin(request, group):
-    return request.user.role == 'admin' or group.teacher == request.user
+    if group.teacher == request.user:
+        return True
+    return request.user.role == 'admin' and request.user.academy_id == group.teacher.academy_id
 
 
 def _can_pick_third(lesson, setting):
@@ -28,7 +30,7 @@ class LessonGameView(APIView):
 
     def get(self, request, group_pk, lesson_pk):
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
-        setting = CoinSetting.get()
+        setting = CoinSetting.get(lesson.group.teacher.academy)
         can_pick_third = _can_pick_third(lesson, setting)
 
         game = Game.objects.filter(lesson=lesson).first()
@@ -64,7 +66,7 @@ class GameStartView(APIView):
         if Game.objects.filter(lesson=lesson).exists():
             return Response({'detail': "Bu dars uchun o'yin allaqachon mavjud."}, status=400)
 
-        setting = CoinSetting.get()
+        setting = CoinSetting.get(lesson.group.teacher.academy)
         week_start = lesson.date - timedelta(days=lesson.date.weekday())
         week_end = week_start + timedelta(days=6)
         started_this_week = Game.objects.filter(group=lesson.group, date__gte=week_start, date__lte=week_end).count()

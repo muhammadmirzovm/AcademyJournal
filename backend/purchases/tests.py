@@ -41,8 +41,8 @@ def _client_for(username):
 
 
 @pytest.fixture
-def reward():
-    return Reward.objects.create(name='Ichimlik', price=10, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.SNACK)
+def reward(academy):
+    return Reward.objects.create(academy=academy, name='Ichimlik', price=10, stock=5, status=Reward.Status.AVAILABLE, category=Reward.Category.SNACK)
 
 
 def _give_coins(student, amount):
@@ -87,7 +87,7 @@ def test_insufficient_stock_is_rejected(student, reward):
 
 @pytest.mark.django_db
 def test_unavailable_reward_cannot_be_purchased(student):
-    reward = Reward.objects.create(name='Kupon', price=10, stock=5, status=Reward.Status.COMING_SOON)
+    reward = Reward.objects.create(academy=student.academy, name='Kupon', price=10, stock=5, status=Reward.Status.COMING_SOON)
     _give_coins(student, 100)
     client = _client_for('p_student')
     res = client.post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
@@ -104,7 +104,7 @@ def test_only_student_can_purchase(teacher, admin_user, reward):
 
 @pytest.mark.django_db
 def test_coupon_max_per_student_limit(student):
-    coupon = Reward.objects.create(name='Kupon', price=1, stock=99, status=Reward.Status.AVAILABLE, category=Reward.Category.COUPON)
+    coupon = Reward.objects.create(academy=student.academy, name='Kupon', price=1, stock=99, status=Reward.Status.AVAILABLE, category=Reward.Category.COUPON)
     _give_coins(student, 1000)
     client = _client_for('p_student')
 
@@ -304,3 +304,60 @@ def test_admin_list_requires_admin(student, teacher):
     for username in ('p_student', 'p_teacher'):
         res = _client_for(username).get('/api/purchases/admin-list/')
         assert res.status_code == 403
+
+
+@pytest.mark.django_db
+def test_purchase_rejects_reward_from_other_academy(student):
+    other_academy = Academy.objects.create(name='Other Purchases Academy', slug='other-purchases-academy')
+    other_reward = Reward.objects.create(academy=other_academy, name='Not Yours', price=5, stock=5, status=Reward.Status.AVAILABLE)
+    _give_coins(student, 100)
+
+    res = _client_for('p_student').post(f'/api/rewards/{other_reward.id}/purchase/', {'quantity': 1}, format='json')
+    assert res.status_code == 404
+    other_reward.refresh_from_db()
+    assert other_reward.stock == 5
+
+
+@pytest.mark.django_db
+def test_lookup_excludes_other_academy_purchase(student, reward):
+    other_academy = Academy.objects.create(name='Other Lookup Academy', slug='other-lookup-academy')
+    other_admin = User.objects.create_user(username='other_p_admin', password='pass1234', role='admin', academy=other_academy)
+
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    code = res.data['code']
+
+    lookup = _client_for('other_p_admin').get(f'/api/purchases/lookup/{code}/')
+    assert lookup.status_code == 404
+
+
+@pytest.mark.django_db
+def test_issue_rejects_other_academy_purchase(student, reward):
+    other_academy = Academy.objects.create(name='Other Issue Academy', slug='other-issue-academy')
+    other_admin = User.objects.create_user(username='other_p_admin2', password='pass1234', role='admin', academy=other_academy)
+
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase_id = res.data['id']
+
+    issue = _client_for('other_p_admin2').post(f'/api/purchases/{purchase_id}/issue/')
+    assert issue.status_code == 404
+    purchase = Purchase.objects.get(id=purchase_id)
+    assert purchase.status == Purchase.Status.ACTIVE
+
+
+@pytest.mark.django_db
+def test_admin_list_excludes_other_academy(student, admin_user, reward):
+    other_academy = Academy.objects.create(name='Other List Academy', slug='other-list-academy')
+    other_student = User.objects.create_user(username='other_p_student', password='pass1234', role='student', academy=other_academy)
+    other_reward = Reward.objects.create(academy=other_academy, name='Other Snack', price=5, stock=5, status=Reward.Status.AVAILABLE)
+    _give_coins(other_student, 100)
+    _client_for('other_p_student').post(f'/api/rewards/{other_reward.id}/purchase/', {'quantity': 1}, format='json')
+
+    _give_coins(student, 30)
+    _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+
+    res = _client_for('p_admin').get('/api/purchases/admin-list/')
+    assert res.status_code == 200
+    assert res.data['total'] == 1
+    assert res.data['results'][0]['student_username'] == 'p_student'
