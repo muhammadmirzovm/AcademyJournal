@@ -11,6 +11,7 @@ import {
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { formatDate } from '../utils/date'
 
 const ALL_TABS = [
   { id: 'academy', icon: Building2, roles: ['admin', 'teacher', 'student', 'parent'] },
@@ -634,7 +635,7 @@ function MembersTab({ userRole }) {
                   </Link>
 
                   <div className="member-date" style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0, marginRight: 8 }}>
-                    {new Date(m.date_joined).toLocaleDateString()}
+                    {formatDate(m.date_joined)}
                   </div>
 
                   {m.role === 'parent' && (
@@ -965,7 +966,7 @@ function InvitesTab({ academy, userRole }) {
                         <Users size={10} /> {inv.use_count}/{inv.max_uses} {t('settings.used')}
                       </span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={10} /> {t('settings.expires')} {new Date(inv.expires_at).toLocaleDateString()}
+                        <Clock size={10} /> {t('settings.expires')} {formatDate(inv.expires_at)}
                       </span>
                       {inv.note && <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>"{inv.note}"</span>}
                     </div>

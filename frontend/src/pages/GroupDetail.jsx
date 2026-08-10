@@ -16,6 +16,7 @@ import { getGames, createGame, deleteGame, getTopics, duplicateGame } from '../a
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
+import { formatDayMonthYear, formatShortDayMonthYear } from '../utils/date'
 
 // ── Ranking ───────────────────────────────────────────────────────────────────
 
@@ -595,7 +596,7 @@ export default function GroupDetail() {
 // ── Lesson Row ────────────────────────────────────────────────────────────────
 
 function LessonRow({ lesson, groupId, index, isTeacher, onEdit, onDelete }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [confirm, setConfirm] = useState(false)
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
@@ -606,7 +607,7 @@ function LessonRow({ lesson, groupId, index, isTeacher, onEdit, onDelete }) {
       <div style={{ flex: 1, minWidth: 120 }}>
         <Link to={`/groups/${groupId}/lessons/${lesson.id}`} style={{ fontWeight: 600, fontSize: 14, textDecoration: 'none', color: 'var(--text)' }}>{lesson.title}</Link>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-          {new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+          {formatDayMonthYear(lesson.date, i18n.language)}
         </p>
       </div>
       <Link to={`/groups/${groupId}/lessons/${lesson.id}`}
@@ -633,7 +634,7 @@ function LessonRow({ lesson, groupId, index, isTeacher, onEdit, onDelete }) {
 // ── Member Row ────────────────────────────────────────────────────────────────
 
 function MemberRow({ member: m, index, isTeacher, onEditJoinDate, onRemove }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [confirm, setConfirm] = useState(false)
   const pct   = m.comprehension
   const color = pct === null ? 'var(--border)' : pct >= 70 ? 'var(--success)' : pct >= 40 ? 'var(--warning)' : 'var(--danger)'
@@ -666,7 +667,7 @@ function MemberRow({ member: m, index, isTeacher, onEditJoinDate, onRemove }) {
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              {new Date(m.joined_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {formatShortDayMonthYear(m.joined_at, i18n.language)}
             </span>
             {isTeacher && <button onClick={onEditJoinDate} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-muted)' }}><Pencil size={11} /></button>}
             <span title={m.has_parent ? t('group_detail.badge_has_parent') : t('group_detail.badge_no_parent')}

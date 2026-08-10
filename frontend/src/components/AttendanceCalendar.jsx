@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flame, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import { formatMonthYear } from '../utils/date'
 
 const DOW = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
@@ -24,7 +25,7 @@ export default function AttendanceCalendar({ calendar, streak, attendanceSummary
 
   const daysInMonth = new Date(y, m + 1, 0).getDate()
   const lead        = (new Date(y, m, 1).getDay() + 6) % 7   // Mon-first
-  const monthLabel  = new Date(y, m, 1).toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' })
+  const monthLabel  = formatMonthYear(new Date(y, m, 1), i18n.language)
   const today       = new Date()
   const pct = attendanceSummary?.total ? Math.round(attendanceSummary.present / attendanceSummary.total * 100) : null
 

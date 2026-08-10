@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ScanLine, Search, Loader2, CheckCircle2, Clock, User } from 'lucide-react'
+import { ScanLine, Search, Loader2, CheckCircle2, Clock, User, Coins } from 'lucide-react'
 import { lookupPurchase, issuePurchase } from '../api/purchases'
+import { formatDate } from '../utils/date'
 import { useToast } from '../context/ToastContext'
 
 export default function PurchaseScanner() {
@@ -116,8 +117,8 @@ function PurchaseCard({ purchase, issuing, onIssue, onReset, t }) {
         <div style={{ fontSize: 40, lineHeight: 1, marginBottom: 10 }}>{purchase.reward_icon || '🎁'}</div>
       )}
       <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>{purchase.reward_name}</p>
-      <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
-        {purchase.quantity} × {purchase.price_at_order} = {purchase.total_price} {t('scanner.coins_suffix')}
+      <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
+        {purchase.quantity} × {purchase.price_at_order} = {purchase.total_price} <Coins size={13} color="var(--text-muted)" />
       </p>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', background: 'var(--bg)', borderRadius: 10, marginBottom: 14 }}>
@@ -132,7 +133,7 @@ function PurchaseCard({ purchase, issuing, onIssue, onReset, t }) {
         </span>
         {purchase.status === 'active' && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: purchase.is_expired ? 'var(--danger)' : 'var(--text-muted)' }}>
-            <Clock size={12} /> {new Date(purchase.expires_at).toLocaleDateString()}
+            <Clock size={12} /> {formatDate(purchase.expires_at)}
           </span>
         )}
       </div>

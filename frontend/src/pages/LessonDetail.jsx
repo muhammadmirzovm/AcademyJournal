@@ -2,18 +2,19 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy } from 'lucide-react'
+import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, Coins, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy } from 'lucide-react'
 import { getGroup, getMembers, getLesson, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
 import { getLessonGame, startGame, cancelGame, closeGame } from '../api/games'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
+import { weekdayName, formatDayMonthYear, formatDayMonthTime } from '../utils/date'
 
 export default function LessonDetail() {
   const { groupId, lessonId } = useParams()
   const { user } = useAuth()
   const { show } = useToast()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [group, setGroup]           = useState(null)
   const [lesson, setLesson]         = useState(null)
@@ -121,7 +122,7 @@ export default function LessonDetail() {
         )}
       </div>
       <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 24 }}>
-        {lesson ? new Date(lesson.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+        {lesson ? formatDayMonthYear(lesson.date, i18n.language) : ''}
       </p>
 
       {isTeacher && lesson && (
@@ -404,7 +405,7 @@ function JournalTab({ journal, groupId, lessonId, isTeacher, onSaved }) {
                   </div>
                   <div>
                     <p style={{ fontWeight: 600, fontSize: 13 }}>{j.student_name}</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(j.updated_at).toLocaleString()}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatDayMonthTime(j.updated_at)}</p>
                   </div>
                 </div>
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{j.body}</p>
@@ -510,7 +511,7 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
                   </div>
                   <div>
                     <p style={{ fontWeight: 600, fontSize: 13 }}>{s.student_name}</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(s.submitted_at).toLocaleString()}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatDayMonthTime(s.submitted_at)}</p>
                   </div>
                 </div>
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{s.body}</p>
@@ -556,7 +557,6 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
 
 // ── Winning game ──────────────────────────────────────────────────────────────
 
-const UZBEK_DAYS = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba']
 const selectStyle = { padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', minWidth: 150 }
 
 function GameBlock({ groupId, lessonId, lesson, members, attendance }) {
@@ -597,9 +597,9 @@ function GameBlock({ groupId, lessonId, lesson, members, attendance }) {
 }
 
 function NotStartedCard({ groupId, lessonId, lesson, game, onStarted }) {
-  const { t } = useTranslation(); const { show } = useToast()
+  const { t, i18n } = useTranslation(); const { show } = useToast()
   const [starting, setStarting] = useState(false)
-  const dayName = UZBEK_DAYS[new Date(lesson.date).getDay()]
+  const dayName = weekdayName(new Date(lesson.date).getDay(), i18n.language)
   const rules = game.rules
   const big = game.is_big_day
 
@@ -870,7 +870,7 @@ function CloseScreen({ groupId, lessonId, game, presentMembers, onClosed, onBack
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--accent-bg)', borderRadius: 10, padding: '12px 16px', marginBottom: 18 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>{t('game.total_distributing')}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 18, color: 'var(--accent)' }}>
-          <Star size={16} color="var(--accent)" fill="var(--accent)" /> {total}
+          <Coins size={16} color="var(--accent)" fill="var(--accent)" /> {total}
         </span>
       </div>
 
@@ -899,7 +899,7 @@ function CoinBadge({ amount, color, muted }) {
       color: muted ? 'var(--text-muted)' : color, background: muted ? 'var(--bg)' : `color-mix(in srgb, ${color} 12%, transparent)`,
       borderRadius: 999, padding: '4px 10px', flexShrink: 0,
     }}>
-      <Star size={11} color={muted ? 'var(--text-muted)' : color} fill={muted ? 'none' : color} /> {amount > 0 ? `+${amount}` : amount}
+      <Coins size={11} color={muted ? 'var(--text-muted)' : color} fill={muted ? 'none' : color} /> {amount > 0 ? `+${amount}` : amount}
     </span>
   )
 }
@@ -937,8 +937,9 @@ function ClosedResultsCard({ game }) {
         {game.results.map(r => (
           <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', background: 'var(--surface)', borderRadius: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13 }}>{medalFor(r) && <span style={{ marginRight: 6 }}>{medalFor(r)}</span>}{r.student_name}</span>
-            <span style={{ fontWeight: 700, fontSize: 13, color: r.coins > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
-              {r.coins > 0 ? `+${r.coins}` : '0'} {t('game.coins_short')}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 13, color: r.coins > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
+              <Coins size={13} color={r.coins > 0 ? 'var(--success)' : 'var(--text-muted)'} fill={r.coins > 0 ? 'var(--success)' : 'none'} />
+              {r.coins > 0 ? `+${r.coins}` : '0'}
             </span>
           </div>
         ))}

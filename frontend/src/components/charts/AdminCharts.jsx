@@ -4,9 +4,10 @@ import {
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
 import { Users, TrendingUp, CalendarX } from 'lucide-react'
+import { formatShortMonthYear } from '../../utils/date'
 
 const COLORS = ['#0D9488', '#0891B2', '#7C3AED', '#DB2777', '#D97706', '#059669', '#DC2626', '#6366F1']
-const monthLabel = (m, lang) => new Date(`${m}-01`).toLocaleDateString(lang, { month: 'short', year: '2-digit' })
+const monthLabel = (m, lang) => formatShortMonthYear(`${m}-01`, lang)
 
 export default function AdminCharts({ stats }) {
   const { t, i18n } = useTranslation()

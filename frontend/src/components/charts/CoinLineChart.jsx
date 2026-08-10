@@ -2,6 +2,9 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip,
 } from 'recharts'
+import { useTranslation } from 'react-i18next'
+import { Coins } from 'lucide-react'
+import { formatShortDayMonth } from '../../utils/date'
 
 function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
@@ -10,8 +13,8 @@ function CustomTooltip({ active, payload }) {
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', boxShadow: 'var(--shadow-md)', fontSize: 13, maxWidth: 200 }}>
       <p style={{ color: 'var(--text-muted)', marginBottom: 2, fontSize: 11 }}>{d.date}</p>
       {d.note && <p style={{ fontSize: 12, color: 'var(--text)', marginBottom: 4, wordBreak: 'break-word' }}>{d.note}</p>}
-      <p style={{ fontWeight: 700, color: '#F59E0B', fontSize: 16 }}>
-        🪙 {d.total}
+      <p style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, color: '#F59E0B', fontSize: 16 }}>
+        <Coins size={15} color="#F59E0B" fill="#F59E0B" /> {d.total}
         {d.amount !== 0 && (
           <span style={{ fontSize: 12, fontWeight: 500, color: d.amount > 0 ? '#10b981' : '#ef4444', marginLeft: 6 }}>
             {d.amount > 0 ? `+${d.amount}` : d.amount}
@@ -22,12 +25,9 @@ function CustomTooltip({ active, payload }) {
   )
 }
 
-function shortDate(dateStr) {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-}
-
 export default function CoinLineChart({ data }) {
+  const { i18n } = useTranslation()
+
   if (!data || data.length === 0) {
     return (
       <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
@@ -37,7 +37,7 @@ export default function CoinLineChart({ data }) {
   }
 
   const chartData = data.map(d => ({
-    label:  shortDate(d.date),
+    label:  formatShortDayMonth(d.date, i18n.language),
     total:  d.total,
     amount: d.amount,
     note:   d.note,

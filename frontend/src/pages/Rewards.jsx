@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Gift, Plus, Minus, Loader2, Star, Pencil, Trash2, ShoppingCart, Receipt, Copy, Check } from 'lucide-react'
+import { Gift, Plus, Minus, Loader2, Coins, Pencil, Trash2, ShoppingCart, Receipt, Copy, Check } from 'lucide-react'
 import { getRewards, createReward, updateReward, deleteReward } from '../api/rewards'
 import { purchaseReward, getMyPurchases } from '../api/purchases'
 import { getMyBalance } from '../api/coins'
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Modal from '../components/ui/Modal'
 import { CardSkeleton } from '../components/ui/Skeleton'
+import { formatDate } from '../utils/date'
 
 const CATEGORIES = ['snack', 'stationery', 'merch', 'discount', 'coupon', 'other']
 const NAME_MAX_LENGTH = 40
@@ -109,7 +110,7 @@ export default function Rewards() {
           {isStudent && (
             <>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 15, color: 'var(--accent)', background: 'var(--accent-bg)', borderRadius: 8, padding: '7px 14px' }}>
-                <Star size={15} color="var(--accent)" fill="var(--accent)" /> {balance ?? '—'}
+                <Coins size={15} color="var(--accent)" fill="var(--accent)" /> {balance ?? '—'}
               </span>
               <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 7, overflow: 'hidden' }}>
                 <button onClick={() => setView('shop')}
@@ -217,7 +218,7 @@ function RewardCard({ reward, index, isAdmin, isStudent, balance, onEdit, onDele
         overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
       }}>{reward.description}</p>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 800, fontSize: 16, color: 'var(--accent)', background: 'var(--accent-bg)', borderRadius: 8, padding: '4px 12px', marginTop: 'auto' }}>
-        <Star size={14} color="var(--accent)" fill="var(--accent)" /> {reward.price}
+        <Coins size={14} color="var(--accent)" fill="var(--accent)" /> {reward.price}
       </span>
 
       {isAdmin && (
@@ -422,7 +423,7 @@ function BuyModal({ reward, balance, onClose, onPurchased }) {
         <div>
           <p style={{ fontWeight: 700, fontSize: 15 }}>{reward.name}</p>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
-            <Star size={12} color="var(--accent)" fill="var(--accent)" /> {reward.price} {t('rewards.each')}
+            <Coins size={12} color="var(--accent)" fill="var(--accent)" /> {reward.price} {t('rewards.each')}
           </span>
         </div>
       </div>
@@ -483,8 +484,8 @@ function ReceiptModal({ purchase, onClose }) {
           <div style={{ fontSize: 40, lineHeight: 1, marginBottom: 10 }}>{purchase.reward_icon || '🎁'}</div>
         )}
         <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{purchase.reward_name}</p>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
-          {purchase.quantity} × {purchase.price_at_order} = {purchase.total_price} {t('rewards.coins_suffix')}
+        <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
+          {purchase.quantity} × {purchase.price_at_order} = {purchase.total_price} <Coins size={13} color="var(--text-muted)" />
         </p>
 
         <div style={{ background: 'var(--bg)', border: '1.5px dashed var(--border)', borderRadius: 12, padding: '18px 12px', marginBottom: 16 }}>
@@ -501,7 +502,7 @@ function ReceiptModal({ purchase, onClose }) {
           <StatusBadge status={purchase.status} t={t} />
           {purchase.expires_at && purchase.status === 'active' && (
             <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center' }}>
-              {t('rewards.expires_on')} {new Date(purchase.expires_at).toLocaleDateString()}
+              {t('rewards.expires_on')} {formatDate(purchase.expires_at)}
             </span>
           )}
         </div>

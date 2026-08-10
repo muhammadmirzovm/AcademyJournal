@@ -5,6 +5,7 @@ import { Coins, Wallet, TrendingUp, TrendingDown, Receipt, ChevronLeft, ChevronR
 import { getCoinReport } from '../api/coins'
 import { getAdminPurchases } from '../api/purchases'
 import { useToast } from '../context/ToastContext'
+import { formatDate } from '../utils/date'
 
 const CATEGORY_COLORS = {
   snack:      '#0EA5E9',
@@ -64,9 +65,9 @@ export default function CoinReport() {
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 26 }}>
-            <StatCard icon={Wallet} label={t('coin_report.outstanding_balance')} value={`${som(report.outstanding_balance)} 🪙`} color="var(--accent)" />
-            <StatCard icon={TrendingUp} label={t('coin_report.issued_30d')} value={`${som(report.issued_last_30_days)} 🪙`} color="#16A34A" />
-            <StatCard icon={TrendingDown} label={t('coin_report.spent_30d')} value={`${som(report.spent_last_30_days)} 🪙`} color="#DC2626" />
+            <StatCard icon={Wallet} label={t('coin_report.outstanding_balance')} value={som(report.outstanding_balance)} color="var(--accent)" />
+            <StatCard icon={TrendingUp} label={t('coin_report.issued_30d')} value={som(report.issued_last_30_days)} color="#16A34A" />
+            <StatCard icon={TrendingDown} label={t('coin_report.spent_30d')} value={som(report.spent_last_30_days)} color="#DC2626" />
           </div>
 
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
@@ -136,13 +137,15 @@ function PurchaseHistory({ purchases, loading, page, pages, onPageChange, t }) {
                 )}
                 <span style={{ fontSize: 13 }}>{p.reward_name} {p.quantity > 1 && `×${p.quantity}`}</span>
               </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{p.total_price} 🪙</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>
+                {p.total_price} <Coins size={12} color="var(--accent)" fill="var(--accent)" />
+              </span>
               <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>{p.code}</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, color: meta.color, background: meta.bg }}>
                 {t(`scanner.status_${p.status}`)}
               </span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                {new Date(p.created_at).toLocaleDateString()}
+                {formatDate(p.created_at)}
               </span>
             </div>
           )
@@ -177,8 +180,8 @@ function SpendByCategory({ rows, t }) {
           <div key={r.category}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{t(`rewards.cat_${r.category}`)}</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {r.coins} 🪙 · {r.purchase_count} {t('coin_report.purchases_suffix')} · {pct}%
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                {r.coins} <Coins size={11} color="var(--text-muted)" /> · {r.purchase_count} {t('coin_report.purchases_suffix')} · {pct}%
               </span>
             </div>
             <div style={{ height: 8, borderRadius: 999, background: 'var(--bg)', overflow: 'hidden' }}>
@@ -199,7 +202,9 @@ function StatCard({ icon: Icon, label, value, color }) {
         <Icon size={20} color={color} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</p>
+        <p style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 17, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {value} <Coins size={15} color={color} fill={color} />
+        </p>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{label}</p>
       </div>
     </div>

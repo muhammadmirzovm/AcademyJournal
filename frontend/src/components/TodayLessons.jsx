@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CalendarClock, ChevronRight } from 'lucide-react'
+import { formatWeekdayDayMonth } from '../utils/date'
 
 const COLORS = ['#0D9488', '#0891B2', '#7C3AED', '#DB2777', '#D97706', '#059669', '#DC2626', '#6366F1']
 
@@ -15,7 +16,7 @@ export default function TodayLessons({ schedule }) {
 
   if (today.length === 0) return null
 
-  const dateLabel = new Date().toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' })
+  const dateLabel = formatWeekdayDayMonth(new Date(), i18n.language)
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}

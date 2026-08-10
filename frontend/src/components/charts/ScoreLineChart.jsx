@@ -1,8 +1,10 @@
 import { useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, ReferenceLine,
 } from 'recharts'
+import { formatShortDayMonth } from '../../utils/date'
 
 function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
@@ -18,14 +20,11 @@ function CustomTooltip({ active, payload }) {
   )
 }
 
-function shortDate(dateStr) {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-}
-
 const MIN_PX_PER_POINT = 40
 
 export default function ScoreLineChart({ data }) {
+  const { i18n } = useTranslation()
+
   if (!data || data.length === 0) {
     return (
       <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
@@ -35,7 +34,7 @@ export default function ScoreLineChart({ data }) {
   }
 
   const chartData = data.map(d => ({
-    label: shortDate(d.date),
+    label: formatShortDayMonth(d.date, i18n.language),
     score: d.score,
     fullName: d.lesson,
     date: d.date,
