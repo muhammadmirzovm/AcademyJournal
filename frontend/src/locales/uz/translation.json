@@ -419,6 +419,8 @@
     "tab_journal": "kundalik",
     "present": "Keldi",
     "absent": "Kelmadi",
+    "mark_all_present": "Hammasini kelgan deb belgilash",
+    "mark_all_absent": "Hammasini kelmagan deb belgilash",
     "total": "Jami",
     "scored": "Baholandi",
     "average": "O'rtacha",

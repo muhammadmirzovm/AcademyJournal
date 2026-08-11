@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, Coins, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy } from 'lucide-react'
+import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, Coins, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy, CheckCheck, XCircle } from 'lucide-react'
 import { getGroup, getMembers, getLesson, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
 import { getLessonGame, startGame, cancelGame, closeGame } from '../api/games'
 import { useAuth } from '../context/AuthContext'
@@ -208,6 +208,11 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
   }, [attendance, members])
 
   const toggle = id => setLocal(l => ({ ...l, [id]: !l[id] }))
+  const markAll = present => setLocal(l => {
+    const next = { ...l }
+    members.forEach(m => { next[m.id] = present })
+    return next
+  })
 
   const save = async () => {
     setSaving(true)
@@ -232,11 +237,21 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
           <Stat label={t('lesson.total')}   value={total}                 color="var(--text-muted)" />
         </div>
         {isTeacher && (
-          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
-            style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
-            {saving ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
-            {saving ? t('lesson.saving') : t('lesson.save')}
-          </motion.button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => markAll(true)}
+              style={{ ...ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', color: 'var(--success)', borderColor: 'rgba(5,150,105,0.35)' }}>
+              <CheckCheck size={14} /> {t('lesson.mark_all_present')}
+            </motion.button>
+            <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => markAll(false)}
+              style={{ ...ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.35)' }}>
+              <XCircle size={14} /> {t('lesson.mark_all_absent')}
+            </motion.button>
+            <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
+              style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
+              {saving ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
+              {saving ? t('lesson.saving') : t('lesson.save')}
+            </motion.button>
+          </div>
         )}
       </div>
 

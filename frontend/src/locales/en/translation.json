@@ -419,6 +419,8 @@
     "tab_journal": "journal",
     "present": "Present",
     "absent": "Absent",
+    "mark_all_present": "Mark all present",
+    "mark_all_absent": "Mark all absent",
     "total": "Total",
     "scored": "Scored",
     "average": "Average",
