@@ -239,12 +239,14 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
         {isTeacher && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => markAll(true)}
-              style={{ ...ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', color: 'var(--success)', borderColor: 'rgba(5,150,105,0.35)' }}>
-              <CheckCheck size={14} /> {t('lesson.mark_all_present')}
+              title={t('lesson.mark_all_present')} aria-label={t('lesson.mark_all_present')}
+              style={{ ...ghostBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, padding: 0, color: 'var(--success)', borderColor: 'rgba(5,150,105,0.35)' }}>
+              <CheckCheck size={16} />
             </motion.button>
             <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={() => markAll(false)}
-              style={{ ...ghostBtn, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.35)' }}>
-              <XCircle size={14} /> {t('lesson.mark_all_absent')}
+              title={t('lesson.mark_all_absent')} aria-label={t('lesson.mark_all_absent')}
+              style={{ ...ghostBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, padding: 0, color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.35)' }}>
+              <XCircle size={16} />
             </motion.button>
             <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
               style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
