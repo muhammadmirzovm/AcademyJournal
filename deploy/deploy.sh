@@ -25,6 +25,16 @@ if [ -n "$cid" ]; then
   done
 fi
 
+echo "==> One-time Telegram menu refresh (if pending)"
+TG_MARKER=".telegram_menu_refreshed_nolesson"
+if [ ! -f "$TG_MARKER" ]; then
+  if docker compose exec -T backend python manage.py refresh_telegram_menu; then
+    touch "$TG_MARKER"
+  else
+    echo "WARNING: telegram menu refresh failed, will retry next deploy"
+  fi
+fi
+
 echo "==> Prune dangling images"
 docker image prune -f >/dev/null 2>&1 || true
 

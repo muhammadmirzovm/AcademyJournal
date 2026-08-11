@@ -425,6 +425,30 @@ BUTTON_ACTIONS = {
     '❓ Помощь':            'help',
 }
 
+# Per-role '/' command list — shared by _set_user_commands() and the
+# refresh_telegram_menu management command (used to re-sync already-linked users
+# after this list changes).
+ROLE_COMMANDS = {
+    'student': [
+        ('mystats',  'Statistika / Статистика'),
+        ('myrank',   'Reyting / Рейтинг'),
+        ('homework', 'Uy vazifalari / Домашние задания'),
+    ],
+    'teacher': [
+        ('mygroups',   'Guruhlar / Группы'),
+        ('struggling', "Qiynalayotganlar / Отстающие"),
+        ('nolesson',   "Dars yo'q / Нет урока"),
+    ],
+    'admin': [
+        ('academy',     'Akademiya / Академия'),
+        ('dailyreport', 'Kunlik hisobot / Ежедневный отчёт'),
+    ],
+    'parent': [
+        ('mystats', 'Statistika / Статистика'),
+        ('lessons', "So'nggi darslar / Последние уроки"),
+    ],
+}
+
 
 def _get_reply_keyboard(role, lang):
     rows = MENU_BUTTONS.get(lang, MENU_BUTTONS['uz']).get(role)
@@ -659,33 +683,7 @@ async def _set_user_commands(bot, telegram_id: int, role: str):
     u = BotCommand('username', "Usernameni ko'rish / Мой логин")
     h = BotCommand('help',     'Yordam / Помощь')
 
-    if role == 'student':
-        commands = [
-            BotCommand('mystats',  'Statistika / Статистика'),
-            BotCommand('myrank',   'Reyting / Рейтинг'),
-            BotCommand('homework', 'Uy vazifalari / Домашние задания'),
-            u, h,
-        ]
-    elif role == 'teacher':
-        commands = [
-            BotCommand('mygroups',   'Guruhlar / Группы'),
-            BotCommand('struggling', "Qiynalayotganlar / Отстающие"),
-            u, h,
-        ]
-    elif role == 'admin':
-        commands = [
-            BotCommand('academy',     'Akademiya / Академия'),
-            BotCommand('dailyreport', 'Kunlik hisobot / Ежедневный отчёт'),
-            u, h,
-        ]
-    elif role == 'parent':
-        commands = [
-            BotCommand('mystats', 'Statistika / Статистика'),
-            BotCommand('lessons', "So'nggi darslar / Последние уроки"),
-            u, h,
-        ]
-    else:
-        commands = [u, h]
+    commands = [BotCommand(cmd, desc) for cmd, desc in ROLE_COMMANDS.get(role, [])] + [u, h]
     try:
         await bot.set_my_commands(commands, scope=BotCommandScopeChat(chat_id=telegram_id))
     except Exception as e:
