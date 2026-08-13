@@ -66,8 +66,8 @@ class GroupSerializer(serializers.ModelSerializer):
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Lesson
-        fields = ('id', 'group', 'title', 'date', 'homework', 'created_at')
-        read_only_fields = ('group',)
+        fields = ('id', 'group', 'title', 'date', 'homework', 'created_at', 'ended_at')
+        read_only_fields = ('group', 'ended_at')
 
 
 class AttendanceSerializer(serializers.ModelSerializer):

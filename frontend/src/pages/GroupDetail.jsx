@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronLeft, ChevronRight, Trash2, Pencil, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog, MoreVertical, GraduationCap } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronLeft, ChevronRight, Trash2, Pencil, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog, MoreVertical, GraduationCap, CheckCircle2 } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember,
@@ -605,7 +605,14 @@ function LessonRow({ lesson, groupId, index, isTeacher, onEdit, onDelete }) {
         <Calendar size={18} color="var(--accent)" />
       </div>
       <div style={{ flex: 1, minWidth: 120 }}>
-        <Link to={`/groups/${groupId}/lessons/${lesson.id}`} style={{ fontWeight: 600, fontSize: 14, textDecoration: 'none', color: 'var(--text)' }}>{lesson.title}</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Link to={`/groups/${groupId}/lessons/${lesson.id}`} style={{ fontWeight: 600, fontSize: 14, textDecoration: 'none', color: 'var(--text)' }}>{lesson.title}</Link>
+          {lesson.ended_at && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--success)', background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', borderRadius: 99, padding: '2px 8px' }}>
+              <CheckCircle2 size={11} /> {t('group_detail.lesson_ended')}
+            </span>
+          )}
+        </div>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
           {formatDayMonthYear(lesson.date, i18n.language)}
         </p>

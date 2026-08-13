@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, Coins, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy, CheckCheck, XCircle } from 'lucide-react'
+import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, Coins, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy, CheckCheck, XCircle, CheckCircle2 } from 'lucide-react'
 import { getGroup, getMembers, getLesson, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
 import { getLessonGame, startGame, cancelGame, closeGame } from '../api/games'
 import { useAuth } from '../context/AuthContext'
@@ -39,6 +39,7 @@ export default function LessonDetail() {
     setEnding(true)
     try {
       const { data } = await endLesson(groupId, lessonId)
+      setLesson(l => ({ ...l, ended_at: data.ended_at }))
       show(t('lesson.toast_ended', { count: data.notified }), 'success')
     } catch {
       show(t('lesson.toast_fail_end'), 'error')
@@ -98,7 +99,14 @@ export default function LessonDetail() {
       </div>
 
       <div className="lesson-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
-        <h2 className="page-title" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700 }}>{lesson?.title}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h2 className="page-title" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700 }}>{lesson?.title}</h2>
+          {lesson?.ended_at && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--success)', background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', borderRadius: 99, padding: '4px 10px' }}>
+              <CheckCircle2 size={13} /> {t('lesson.ended_badge')}
+            </span>
+          )}
+        </div>
         {isTeacher && (
           <motion.button
             whileHover={{ translateY: -1 }}

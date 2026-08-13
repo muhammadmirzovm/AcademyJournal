@@ -52,6 +52,7 @@ class Lesson(models.Model):
     date = models.DateField()
     homework = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

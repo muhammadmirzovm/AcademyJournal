@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Sum, Count
 from django.http import HttpResponse
+from django.utils import timezone
 from asgiref.sync import async_to_sync
 import io
 import openpyxl
@@ -440,6 +441,10 @@ class EndLessonView(APIView):
         if lesson.group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher or admin can end a lesson.'}, status=403)
 
+        if not lesson.ended_at:
+            lesson.ended_at = timezone.now()
+            lesson.save(update_fields=['ended_at'])
+
         from users.models import Notification
         from users.telegram_bot import send_notification
 
@@ -585,7 +590,7 @@ class EndLessonView(APIView):
                 import logging
                 logging.getLogger(__name__).error(f'Group chat send failed: {e}', exc_info=True)
 
-        return Response({'ok': True, 'notified': len(memberships)})
+        return Response({'ok': True, 'notified': len(memberships), 'ended_at': lesson.ended_at})
 
 
 def _notify_announcement(ann, recipients):
