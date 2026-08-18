@@ -255,7 +255,7 @@ export default function Navbar() {
         .nav-ctrl-btn { transition: background 0.15s, border-color 0.15s, transform 0.1s; }
         .nav-ctrl-btn:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.18); }
         .nav-ctrl-btn:active { transform: scale(0.92); }
-        @media (max-width: 720px) {
+        @media (max-width: 900px) {
           .desktop-nav { display: none !important; }
           .mobile-nav  { display: flex !important; }
           .nav-inner   { padding: 0 16px !important; }

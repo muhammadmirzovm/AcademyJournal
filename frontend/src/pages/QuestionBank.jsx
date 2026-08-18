@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Pencil, BookOpen, Loader2, X, Check, ChevronLeft, ChevronRight, Download, Upload, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Pencil, BookOpen, Loader2, X, Check, ChevronLeft, ChevronRight, Download, Upload, AlertTriangle, Search, ChevronDown } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/ui/Modal'
@@ -34,6 +34,7 @@ export default function QuestionBank() {
   const [showForm,      setShowForm]      = useState(false)
   const [editingQ,      setEditingQ]      = useState(null)
   const [newTopicName,  setNewTopicName]  = useState('')
+  const [topicSidebarSearch, setTopicSidebarSearch] = useState('')
   const [addingTopic,   setAddingTopic]   = useState(false)
   const [deletingTopic, setDeletingTopic] = useState(null)
   const [importing,     setImporting]     = useState(false)
@@ -179,7 +180,16 @@ export default function QuestionBank() {
             <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>{questions.length}</span>
           </button>
 
-          {topics.map(tp => (
+          {topics.length > 6 && (
+            <div style={{ position: 'relative', margin: '8px 0' }}>
+              <Search size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input value={topicSidebarSearch} onChange={e => setTopicSidebarSearch(e.target.value)}
+                placeholder={t('quiz.topic_search_placeholder')}
+                style={{ width: '100%', padding: '6px 8px 6px 26px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+          )}
+
+          {topics.filter(tp => tp.name.toLowerCase().includes(topicSidebarSearch.trim().toLowerCase())).map(tp => (
             <div key={tp.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button onClick={() => setSelTopic(tp.id)}
@@ -231,7 +241,7 @@ export default function QuestionBank() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>{t('quiz.question_bank')}</h2>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <select value={selDiff} onChange={e => setSelDiff(e.target.value)}
                 style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }}>
                 <option value="">{t('quiz.all_difficulties')}</option>
@@ -575,11 +585,7 @@ function QuestionForm({ editing, topics, defaults, onSave, onClose }) {
         {/* Topic */}
         <div>
           <label style={labelStyle}>{t('quiz.topic')}</label>
-          <select value={form.topic} onChange={e => set('topic', e.target.value)}
-            style={{ ...inputStyle(false), marginTop: 5 }}>
-            <option value="">{t('quiz.select_topic')}</option>
-            {topics.map(tp => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
-          </select>
+          <TopicDropdown value={form.topic} onChange={v => set('topic', v)} topics={topics} />
         </div>
 
         {/* Difficulty */}
@@ -696,6 +702,75 @@ function QuestionForm({ editing, topics, defaults, onSave, onClose }) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function TopicDropdown({ value, onChange, topics }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const ref = useRef(null)
+  const searchRef = useRef(null)
+
+  useEffect(() => {
+    const onClickOutside = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (open) { setQuery(''); setTimeout(() => searchRef.current?.focus(), 50) }
+  }, [open])
+
+  const selected = topics.find(tp => String(tp.id) === String(value))
+  const showSearch = topics.length > 6
+  const filtered = showSearch && query.trim()
+    ? topics.filter(tp => tp.name.toLowerCase().includes(query.trim().toLowerCase()))
+    : topics
+
+  return (
+    <div ref={ref} style={{ position: 'relative', marginTop: 5 }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{ ...inputStyle(false), display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
+        <span style={{ color: selected ? 'var(--text)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {selected ? selected.name : t('quiz.select_topic')}
+        </span>
+        <ChevronDown size={15} style={{ color: 'var(--text-muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', zIndex: 50 }}>
+            {showSearch && (
+              <div style={{ padding: 8, borderBottom: '1px solid var(--border)' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    placeholder={t('quiz.topic_search_placeholder')}
+                    style={{ width: '100%', padding: '7px 10px 7px 30px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+            )}
+            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: !value ? 'var(--accent-bg)' : 'transparent', color: !value ? 'var(--accent)' : 'var(--text-muted)', fontSize: 13, fontWeight: !value ? 700 : 500, cursor: 'pointer', fontStyle: 'italic' }}>
+                {t('quiz.select_topic')}
+              </button>
+              {filtered.length === 0 ? (
+                <p style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('settings.no_results')}</p>
+              ) : filtered.map(tp => (
+                <button key={tp.id} type="button" onClick={() => { onChange(String(tp.id)); setOpen(false) }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: String(tp.id) === String(value) ? 'var(--accent-bg)' : 'transparent', color: String(tp.id) === String(value) ? 'var(--accent)' : 'var(--text)', fontSize: 13, fontWeight: String(tp.id) === String(value) ? 700 : 500, cursor: 'pointer' }}>
+                  {tp.name}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -160,6 +160,7 @@ export default function GroupDetail() {
   const [exportLoading,        setExportLoading]        = useState(false)
   const [showChangeTeacher,    setShowChangeTeacher]    = useState(false)
   const [teachersList,         setTeachersList]         = useState([])
+  const [teacherSearch,        setTeacherSearch]        = useState('')
   const [selectedTeacherId,    setSelectedTeacherId]    = useState(null)
   const [changeTeacherLoading, setChangeTeacherLoading] = useState(false)
   const [showActions,          setShowActions]          = useState(false)
@@ -240,6 +241,7 @@ export default function GroupDetail() {
 
   const openChangeTeacher = async () => {
     setSelectedTeacherId(group.teacher)
+    setTeacherSearch('')
     setShowChangeTeacher(true)
     try {
       const { data } = await getAcademyTeachers()
@@ -557,11 +559,26 @@ export default function GroupDetail() {
 
       {/* Change Teacher modal (admin only) */}
       <Modal open={showChangeTeacher} onClose={() => setShowChangeTeacher(false)} title="Guruh o'qituvchisini o'zgartirish">
+        {teachersList.length > 6 && (
+          <div style={{ position: 'relative', marginBottom: 10 }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input value={teacherSearch} onChange={e => setTeacherSearch(e.target.value)}
+              placeholder="Ism yoki username bo'yicha qidirish…" autoFocus
+              style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto', marginBottom: 16 }}>
           {teachersList.length === 0 && (
             <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Yuklanmoqda...</p>
           )}
-          {teachersList.map(teacher => (
+          {teachersList.length > 0 && teachersList.filter(teacher =>
+            `${teacher.first_name} ${teacher.last_name} ${teacher.username}`.toLowerCase().includes(teacherSearch.trim().toLowerCase())
+          ).length === 0 && (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Hech narsa topilmadi</p>
+          )}
+          {teachersList.filter(teacher =>
+            `${teacher.first_name} ${teacher.last_name} ${teacher.username}`.toLowerCase().includes(teacherSearch.trim().toLowerCase())
+          ).map(teacher => (
             <button key={teacher.id} onClick={() => setSelectedTeacherId(teacher.id)}
               style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${selectedTeacherId === teacher.id ? '#8B5CF6' : 'var(--border)'}`, background: selectedTeacherId === teacher.id ? 'rgba(139,92,246,0.08)' : 'var(--surface)', cursor: 'pointer', textAlign: 'left' }}>
               <div style={{ width: 34, height: 34, borderRadius: '50%', background: selectedTeacherId === teacher.id ? 'rgba(139,92,246,0.15)' : 'var(--accent-bg)', border: `1.5px solid ${selectedTeacherId === teacher.id ? '#8B5CF6' : 'var(--accent)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: selectedTeacherId === teacher.id ? '#8B5CF6' : 'var(--accent)', flexShrink: 0 }}>
@@ -1140,6 +1157,8 @@ function GameRow({ game, groupId, index, isTeacher, onDelete, onDuplicated }) {
 
 const DIFF_ORDER = ['easy', 'medium', 'hard']
 const DIFF_COLOR_MAP = { easy: '#22C55E', medium: '#F59E0B', hard: '#EF4444' }
+const TIMER_PRESETS = [15, 30, 60, 90]
+const TEAM_COUNT_PRESETS = [2, 3, 4]
 
 function DiffInput({ diff, available, value, onChange, t }) {
   const val = Number(value) || 0
@@ -1183,12 +1202,13 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
   const [topics,        setTopics]        = useState([])
   const [diffCounts,    setDiffCounts]    = useState({})
   const [topicsLoading, setTopicsLoading] = useState(false)
+  const [topicSearch,   setTopicSearch]   = useState('')
   const [form, setForm] = useState({ name: '', timer_seconds: 30, team_count: 2 })
   const [formError, setFormError] = useState('')
 
   const reset = () => {
     setForm({ name: '', timer_seconds: 30, team_count: 2 })
-    setTopics([]); setDiffCounts({}); setFormError('')
+    setTopics([]); setDiffCounts({}); setFormError(''); setTopicSearch('')
   }
 
   useEffect(() => {
@@ -1256,11 +1276,23 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
             <label style={labelStyle}>{t('quiz.timer')}</label>
             <input type="number" min={5} max={300} style={{ ...inputStyle(false), marginTop: 5 }}
               value={form.timer_seconds} onChange={e => setForm(f => ({ ...f, timer_seconds: Number(e.target.value) }))} />
+            <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+              {TIMER_PRESETS.map(p => (
+                <button key={p} type="button" onClick={() => setForm(f => ({ ...f, timer_seconds: p }))}
+                  style={presetChip(form.timer_seconds === p)}>{p}s</button>
+              ))}
+            </div>
           </div>
           <div>
             <label style={labelStyle}>{t('quiz.team_count')}</label>
             <input type="number" min={2} max={8} style={{ ...inputStyle(false), marginTop: 5 }}
               value={form.team_count} onChange={e => setForm(f => ({ ...f, team_count: Number(e.target.value) }))} />
+            <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+              {TEAM_COUNT_PRESETS.map(p => (
+                <button key={p} type="button" onClick={() => setForm(f => ({ ...f, team_count: p }))}
+                  style={presetChip(form.team_count === p)}>{p}</button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1279,6 +1311,15 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
           </span>
         </div>
 
+        {topics.length > 6 && (
+          <div style={{ position: 'relative', marginBottom: 8 }}>
+            <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input value={topicSearch} onChange={e => setTopicSearch(e.target.value)}
+              placeholder={t('quiz.topic_search_placeholder')}
+              style={{ ...inputStyle(false), padding: '7px 10px 7px 30px', fontSize: 13 }} />
+          </div>
+        )}
+
         {/* Topics list with per-difficulty inputs */}
         <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20, paddingRight: 2 }}>
           {topicsLoading ? (
@@ -1287,7 +1328,9 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
             </div>
           ) : topics.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '12px 0' }}>{t('quiz.no_topics_hint')}</p>
-          ) : topics.map(tp => {
+          ) : topics.filter(tp => tp.name.toLowerCase().includes(topicSearch.trim().toLowerCase())).length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '12px 0' }}>{t('settings.no_results')}</p>
+          ) : topics.filter(tp => tp.name.toLowerCase().includes(topicSearch.trim().toLowerCase())).map(tp => {
             const dc = diffCounts[tp.id] || { easy: 0, medium: 0, hard: 0 }
             const sel = topicSelected(tp.id)
             return (
@@ -1370,3 +1413,9 @@ const menuItemStyle    = (color) => ({ display: 'flex', alignItems: 'center', ga
 const labelStyle       = { fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }
 const errorStyle       = { fontSize: 12, color: 'var(--danger)', marginTop: 4 }
 const inputStyle       = (hasError) => ({ width: '100%', padding: '9px 12px', borderRadius: 7, border: `1.5px solid ${hasError ? 'var(--danger)' : 'var(--border)'}`, background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', display: 'block' })
+const presetChip       = (active) => ({
+  padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+  border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+  background: active ? 'var(--accent-bg)' : 'transparent',
+  color: active ? 'var(--accent)' : 'var(--text-muted)',
+})
