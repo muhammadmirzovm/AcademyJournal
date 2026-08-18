@@ -213,7 +213,46 @@ class InviteListView(generics.ListAPIView):
         user = self.request.user
         if user.role not in ('admin', 'teacher') or not user.academy:
             return InviteToken.objects.none()
-        return InviteToken.objects.filter(academy=user.academy).order_by('-created_at')
+        qs = InviteToken.objects.filter(academy=user.academy).order_by('-created_at')
+
+        role = self.request.query_params.get('role')
+        if role:
+            qs = qs.filter(role=role)
+
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(note__icontains=search)
+                | Q(student__first_name__icontains=search)
+                | Q(student__last_name__icontains=search)
+                | Q(student__username__icontains=search)
+            )
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        qs        = self.get_queryset()
+        page      = max(1, int(request.query_params.get('page', 1)))
+        page_size = max(1, min(100, int(request.query_params.get('page_size', 10))))
+        total     = qs.count()
+        pages     = max(1, (total + page_size - 1) // page_size)
+        page      = min(page, pages)
+        invites   = qs[(page - 1) * page_size : page * page_size]
+        data      = self.get_serializer(invites, many=True).data
+        return Response({'results': data, 'total': total, 'pages': pages, 'page': page})
+
+
+class InviteDeleteView(generics.DestroyAPIView):
+    serializer_class   = InviteTokenSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role not in ('admin', 'teacher') or not user.academy:
+            return InviteToken.objects.none()
+        qs = InviteToken.objects.filter(academy=user.academy)
+        if user.role != 'admin':
+            qs = qs.filter(created_by=user)
+        return qs
 
 
 class InviteVerifyView(APIView):

@@ -123,16 +123,16 @@ export default function InviteLanding() {
 
   const inputStyle = hasErr => ({
     width: '100%', padding: '12px 16px', borderRadius: 12, boxSizing: 'border-box',
-    background: 'rgba(255,255,255,0.9)',
-    border: `1.5px solid ${hasErr ? 'rgba(239,68,68,0.5)' : 'rgba(0,0,0,0.12)'}`,
-    color: '#1e293b', fontSize: 15, outline: 'none', transition: 'border-color 0.2s',
+    background: 'var(--bg)',
+    border: `1.5px solid ${hasErr ? 'rgba(239,68,68,0.5)' : 'var(--border)'}`,
+    color: 'var(--text)', fontSize: 15, outline: 'none', transition: 'border-color 0.2s',
   })
 
-  const labelStyle = { fontSize: 11, fontWeight: 700, color: 'rgba(30,41,59,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }
 
   if (status === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0fdf4' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
         <Loader2 size={32} style={{ color: '#0D9488', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -141,14 +141,14 @@ export default function InviteLanding() {
 
   if (status === 'invalid') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fef2f2', padding: 24 }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(239,68,68,0.06), rgba(239,68,68,0.02)), var(--bg)', padding: 24 }}>
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
           style={{ textAlign: 'center', maxWidth: 400 }}>
           <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
             <AlertCircle size={40} color="#ef4444" />
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', marginBottom: 8 }}>{t('invite.expired_title')}</h1>
-          <p style={{ color: 'rgba(30,41,59,0.6)', marginBottom: 24, lineHeight: 1.6 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>{t('invite.expired_title')}</h1>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.6 }}>
             {t('invite.expired_sub')}
           </p>
           <Link to="/" style={{ display: 'inline-block', padding: '12px 28px', borderRadius: 12, background: '#ef4444', color: '#fff', fontWeight: 700, textDecoration: 'none' }}>
@@ -162,7 +162,7 @@ export default function InviteLanding() {
   return (
     <div style={{
       minHeight: '100vh', position: 'relative', overflow: 'hidden',
-      background: `linear-gradient(135deg, rgba(${colorRgb},0.06) 0%, rgba(${colorRgb},0.02) 100%)`,
+      background: `linear-gradient(135deg, rgba(${colorRgb},0.06) 0%, rgba(${colorRgb},0.02) 100%), var(--bg)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 16px',
     }}>
       {/* Background glow */}
@@ -187,7 +187,7 @@ export default function InviteLanding() {
             }}>
               <GraduationCap size={32} color="#fff" />
             </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
             {invite.academy.name}
           </h1>
           <div style={{
@@ -202,7 +202,7 @@ export default function InviteLanding() {
             {invite.group_name && ` · ${invite.group_name}`}
           </div>
           {invite.note && (
-            <p style={{ marginTop: 12, fontSize: 14, color: 'rgba(30,41,59,0.5)', fontStyle: 'italic' }}>
+            <p style={{ marginTop: 12, fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>
               "{invite.note}"
             </p>
           )}
@@ -210,8 +210,8 @@ export default function InviteLanding() {
 
         {/* Card */}
         <div style={{
-          borderRadius: 24, border: '1px solid rgba(0,0,0,0.08)',
-          background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(16px)',
+          borderRadius: 24, border: '1px solid var(--border)',
+          background: 'var(--surface)', backdropFilter: 'blur(16px)',
           padding: 28, boxShadow: `0 24px 80px rgba(${colorRgb},0.12)`,
         }}>
           <AnimatePresence mode="wait">
@@ -222,7 +222,7 @@ export default function InviteLanding() {
                 {user ? (
                   <div style={{ textAlign: 'center' }}>
                     <CheckCircle2 size={36} color={color} style={{ margin: '0 auto 12px' }} />
-                    <p style={{ fontSize: 15, color: '#1e293b', marginBottom: 20 }}>
+                    <p style={{ fontSize: 15, color: 'var(--text)', marginBottom: 20 }}>
                       {t('invite.logged_in_as', { username: user.username })}
                     </p>
                     <button onClick={handleAlreadyLoggedIn} disabled={loading}
@@ -237,13 +237,13 @@ export default function InviteLanding() {
                       {t('invite.join_btn', { name: invite.academy.name })}
                     </button>
                     <button onClick={() => setMode('login')}
-                      style={{ marginTop: 12, background: 'none', border: 'none', color: 'rgba(30,41,59,0.5)', cursor: 'pointer', fontSize: 13 }}>
+                      style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}>
                       {t('invite.use_different')}
                     </button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <p style={{ textAlign: 'center', fontSize: 15, fontWeight: 600, color: '#1e293b', marginBottom: 4 }}>
+                    <p style={{ textAlign: 'center', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
                       {t('invite.how_join')}
                     </p>
 
@@ -270,18 +270,18 @@ export default function InviteLanding() {
                       onClick={() => setMode('login')}
                       style={{
                         width: '100%', padding: '16px 20px', borderRadius: 16, cursor: 'pointer',
-                        background: 'rgba(0,0,0,0.04)', border: '1.5px solid rgba(0,0,0,0.1)',
-                        color: '#1e293b', fontWeight: 700, fontSize: 15,
+                        background: 'var(--bg)', border: '1.5px solid var(--border)',
+                        color: 'var(--text)', fontWeight: 700, fontSize: 15,
                         display: 'flex', alignItems: 'center', gap: 12,
                       }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <BookOpen size={18} />
                       </div>
                       <div style={{ textAlign: 'left' }}>
                         <div>{t('invite.signin_account')}</div>
-                        <div style={{ fontSize: 12, fontWeight: 400, color: 'rgba(30,41,59,0.5)' }}>{t('invite.signin_account_sub')}</div>
+                        <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>{t('invite.signin_account_sub')}</div>
                       </div>
-                      <ArrowRight size={18} style={{ marginLeft: 'auto', color: 'rgba(30,41,59,0.3)' }} />
+                      <ArrowRight size={18} style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} />
                     </motion.button>
                   </div>
                 )}
@@ -292,38 +292,38 @@ export default function InviteLanding() {
             {mode === 'register' && (
               <motion.div key="register" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <button onClick={() => setMode('choose')}
-                  style={{ background: 'none', border: 'none', color: 'rgba(30,41,59,0.4)', cursor: 'pointer', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 4 }}>
                   {t('invite.back')}
                 </button>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1e293b', marginBottom: 20 }}>{t('invite.register_title')}</h2>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 20 }}>{t('invite.register_title')}</h2>
                 <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
                       <label style={labelStyle}>{t('auth.first_name')}</label>
                       <input style={inputStyle(!!errors.first_name)} placeholder="John"
                         value={form.first_name} onChange={e => set('first_name', e.target.value)}
-                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'var(--border)' }} />
                       {errors.first_name && <p style={{ fontSize: 11, color: '#f87171', marginTop: 3 }}>{errors.first_name}</p>}
                     </div>
                     <div>
                       <label style={labelStyle}>{t('auth.last_name')}</label>
                       <input style={inputStyle(false)} placeholder="Doe"
                         value={form.last_name} onChange={e => set('last_name', e.target.value)}
-                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'var(--border)' }} />
                     </div>
                   </div>
                   <div>
                     <label style={labelStyle}>{t('auth.username')}</label>
                     <input style={inputStyle(!!errors.username)} placeholder="johndoe"
                       value={form.username} onChange={e => set('username', e.target.value)} autoComplete="username"
-                      onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                      onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'var(--border)' }} />
                     {errors.username && <p style={{ fontSize: 11, color: '#f87171', marginTop: 3 }}>{errors.username}</p>}
                   </div>
                   <div>
                     <label style={labelStyle}>{t('auth.email')} <span style={{ fontWeight: 400, opacity: 0.5 }}>({t('auth.optional')})</span></label>
                     <input type="email" style={inputStyle(false)} placeholder="john@example.com"
                       value={form.email} onChange={e => set('email', e.target.value)} autoComplete="email"
-                      onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                      onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'var(--border)' }} />
                   </div>
                   <div>
                     <label style={labelStyle}>{t('auth.password')}</label>
@@ -332,9 +332,9 @@ export default function InviteLanding() {
                         style={{ ...inputStyle(!!errors.password), paddingRight: 44 }}
                         placeholder={t('auth.min_password')}
                         value={form.password} onChange={e => set('password', e.target.value)} autoComplete="new-password"
-                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'var(--border)' }} />
                       <button type="button" onClick={() => setShowPass(s => !s)}
-                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.3)', display: 'flex' }}>
+                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
                         {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
@@ -347,9 +347,9 @@ export default function InviteLanding() {
                         style={{ ...inputStyle(!!errors.confirm), paddingRight: 44 }}
                         placeholder={t('auth.repeat_password')}
                         value={form.confirm} onChange={e => set('confirm', e.target.value)} autoComplete="new-password"
-                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'var(--border)' }} />
                       <button type="button" onClick={() => setShowConfirm(s => !s)}
-                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.3)', display: 'flex' }}>
+                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
                         {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
@@ -377,16 +377,16 @@ export default function InviteLanding() {
             {mode === 'login' && (
               <motion.div key="login" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <button onClick={() => setMode('choose')}
-                  style={{ background: 'none', border: 'none', color: 'rgba(30,41,59,0.4)', cursor: 'pointer', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 4 }}>
                   {t('invite.back')}
                 </button>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1e293b', marginBottom: 20 }}>{t('invite.login_title')}</h2>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 20 }}>{t('invite.login_title')}</h2>
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div>
                     <label style={labelStyle}>{t('auth.username')}</label>
                     <input style={inputStyle(!!errors.username)} placeholder="johndoe"
                       value={loginForm.username} onChange={e => setL('username', e.target.value)} autoComplete="username"
-                      onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                      onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'var(--border)' }} />
                     {errors.username && <p style={{ fontSize: 11, color: '#f87171', marginTop: 3 }}>{errors.username}</p>}
                   </div>
                   <div>
@@ -396,9 +396,9 @@ export default function InviteLanding() {
                         style={{ ...inputStyle(!!errors.password), paddingRight: 44 }}
                         placeholder={t('auth.your_password')}
                         value={loginForm.password} onChange={e => setL('password', e.target.value)} autoComplete="current-password"
-                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'rgba(0,0,0,0.12)' }} />
+                        onFocus={ev => { ev.target.style.borderColor = color }} onBlur={ev => { ev.target.style.borderColor = 'var(--border)' }} />
                       <button type="button" onClick={() => setShowPass(s => !s)}
-                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.3)', display: 'flex' }}>
+                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
                         {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
@@ -425,7 +425,7 @@ export default function InviteLanding() {
           </AnimatePresence>
         </div>
 
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'rgba(30,41,59,0.35)' }}>
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'var(--text-muted)' }}>
           {t('invite.powered_by')}
         </p>
       </motion.div>

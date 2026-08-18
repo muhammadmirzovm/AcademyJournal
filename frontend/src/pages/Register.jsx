@@ -9,7 +9,7 @@ export default function Register() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+      background: 'linear-gradient(135deg, rgba(20,184,168,0.06) 0%, rgba(20,184,168,0.02) 100%), var(--bg)',
       padding: '24px 16px', position: 'relative', overflow: 'hidden',
     }}>
       <div style={{
@@ -32,16 +32,16 @@ export default function Register() {
           <GraduationCap size={32} color="#fff" />
         </div>
 
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1e293b', marginBottom: 10 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', marginBottom: 10 }}>
           {t('register.title')}
         </h1>
-        <p style={{ fontSize: 15, color: 'rgba(30,41,59,0.6)', lineHeight: 1.7, marginBottom: 32 }}>
+        <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 32 }}>
           {t('register.sub')}
         </p>
 
         <div style={{
-          background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(12px)',
-          borderRadius: 20, border: '1px solid rgba(0,0,0,0.08)',
+          background: 'var(--surface)', backdropFilter: 'blur(12px)',
+          borderRadius: 20, border: '1px solid var(--border)',
           padding: '24px', marginBottom: 24,
           boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
         }}>
@@ -50,8 +50,8 @@ export default function Register() {
               <Lock size={18} color="#0D9488" />
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>{t('register.how_title')}</p>
-              <p style={{ fontSize: 13, color: 'rgba(30,41,59,0.6)', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('register.how_title')}</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 {t('register.how_sub')}
               </p>
             </div>

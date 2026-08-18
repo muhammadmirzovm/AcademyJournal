@@ -7,9 +7,9 @@ import { passwordResetRequest, passwordResetConfirm } from '../api/users'
 
 const inputStyle = (hasErr) => ({
   width: '100%', padding: '13px 16px', borderRadius: 12, boxSizing: 'border-box',
-  background: 'rgba(255,255,255,0.8)',
-  border: `1px solid ${hasErr ? 'rgba(239,68,68,0.5)' : 'rgba(0,0,0,0.1)'}`,
-  color: '#1e293b', fontSize: 15, outline: 'none', transition: 'border-color 0.2s',
+  background: 'var(--bg)',
+  border: `1px solid ${hasErr ? 'rgba(239,68,68,0.5)' : 'var(--border)'}`,
+  color: 'var(--text)', fontSize: 15, outline: 'none', transition: 'border-color 0.2s',
 })
 
 function PasswordInput({ value, onChange, placeholder, autoComplete }) {
@@ -22,10 +22,10 @@ function PasswordInput({ value, onChange, placeholder, autoComplete }) {
         placeholder={placeholder} autoComplete={autoComplete}
         style={{ ...inputStyle(false), paddingRight: 44 }}
         onFocus={e => e.target.style.borderColor = '#14B8A8'}
-        onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.1)'}
+        onBlur={e => e.target.style.borderColor = 'var(--border)'}
       />
       <button type="button" onClick={() => setShow(s => !s)}
-        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.4)', padding: 4, display: 'flex' }}>
+        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'flex' }}>
         {show ? <EyeOff size={16} /> : <Eye size={16} />}
       </button>
     </div>
@@ -80,13 +80,13 @@ export default function ForgotPassword() {
 
   const labelStyle = {
     display: 'block', fontSize: 11, fontWeight: 700,
-    color: 'rgba(30,41,59,0.6)', textTransform: 'uppercase',
+    color: 'var(--text-muted)', textTransform: 'uppercase',
     letterSpacing: '0.1em', marginBottom: 6,
   }
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+      background: 'linear-gradient(135deg, rgba(20,184,168,0.06) 0%, rgba(20,184,168,0.02) 100%), var(--bg)',
       minHeight: '100vh', position: 'relative', overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 16px'
     }}>
@@ -111,12 +111,12 @@ export default function ForgotPassword() {
           }}>
             {step === 3 ? <CheckCircle2 size={28} color="#fff" /> : <KeyRound size={28} color="#fff" />}
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
             {step === 1 && t('auth.forgot_title')}
             {step === 2 && t('auth.otp_title')}
             {step === 3 && t('auth.reset_done_title')}
           </h1>
-          <p style={{ fontSize: 14, color: 'rgba(30,41,59,0.6)', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
             {step === 1 && t('auth.forgot_subtitle')}
             {step === 2 && t('auth.otp_subtitle', { username })}
             {step === 3 && t('auth.reset_done_subtitle')}
@@ -124,8 +124,8 @@ export default function ForgotPassword() {
         </div>
 
         <div style={{
-          borderRadius: 24, border: '1px solid rgba(0,0,0,0.1)',
-          background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(12px)',
+          borderRadius: 24, border: '1px solid var(--border)',
+          background: 'var(--surface)', backdropFilter: 'blur(12px)',
           padding: 32, boxShadow: '0 24px 80px rgba(0,0,0,0.08)'
         }}>
           <AnimatePresence mode="wait">
@@ -142,7 +142,7 @@ export default function ForgotPassword() {
                     placeholder="johndoe" autoFocus autoComplete="username"
                     style={inputStyle(false)}
                     onFocus={e => e.target.style.borderColor = '#14B8A8'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.1)'} />
+                    onBlur={e => e.target.style.borderColor = 'var(--border)'} />
                 </div>
                 <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
                   style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', fontWeight: 800, color: '#fff', fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg, #14B8A8, #0D9488)', boxShadow: '0 8px 24px rgba(20,184,168,0.3)', opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -163,7 +163,7 @@ export default function ForgotPassword() {
                     placeholder="123456" autoFocus maxLength={6}
                     style={{ ...inputStyle(false), letterSpacing: '0.3em', fontWeight: 700, fontSize: 20, textAlign: 'center' }}
                     onFocus={e => e.target.style.borderColor = '#14B8A8'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.1)'} />
+                    onBlur={e => e.target.style.borderColor = 'var(--border)'} />
                 </div>
                 <div>
                   <label style={labelStyle}>{t('auth.new_password')}</label>
@@ -175,7 +175,7 @@ export default function ForgotPassword() {
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="button" onClick={() => { setStep(1); setError('') }}
-                    style={{ padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(0,0,0,0.12)', background: 'transparent', color: 'rgba(30,41,59,0.6)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                    style={{ padding: '14px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
                     {t('not_found.go_back')}
                   </button>
                   <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
@@ -183,7 +183,7 @@ export default function ForgotPassword() {
                     {loading ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> {t('auth.resetting')}</> : t('auth.reset_password')}
                   </motion.button>
                 </div>
-                <p style={{ textAlign: 'center', fontSize: 12, color: 'rgba(30,41,59,0.5)', marginTop: 4 }}>
+                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                   {t('auth.didnt_receive')}{' '}
                   <button type="button" onClick={() => handleRequestOTP({})}
                     style={{ background: 'none', border: 'none', color: '#14B8A8', fontWeight: 600, cursor: 'pointer', fontSize: 12, padding: 0 }}>
@@ -196,7 +196,7 @@ export default function ForgotPassword() {
             {/* Step 3 */}
             {step === 3 && (
               <motion.div key="s3" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center', padding: '8px 0' }}>
-                <p style={{ fontSize: 14, color: 'rgba(30,41,59,0.7)', marginBottom: 24 }}>{t('auth.reset_done_body')}</p>
+                <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>{t('auth.reset_done_body')}</p>
                 <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={() => navigate('/login')}
                   style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', fontWeight: 800, color: '#fff', fontSize: 15, cursor: 'pointer', background: 'linear-gradient(135deg, #14B8A8, #0D9488)', boxShadow: '0 8px 24px rgba(20,184,168,0.3)' }}>
                   {t('auth.go_to_login')}

@@ -40,7 +40,7 @@ export default function Login() {
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+      background: 'linear-gradient(135deg, rgba(20,184,168,0.06) 0%, rgba(20,184,168,0.02) 100%), var(--bg)',
       minHeight: '100vh', position: 'relative', overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 16px'
     }}>
@@ -65,8 +65,8 @@ export default function Login() {
           >
             <Code2 size={28} color="#fff" />
           </motion.div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>{t('auth.welcome_back')}</h1>
-          <p style={{ fontSize: 14, color: 'rgba(30,41,59,0.6)' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>{t('auth.welcome_back')}</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
             {t('auth.no_account')}{' '}
             <Link to="/register" style={{ color: '#14B8A8', fontWeight: 600, textDecoration: 'none' }}>
               {t('auth.create_one')}
@@ -76,8 +76,8 @@ export default function Login() {
 
         {/* Form card */}
         <div style={{
-          borderRadius: 24, border: '1px solid rgba(0,0,0,0.1)',
-          background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(12px)',
+          borderRadius: 24, border: '1px solid var(--border)',
+          background: 'var(--surface)', backdropFilter: 'blur(12px)',
           padding: 32, boxShadow: '0 24px 80px rgba(0,0,0,0.4)'
         }}>
           {errors.general && (
@@ -89,7 +89,7 @@ export default function Login() {
 
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(30,41,59,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
                 {t('auth.username')}
               </label>
               <input
@@ -97,19 +97,19 @@ export default function Login() {
                 placeholder="johndoe" autoComplete="username" autoFocus
                 style={{
                   width: '100%', padding: '13px 16px', borderRadius: 12, boxSizing: 'border-box',
-                  background: 'rgba(255,255,255,0.8)',
-                  border: `1px solid ${errors.username ? 'rgba(239,68,68,0.5)' : 'rgba(0,0,0,0.1)'}`,
-                  color: '#1e293b', fontSize: 15, outline: 'none',
+                  background: 'var(--bg)',
+                  border: `1px solid ${errors.username ? 'rgba(239,68,68,0.5)' : 'var(--border)'}`,
+                  color: 'var(--text)', fontSize: 15, outline: 'none',
                   transition: 'border-color 0.2s',
                 }}
                 onFocus={e => !errors.username && (e.target.style.borderColor = '#14B8A8')}
-                onBlur={e => !errors.username && (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
+                onBlur={e => !errors.username && (e.target.style.borderColor = 'var(--border)')}
               />
               {errors.username && <p style={{ fontSize: 12, color: '#f87171', marginTop: 4 }}>{errors.username}</p>}
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(30,41,59,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
                 {t('auth.password')}
               </label>
               <div style={{ position: 'relative' }}>
@@ -119,15 +119,15 @@ export default function Login() {
                   placeholder={t('auth.your_password')} autoComplete="current-password"
                   style={{
                     width: '100%', padding: '13px 48px 13px 16px', borderRadius: 12, boxSizing: 'border-box',
-                    background: 'rgba(255,255,255,0.8)',
-                    border: `1px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'rgba(0,0,0,0.1)'}`,
-                    color: '#1e293b', fontSize: 15, outline: 'none', transition: 'border-color 0.2s',
+                    background: 'var(--bg)',
+                    border: `1px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'var(--border)'}`,
+                    color: 'var(--text)', fontSize: 15, outline: 'none', transition: 'border-color 0.2s',
                   }}
                   onFocus={e => !errors.password && (e.target.style.borderColor = '#14B8A8')}
-                  onBlur={e => !errors.password && (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
+                  onBlur={e => !errors.password && (e.target.style.borderColor = 'var(--border)')}
                 />
                 <button type="button" onClick={() => setShowPass(s => !s)}
-                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(30,41,59,0.3)', padding: 4, display: 'flex' }}>
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'flex' }}>
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>

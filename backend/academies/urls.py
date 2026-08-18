@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     AcademyCreateView, AcademyDetailView, AcademyMembersView,
-    InviteCreateView, InviteListView,
+    InviteCreateView, InviteListView, InviteDeleteView,
     InviteVerifyView, InviteAcceptView,
     TelegramGroupListCreateView, TelegramGroupDeleteView,
 )
@@ -15,6 +15,7 @@ urlpatterns = [
     path('academy/telegram-groups/<int:pk>/', TelegramGroupDeleteView.as_view(), name='telegram_group_delete'),
     path('invites/', InviteListView.as_view(), name='invite_list'),
     path('invites/create/', InviteCreateView.as_view(), name='invite_create'),
+    path('invites/<int:pk>/', InviteDeleteView.as_view(), name='invite_delete'),
     path('invites/<uuid:token>/verify/', InviteVerifyView.as_view(), name='invite_verify'),
     path('invites/<uuid:token>/accept/', InviteAcceptView.as_view(), name='invite_accept'),
 ]

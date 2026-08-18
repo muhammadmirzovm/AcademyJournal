@@ -6,7 +6,7 @@ import {
   Building2, Link2, Plus, Copy, Check, Trash2,
   Loader2, Users, GraduationCap,
   Clock, Hash, Shield, Sparkles, AlertCircle, UserX, Send,
-  ChevronLeft, ChevronRight, ChevronDown,
+  ChevronLeft, ChevronRight, ChevronDown, Search, X,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -36,6 +36,16 @@ const PRESET_COLORS = [
   '#F59E0B', '#EF4444', '#EC4899', '#10B981',
   '#3B82F6', '#F97316', '#64748B', '#1E293B',
 ]
+
+const MAX_USES_PRESETS   = [1, 5, 20, 100]
+const DAYS_VALID_PRESETS = [1, 7, 30, 90]
+
+const presetChip = (active, color) => ({
+  padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+  border: `1px solid ${active ? color : 'rgba(0,0,0,0.12)'}`,
+  background: active ? `${color}18` : 'transparent',
+  color: active ? color : 'var(--text-muted)',
+})
 
 function CopyButton({ text }) {
   const { t } = useTranslation()
@@ -743,28 +753,57 @@ function InvitesTab({ academy, userRole }) {
   const { t } = useTranslation()
   const { show } = useToast()
   const [invites, setInvites]   = useState([])
+  const [invitePage,  setInvitePage]  = useState(1)
+  const [invitePages, setInvitePages] = useState(1)
+  const [filterSearch, setFilterSearch] = useState('')
+  const [filterRole,   setFilterRole]   = useState('')
   const [groups, setGroups]     = useState([])
   const [students, setStudents] = useState([])
   const [loadingList, setLoadingList] = useState(true)
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ role: 'student', group: '', student: '', max_uses: 1, days_valid: 7, note: '' })
+  const didMountFilters = useRef(false)
 
   const allowedRoleDefs = ROLE_OPTION_DEFS.filter(r =>
     (ROLE_OPTIONS_BY_ROLE[userRole] || ['student', 'parent']).includes(r.value)
   )
 
+  const fetchInvites = async (page) => {
+    const params = { page }
+    if (filterSearch.trim()) params.search = filterSearch.trim()
+    if (filterRole) params.role = filterRole
+    const { data } = await api.get('/invites/', { params })
+    setInvites(data.results); setInvitePages(data.pages); setInvitePage(data.page)
+  }
+
   useEffect(() => {
     Promise.all([
-      api.get('/invites/').catch(() => ({ data: [] })),
+      api.get('/invites/', { params: { page: 1 } }).catch(() => ({ data: { results: [], pages: 1, page: 1 } })),
       api.get('/groups/').catch(() => ({ data: [] })),
       api.get('/academy/members/', { params: { role: 'student' } }).catch(() => ({ data: [] })),
     ]).then(([inv, grp, mem]) => {
-      setInvites(inv.data)
+      setInvites(inv.data.results); setInvitePages(inv.data.pages); setInvitePage(inv.data.page)
       setGroups(grp.data)
       setStudents((mem.data || []).filter(m => m.role === 'student'))
     }).finally(() => setLoadingList(false))
   }, [])
+
+  useEffect(() => {
+    if (!didMountFilters.current) { didMountFilters.current = true; return }
+    const timer = setTimeout(() => { fetchInvites(1) }, 350)
+    return () => clearTimeout(timer)
+  }, [filterSearch, filterRole])
+
+  const handleDeleteInvite = async (id) => {
+    try {
+      await api.delete(`/invites/${id}/`)
+      show(t('settings.invite_deleted'), 'info')
+      await fetchInvites(invites.length === 1 && invitePage > 1 ? invitePage - 1 : invitePage)
+    } catch {
+      show(t('settings.err_invite_delete'), 'error')
+    }
+  }
 
   const createInvite = async e => {
     e.preventDefault()
@@ -773,8 +812,8 @@ function InvitesTab({ academy, userRole }) {
       const payload = { ...form, max_uses: Number(form.max_uses), days_valid: Number(form.days_valid) }
       if (!payload.group) delete payload.group
       if (payload.role !== 'parent' || !payload.student) delete payload.student
-      const { data } = await api.post('/invites/create/', payload)
-      setInvites(prev => [data, ...prev])
+      await api.post('/invites/create/', payload)
+      await fetchInvites(1)
       setShowForm(false)
       setForm({ role: 'student', group: '', student: '', max_uses: 1, days_valid: 7, note: '' })
       show(t('settings.invite_created'), 'success')
@@ -819,7 +858,7 @@ function InvitesTab({ academy, userRole }) {
                 <label style={labelStyle}>{t('settings.role')}</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
                   {allowedRoleDefs.map(r => (
-                    <button key={r.value} type="button" onClick={() => setForm(f => ({ ...f, role: r.value }))}
+                    <button key={r.value} type="button" onClick={() => setForm(f => ({ ...f, role: r.value, group: '', student: '' }))}
                       style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                         padding: '12px 8px', borderRadius: 12, border: `1.5px solid ${form.role === r.value ? r.color : 'rgba(0,0,0,0.1)'}`,
@@ -841,6 +880,12 @@ function InvitesTab({ academy, userRole }) {
                   <label style={labelStyle}><Hash size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />{t('settings.max_uses')}</label>
                   <input type="number" min="1" max="500" style={inputStyle(false)}
                     value={form.max_uses} onChange={e => setForm(f => ({ ...f, max_uses: e.target.value }))} />
+                  <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+                    {MAX_USES_PRESETS.map(p => (
+                      <button key={p} type="button" onClick={() => setForm(f => ({ ...f, max_uses: p }))}
+                        style={presetChip(Number(form.max_uses) === p, color)}>{p}</button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Days valid */}
@@ -848,6 +893,12 @@ function InvitesTab({ academy, userRole }) {
                   <label style={labelStyle}><Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />{t('settings.valid_days')}</label>
                   <input type="number" min="1" max="365" style={inputStyle(false)}
                     value={form.days_valid} onChange={e => setForm(f => ({ ...f, days_valid: e.target.value }))} />
+                  <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+                    {DAYS_VALID_PRESETS.map(p => (
+                      <button key={p} type="button" onClick={() => setForm(f => ({ ...f, days_valid: p }))}
+                        style={presetChip(Number(form.days_valid) === p, color)}>{t('settings.days_preset', { count: p })}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -911,6 +962,30 @@ function InvitesTab({ academy, userRole }) {
         )}
       </AnimatePresence>
 
+      {/* Search + role filter */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input value={filterSearch} onChange={e => setFilterSearch(e.target.value)}
+            placeholder={t('settings.invite_search_placeholder')}
+            style={{ ...inputStyle(false), paddingLeft: 34, paddingRight: filterSearch ? 34 : 12 }} />
+          {filterSearch && (
+            <button type="button" onClick={() => setFilterSearch('')}
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}>
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => setFilterRole('')} style={presetChip(filterRole === '', color)}>{t('settings.all_roles')}</button>
+          {allowedRoleDefs.map(r => (
+            <button key={r.value} type="button" onClick={() => setFilterRole(r.value)} style={presetChip(filterRole === r.value, r.color)}>
+              {t(`settings.role_${r.value}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Invite list */}
       {loadingList ? (
         <div style={{ textAlign: 'center', padding: 40 }}>
@@ -919,74 +994,116 @@ function InvitesTab({ academy, userRole }) {
       ) : invites.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
           <Link2 size={36} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
-          <p style={{ fontWeight: 600 }}>{t('settings.no_invites')}</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>{t('settings.no_invites_sub')}</p>
+          <p style={{ fontWeight: 600 }}>{(filterSearch || filterRole) ? t('settings.no_results') : t('settings.no_invites')}</p>
+          {!(filterSearch || filterRole) && <p style={{ fontSize: 13, marginTop: 4 }}>{t('settings.no_invites_sub')}</p>}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {invites.map(inv => {
-            const roleDef  = ROLE_OPTION_DEFS.find(r => r.value === inv.role) || ROLE_OPTION_DEFS[0]
-            const expired  = !inv.is_valid
-            const usedUp   = inv.use_count >= inv.max_uses
-            const url      = inviteUrl(inv.token)
-            return (
-              <motion.div key={inv.id} layout
-                style={{
-                  padding: '14px 18px', borderRadius: 14,
-                  border: `1px solid ${expired || usedUp ? 'rgba(0,0,0,0.08)' : roleDef.color + '33'}`,
-                  background: expired || usedUp ? 'rgba(0,0,0,0.02)' : `${roleDef.color}08`,
-                  opacity: expired || usedUp ? 0.6 : 1,
-                }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                    background: expired || usedUp ? 'rgba(0,0,0,0.06)' : `${roleDef.color}22`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <roleDef.icon size={16} style={{ color: expired || usedUp ? 'var(--text-muted)' : roleDef.color }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: expired || usedUp ? 'var(--text-muted)' : roleDef.color }}>
-                        {t(`settings.role_${inv.role}`, { defaultValue: inv.role })}
-                      </span>
-                      {inv.group && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.06)', color: 'var(--text-muted)' }}>{t('settings.group_attached')}</span>}
-                      {inv.student_name && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'rgba(236,72,153,0.1)', color: '#EC4899' }}>👤 {inv.student_name}</span>}
-                      {(expired || usedUp) && (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
-                          {usedUp ? t('settings.used_up') : t('settings.expired')}
-                        </span>
-                      )}
-                    </div>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {url}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Users size={10} /> {inv.use_count}/{inv.max_uses} {t('settings.used')}
-                      </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={10} /> {t('settings.expires')} {formatDate(inv.expires_at)}
-                      </span>
-                      {inv.note && <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>"{inv.note}"</span>}
-                    </div>
-                  </div>
-                  {!expired && !usedUp && <CopyButton text={url} />}
-                </div>
-              </motion.div>
-            )
-          })}
+          {invites.map(inv => (
+            <InviteRow key={inv.id} inv={inv} url={inviteUrl(inv.token)} onDelete={() => handleDeleteInvite(inv.id)} />
+          ))}
+        </div>
+      )}
+
+      {invitePages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 4 }}>
+          <button onClick={() => fetchInvites(invitePage - 1)} disabled={invitePage <= 1}
+            style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: invitePage <= 1 ? 'not-allowed' : 'pointer', opacity: invitePage <= 1 ? 0.4 : 1 }}>
+            <ChevronLeft size={16} color="var(--text-muted)" />
+          </button>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>{invitePage} / {invitePages}</span>
+          <button onClick={() => fetchInvites(invitePage + 1)} disabled={invitePage >= invitePages}
+            style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: invitePage >= invitePages ? 'not-allowed' : 'pointer', opacity: invitePage >= invitePages ? 0.4 : 1 }}>
+            <ChevronRight size={16} color="var(--text-muted)" />
+          </button>
         </div>
       )}
     </div>
   )
 }
 
+// ── Invite Row ────────────────────────────────────────────────────────────────
+
+function InviteRow({ inv, url, onDelete }) {
+  const { t } = useTranslation()
+  const [confirm, setConfirm] = useState(false)
+  const roleDef  = ROLE_OPTION_DEFS.find(r => r.value === inv.role) || ROLE_OPTION_DEFS[0]
+  const expired  = !inv.is_valid
+  const usedUp   = inv.use_count >= inv.max_uses
+
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+      style={{
+        padding: '14px 18px', borderRadius: 14,
+        border: `1px solid ${expired || usedUp ? 'rgba(0,0,0,0.08)' : roleDef.color + '33'}`,
+        background: expired || usedUp ? 'rgba(0,0,0,0.02)' : `${roleDef.color}08`,
+        opacity: expired || usedUp ? 0.6 : 1,
+      }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          background: expired || usedUp ? 'rgba(0,0,0,0.06)' : `${roleDef.color}22`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <roleDef.icon size={16} style={{ color: expired || usedUp ? 'var(--text-muted)' : roleDef.color }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: expired || usedUp ? 'var(--text-muted)' : roleDef.color }}>
+              {t(`settings.role_${inv.role}`, { defaultValue: inv.role })}
+            </span>
+            {inv.group && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.06)', color: 'var(--text-muted)' }}>{t('settings.group_attached')}</span>}
+            {inv.student_name && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'rgba(236,72,153,0.1)', color: '#EC4899' }}>👤 {inv.student_name}</span>}
+            {(expired || usedUp) && (
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                {usedUp ? t('settings.used_up') : t('settings.expired')}
+              </span>
+            )}
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {url}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Users size={10} /> {inv.use_count}/{inv.max_uses} {t('settings.used')}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Clock size={10} /> {t('settings.expires')} {formatDate(inv.expires_at)}
+            </span>
+            {inv.note && <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>"{inv.note}"</span>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {!expired && !usedUp && <CopyButton text={url} />}
+          {confirm ? (
+            <>
+              <button onClick={onDelete} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                {t('settings.confirm_delete')}
+              </button>
+              <button onClick={() => setConfirm(false)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                {t('settings.cancel')}
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setConfirm(true)} title={t('settings.delete_invite')}
+              style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <Trash2 size={14} color="var(--text-muted)" />
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 // ── Dropdown ──────────────────────────────────────────────────────────────────
 
-function Dropdown({ value, onChange, options, placeholder }) {
+function Dropdown({ value, onChange, options, placeholder, searchPlaceholder }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const ref = useRef(null)
+  const searchRef = useRef(null)
 
   useEffect(() => {
     const onClickOutside = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -994,7 +1111,15 @@ function Dropdown({ value, onChange, options, placeholder }) {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
 
+  useEffect(() => {
+    if (open) { setQuery(''); setTimeout(() => searchRef.current?.focus(), 50) }
+  }, [open])
+
   const selected = options.find(o => o.value === value)
+  const showSearch = options.length > 6
+  const filtered = showSearch && query.trim()
+    ? options.filter(o => o.label.toLowerCase().includes(query.trim().toLowerCase()))
+    : options
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -1009,17 +1134,32 @@ function Dropdown({ value, onChange, options, placeholder }) {
         {open && (
           <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--surface, var(--card))', border: '1px solid var(--border, rgba(0,0,0,0.1))', borderRadius: 10, overflow: 'hidden', maxHeight: 240, overflowY: 'auto', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', zIndex: 50 }}>
-            <button type="button" onClick={() => { onChange(''); setOpen(false) }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: value === '' ? 'var(--accent-bg)' : 'transparent', color: value === '' ? 'var(--accent)' : 'var(--text-muted)', fontSize: 13, fontWeight: value === '' ? 700 : 500, cursor: 'pointer', fontStyle: 'italic' }}>
-              {placeholder}
-            </button>
-            {options.map(o => (
-              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
-                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: o.value === value ? 'var(--accent-bg)' : 'transparent', color: o.value === value ? 'var(--accent)' : 'var(--text)', fontSize: 13, fontWeight: o.value === value ? 700 : 500, cursor: 'pointer' }}>
-                {o.label}
+            style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--surface, var(--card))', border: '1px solid var(--border, rgba(0,0,0,0.1))', borderRadius: 10, overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', zIndex: 50 }}>
+            {showSearch && (
+              <div style={{ padding: 8, borderBottom: '1px solid var(--border, rgba(0,0,0,0.1))' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    placeholder={searchPlaceholder || t('settings.search_placeholder')}
+                    style={{ width: '100%', padding: '7px 10px 7px 30px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+            )}
+            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: value === '' ? 'var(--accent-bg)' : 'transparent', color: value === '' ? 'var(--accent)' : 'var(--text-muted)', fontSize: 13, fontWeight: value === '' ? 700 : 500, cursor: 'pointer', fontStyle: 'italic' }}>
+                {placeholder}
               </button>
-            ))}
+              {filtered.length === 0 ? (
+                <p style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('settings.no_results')}</p>
+              ) : filtered.map(o => (
+                <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: o.value === value ? 'var(--accent-bg)' : 'transparent', color: o.value === value ? 'var(--accent)' : 'var(--text)', fontSize: 13, fontWeight: o.value === value ? 700 : 500, cursor: 'pointer' }}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
