@@ -230,3 +230,72 @@ def test_adjust_ignores_non_student_ids(admin_user, teacher):
         'student_ids': [teacher.id], 'amount': 10, 'reason': 'x',
     }, format='json')
     assert res.status_code == 400  # no valid students resolved
+
+
+@pytest.mark.django_db
+def test_get_settings_returns_defaults(admin_user):
+    res = _client_for('coin_admin').get('/api/coins/settings/')
+    assert res.status_code == 200
+    assert res.data['place_1_normal'] == 5
+    assert res.data['place_1_big'] == 10
+    assert res.data['big_days'] == '4,5'
+
+
+@pytest.mark.django_db
+def test_get_settings_requires_admin(teacher):
+    res = _client_for('coin_teacher').get('/api/coins/settings/')
+    assert res.status_code == 403
+
+
+@pytest.mark.django_db
+def test_patch_settings_updates_values(admin_user, academy):
+    res = _client_for('coin_admin').patch('/api/coins/settings/', {
+        'place_1_normal': 7, 'effort_min_normal': 2, 'effort_max_normal': 3,
+    }, format='json')
+    assert res.status_code == 200
+    assert res.data['place_1_normal'] == 7
+
+    setting = CoinSetting.objects.get(academy=academy)
+    assert setting.place_1_normal == 7
+    assert setting.effort_min_normal == 2
+    assert setting.effort_max_normal == 3
+    # Untouched fields keep their defaults (partial update).
+    assert setting.place_2_normal == 4
+
+
+@pytest.mark.django_db
+def test_patch_settings_requires_admin(teacher):
+    res = _client_for('coin_teacher').patch('/api/coins/settings/', {'place_1_normal': 7}, format='json')
+    assert res.status_code == 403
+
+
+@pytest.mark.django_db
+def test_patch_settings_rejects_effort_min_above_max(admin_user):
+    res = _client_for('coin_admin').patch('/api/coins/settings/', {
+        'effort_min_normal': 5, 'effort_max_normal': 2,
+    }, format='json')
+    assert res.status_code == 400
+
+
+@pytest.mark.django_db
+def test_patch_settings_validates_big_days(admin_user):
+    res = _client_for('coin_admin').patch('/api/coins/settings/', {'big_days': '3,9'}, format='json')
+    assert res.status_code == 400
+
+
+@pytest.mark.django_db
+def test_patch_settings_normalizes_big_days(admin_user, academy):
+    res = _client_for('coin_admin').patch('/api/coins/settings/', {'big_days': '5, 3, 3, 1'}, format='json')
+    assert res.status_code == 200
+    assert res.data['big_days'] == '1,3,5'
+
+
+@pytest.mark.django_db
+def test_patch_settings_scoped_to_own_academy(admin_user, academy):
+    other_academy = Academy.objects.create(name='Other Settings Academy', slug='other-settings-academy')
+    other_admin = User.objects.create_user(username='other_settings_admin', password='pass1234', role='admin', academy=other_academy)
+
+    _client_for('coin_admin').patch('/api/coins/settings/', {'place_1_normal': 99}, format='json')
+
+    other_setting = CoinSetting.get(other_academy)
+    assert other_setting.place_1_normal == 5  # untouched default, not 99

@@ -9,7 +9,8 @@ from rest_framework.views import APIView
 
 from purchases.models import Purchase
 
-from .models import CoinTransaction
+from .models import CoinSetting, CoinTransaction
+from .serializers import CoinSettingSerializer
 
 User = get_user_model()
 
@@ -103,3 +104,27 @@ class CoinAdjustView(APIView):
         ])
 
         return Response({'affected': len(students), 'amount': amount})
+
+
+class CoinSettingView(APIView):
+    """Admin-only: view/edit the academy's coin-game rules (place payouts,
+    effort payouts, big-day list, etc). The in-app equivalent of the Django
+    admin CoinSetting page — a change only affects games started after it's
+    saved, since each game snapshots the rules at start time."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        if request.user.role != 'admin' or not request.user.academy:
+            return Response({'detail': "Faqat akademiya admini ko'ra oladi."}, status=403)
+        setting = CoinSetting.get(request.user.academy)
+        return Response(CoinSettingSerializer(setting).data)
+
+    def patch(self, request):
+        if request.user.role != 'admin' or not request.user.academy:
+            return Response({'detail': "Faqat akademiya admini o'zgartira oladi."}, status=403)
+        setting = CoinSetting.get(request.user.academy)
+        serializer = CoinSettingSerializer(setting, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

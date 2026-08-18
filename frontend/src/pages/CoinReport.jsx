@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Coins, Wallet, TrendingUp, TrendingDown, Receipt, ChevronLeft, ChevronRight, Loader2, PlusCircle, Search, Users } from 'lucide-react'
-import { getCoinReport, adjustCoins } from '../api/coins'
+import { Coins, Wallet, TrendingUp, TrendingDown, Receipt, ChevronLeft, ChevronRight, Loader2, PlusCircle, Search, Users, SlidersHorizontal, Save } from 'lucide-react'
+import { getCoinReport, adjustCoins, getCoinSettings, updateCoinSettings } from '../api/coins'
 import { getAdminPurchases } from '../api/purchases'
 import { getGroups, getMembers, getAcademyStudents } from '../api/groups'
 import { useToast } from '../context/ToastContext'
-import { formatDate } from '../utils/date'
+import { formatDate, weekdayNameShort } from '../utils/date'
 
 const CATEGORY_COLORS = {
   snack:      '#0EA5E9',
@@ -57,7 +57,10 @@ export default function CoinReport() {
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('coin_report.subtitle')}</p>
       </div>
 
-      <CoinAdjustPanel onAdjusted={load} t={t} />
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        <CoinAdjustPanel onAdjusted={load} t={t} />
+        <CoinSettingsPanel t={t} />
+      </div>
 
       {loading || !report ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
@@ -411,6 +414,160 @@ function CoinAdjustPanel({ onAdjusted, t }) {
                     <motion.button whileTap={{ scale: 0.97 }} disabled={!canSubmit} onClick={() => setConfirming(true)}
                       style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: canSubmit ? 'var(--accent)' : 'var(--border)', color: canSubmit ? '#fff' : 'var(--text-muted)', fontWeight: 700, fontSize: 13, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
                       {t('coin_report.adjust_review_btn')}
+                    </motion.button>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function NumField({ label, value, onChange, min = 0, max }) {
+  return (
+    <div>
+      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+        {label}
+      </label>
+      <input type="number" min={min} max={max} value={value} onChange={e => onChange(e.target.value)}
+        style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+    </div>
+  )
+}
+
+function CoinSettingsPanel({ t }) {
+  const { i18n } = useTranslation()
+  const { show } = useToast()
+  const [open, setOpen] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [values, setValues] = useState(null)
+  const [bigDays, setBigDays] = useState(new Set())
+
+  const toggleOpen = async () => {
+    const next = !open
+    setOpen(next)
+    if (next && !loaded) {
+      try {
+        const { data } = await getCoinSettings()
+        setValues(data)
+        setBigDays(new Set(data.big_days.split(',').filter(Boolean).map(Number)))
+        setLoaded(true)
+      } catch { show(t('coin_report.toast_settings_load_fail'), 'error') }
+    }
+  }
+
+  const set = (key, val) => setValues(v => ({ ...v, [key]: val }))
+
+  const toggleBigDay = (d) => {
+    setBigDays(prev => {
+      const next = new Set(prev)
+      if (next.has(d)) next.delete(d); else next.add(d)
+      return next
+    })
+  }
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const payload = {
+        ...values,
+        big_days: [...bigDays].sort((a, b) => a - b).join(','),
+      }
+      const { data } = await updateCoinSettings(payload)
+      setValues(data)
+      setBigDays(new Set(data.big_days.split(',').filter(Boolean).map(Number)))
+      show(t('coin_report.toast_settings_saved'), 'success')
+    } catch (err) {
+      show(err.response?.data?.detail || t('coin_report.toast_settings_fail'), 'error')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div>
+      <button onClick={toggleOpen}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, border: '1px solid var(--accent)', background: open ? 'var(--accent-bg)' : 'transparent', color: 'var(--accent)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+        <SlidersHorizontal size={15} /> {t('coin_report.settings_btn')}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: 'hidden' }}>
+            <div style={{ marginTop: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, maxWidth: 520 }}>
+              {!loaded || !values ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+                  <Loader2 size={20} color="var(--accent)" style={{ animation: 'spin 0.7s linear infinite' }} />
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 18, lineHeight: 1.5 }}>
+                    {t('coin_report.settings_hint')}
+                  </p>
+
+                  {/* Oddiy kun */}
+                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>{t('coin_report.settings_normal_day')}</p>
+                  <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                    <NumField label={t('coin_report.settings_place_1')} value={values.place_1_normal} onChange={v => set('place_1_normal', v)} />
+                    <NumField label={t('coin_report.settings_place_2')} value={values.place_2_normal} onChange={v => set('place_2_normal', v)} />
+                    <NumField label={t('coin_report.settings_place_3')} value={values.place_3_normal} onChange={v => set('place_3_normal', v)} />
+                  </div>
+                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                    <NumField label={t('coin_report.settings_effort_min')} value={values.effort_min_normal} onChange={v => set('effort_min_normal', v)} />
+                    <NumField label={t('coin_report.settings_effort_max')} value={values.effort_max_normal} onChange={v => set('effort_max_normal', v)} />
+                  </div>
+
+                  {/* Katta kun */}
+                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>{t('coin_report.settings_big_day')}</p>
+                  <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                    <NumField label={t('coin_report.settings_place_1')} value={values.place_1_big} onChange={v => set('place_1_big', v)} />
+                    <NumField label={t('coin_report.settings_place_2')} value={values.place_2_big} onChange={v => set('place_2_big', v)} />
+                    <NumField label={t('coin_report.settings_place_3')} value={values.place_3_big} onChange={v => set('place_3_big', v)} />
+                  </div>
+                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                    <NumField label={t('coin_report.settings_effort_min')} value={values.effort_min_big} onChange={v => set('effort_min_big', v)} />
+                    <NumField label={t('coin_report.settings_effort_max')} value={values.effort_max_big} onChange={v => set('effort_max_big', v)} />
+                  </div>
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                      {t('coin_report.settings_big_days')}
+                    </label>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                      {/* d is 0=Monday (backend's big_days convention); weekdayNameShort expects
+                          0=Sunday (matches Date#getDay()), hence the (d+1)%7 conversion. */}
+                      {[0, 1, 2, 3, 4, 5, 6].map(d => (
+                        <button key={d} type="button" onClick={() => toggleBigDay(d)}
+                          style={{ width: 38, height: 34, borderRadius: 8, border: `1.5px solid ${bigDays.has(d) ? 'var(--accent)' : 'var(--border)'}`, background: bigDays.has(d) ? 'var(--accent-bg)' : 'transparent', color: bigDays.has(d) ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                          {weekdayNameShort((d + 1) % 7, i18n.language)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Individual dars */}
+                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>{t('coin_report.settings_individual')}</p>
+                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                    <NumField label={t('coin_report.settings_normal_day')} value={values.individual_normal} onChange={v => set('individual_normal', v)} />
+                    <NumField label={t('coin_report.settings_big_day')} value={values.individual_big} onChange={v => set('individual_big', v)} />
+                  </div>
+
+                  {/* Qoidalar */}
+                  <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>{t('coin_report.settings_rules')}</p>
+                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
+                    <NumField label={t('coin_report.settings_min_group_3rd')} value={values.min_group_for_3rd} onChange={v => set('min_group_for_3rd', v)} min={3} />
+                    <NumField label={t('coin_report.settings_max_games_week')} value={values.max_games_per_week} onChange={v => set('max_games_per_week', v)} min={1} max={7} />
+                    <NumField label={t('coin_report.settings_edit_window')} value={values.edit_window_hours} onChange={v => set('edit_window_hours', v)} min={1} />
+                    <NumField label={t('coin_report.settings_purchase_expires')} value={values.purchase_expires_days} onChange={v => set('purchase_expires_days', v)} min={1} />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <motion.button whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                      {saving ? <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={13} />}
+                      {t('coin_report.settings_save')}
                     </motion.button>
                   </div>
                 </>

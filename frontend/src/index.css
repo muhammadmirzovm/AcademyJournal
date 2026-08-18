@@ -178,6 +178,7 @@ a { transition: color 0.15s, opacity 0.15s; }
 
   /* Form 2-column grids collapse */
   .form-grid-2 { grid-template-columns: 1fr !important; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr !important; }
 
   /* Member row: allow wrapping on very small screens */
   .member-row-inner { flex-wrap: wrap !important; }
@@ -195,4 +196,7 @@ a { transition: color 0.15s, opacity 0.15s; }
 
   /* Lesson score buttons */
   .score-btn { width: 28px !important; height: 28px !important; font-size: 11px !important; }
+
+  /* Form 3-column grids collapse fully on very small screens */
+  .form-grid-3 { grid-template-columns: 1fr !important; }
 }
