@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
+from django.utils import timezone
 from rest_framework.test import APIClient
 from academies.models import Academy
 from coins.models import CoinTransaction
@@ -361,3 +362,89 @@ def test_admin_list_excludes_other_academy(student, admin_user, reward):
     assert res.status_code == 200
     assert res.data['total'] == 1
     assert res.data['results'][0]['student_username'] == 'p_student'
+
+
+@pytest.mark.django_db
+def test_undo_issue_reverts_to_active_without_touching_coins_or_stock(student, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase_id = res.data['id']
+    balance_after_purchase = CoinTransaction.balance_for(student)
+    reward.refresh_from_db()
+    stock_after_purchase = reward.stock
+
+    client = _client_for('p_admin')
+    issue = client.post(f'/api/purchases/{purchase_id}/issue/')
+    assert issue.status_code == 200
+
+    undo = client.post(f'/api/purchases/{purchase_id}/undo-issue/')
+    assert undo.status_code == 200
+    assert undo.data['status'] == 'active'
+
+    purchase = Purchase.objects.get(id=purchase_id)
+    assert purchase.status == Purchase.Status.ACTIVE
+    assert purchase.issued_by is None
+    assert purchase.issued_at is None
+    # Coins/stock are untouched by issue or undo — only purchase-time matters.
+    assert CoinTransaction.balance_for(student) == balance_after_purchase
+    reward.refresh_from_db()
+    assert reward.stock == stock_after_purchase
+
+
+@pytest.mark.django_db
+def test_undo_issue_rejects_purchase_not_issued(student, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase_id = res.data['id']
+
+    undo = _client_for('p_admin').post(f'/api/purchases/{purchase_id}/undo-issue/')
+    assert undo.status_code == 400
+
+
+@pytest.mark.django_db
+def test_undo_issue_rejects_after_window_expires(student, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase = Purchase.objects.get(id=res.data['id'])
+
+    client = _client_for('p_admin')
+    issue = client.post(f'/api/purchases/{purchase.id}/issue/')
+    assert issue.status_code == 200
+
+    purchase.refresh_from_db()
+    purchase.issued_at = timezone.now() - timezone.timedelta(minutes=11)
+    purchase.save(update_fields=['issued_at'])
+
+    undo = client.post(f'/api/purchases/{purchase.id}/undo-issue/')
+    assert undo.status_code == 400
+
+    purchase.refresh_from_db()
+    assert purchase.status == Purchase.Status.ISSUED
+
+
+@pytest.mark.django_db
+def test_undo_issue_requires_admin(student, teacher, admin_user, reward):
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase_id = res.data['id']
+    _client_for('p_admin').post(f'/api/purchases/{purchase_id}/issue/')
+
+    for username in ('p_student', 'p_teacher'):
+        undo = _client_for(username).post(f'/api/purchases/{purchase_id}/undo-issue/')
+        assert undo.status_code == 403
+
+
+@pytest.mark.django_db
+def test_undo_issue_rejects_other_academy_purchase(student, admin_user, reward):
+    other_academy = Academy.objects.create(name='Other Undo Academy', slug='other-undo-academy')
+    other_admin = User.objects.create_user(username='other_p_admin3', password='pass1234', role='admin', academy=other_academy)
+
+    _give_coins(student, 30)
+    res = _client_for('p_student').post(f'/api/rewards/{reward.id}/purchase/', {'quantity': 1}, format='json')
+    purchase_id = res.data['id']
+    _client_for('p_admin').post(f'/api/purchases/{purchase_id}/issue/')
+
+    undo = _client_for('other_p_admin3').post(f'/api/purchases/{purchase_id}/undo-issue/')
+    assert undo.status_code == 404
+    purchase = Purchase.objects.get(id=purchase_id)
+    assert purchase.status == Purchase.Status.ISSUED

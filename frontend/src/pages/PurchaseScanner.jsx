@@ -1,10 +1,14 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ScanLine, Search, Loader2, CheckCircle2, Clock, User, Coins } from 'lucide-react'
-import { lookupPurchase, issuePurchase } from '../api/purchases'
+import { ScanLine, Search, Loader2, CheckCircle2, Clock, User, Coins, Undo2 } from 'lucide-react'
+import { lookupPurchase, issuePurchase, undoIssuePurchase } from '../api/purchases'
 import { formatDate } from '../utils/date'
 import { useToast } from '../context/ToastContext'
+
+// Mirrors backend UNDO_ISSUE_WINDOW_MINUTES — display-only; the server is
+// the actual authority and will reject an undo past its own window.
+const UNDO_WINDOW_MINUTES = 10
 
 export default function PurchaseScanner() {
   const { t }    = useTranslation()
@@ -14,6 +18,7 @@ export default function PurchaseScanner() {
   const [code, setCode]         = useState('')
   const [loading, setLoading]   = useState(false)
   const [issuing, setIssuing]   = useState(false)
+  const [undoing, setUndoing]   = useState(false)
   const [purchase, setPurchase] = useState(null)
   const [error, setError]       = useState('')
 
@@ -49,6 +54,17 @@ export default function PurchaseScanner() {
     } finally { setIssuing(false) }
   }
 
+  const handleUndo = async () => {
+    setUndoing(true)
+    try {
+      const { data } = await undoIssuePurchase(purchase.id)
+      setPurchase(data)
+      show(t('scanner.toast_undone'), 'success')
+    } catch (err) {
+      show(err.response?.data?.detail || t('scanner.toast_undo_fail'), 'error')
+    } finally { setUndoing(false) }
+  }
+
   return (
     <div style={{ maxWidth: 460, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -71,10 +87,10 @@ export default function PurchaseScanner() {
             autoCapitalize="characters"
             autoComplete="off"
             style={{
-              flex: 1, padding: '14px 16px', borderRadius: 10, border: '1.5px solid var(--border)',
+              flex: 1, minWidth: 0, padding: '14px 16px', borderRadius: 10, border: '1.5px solid var(--border)',
               background: 'var(--bg)', color: 'var(--text)', fontSize: 22, fontWeight: 800,
               letterSpacing: '0.2em', textAlign: 'center', textTransform: 'uppercase',
-              fontFamily: 'monospace', outline: 'none',
+              fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box',
             }}
           />
           <motion.button type="submit" whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }}
@@ -92,7 +108,8 @@ export default function PurchaseScanner() {
       )}
 
       {purchase && (
-        <PurchaseCard purchase={purchase} issuing={issuing} onIssue={handleIssue} onReset={reset} t={t} />
+        <PurchaseCard purchase={purchase} issuing={issuing} undoing={undoing}
+          onIssue={handleIssue} onUndo={handleUndo} onReset={reset} t={t} />
       )}
     </div>
   )
@@ -104,9 +121,22 @@ const STATUS_META = {
   expired: { color: '#DC2626', bg: 'rgba(220,38,38,0.08)' },
 }
 
-function PurchaseCard({ purchase, issuing, onIssue, onReset, t }) {
+function PurchaseCard({ purchase, issuing, undoing, onIssue, onUndo, onReset, t }) {
   const meta = STATUS_META[purchase.status] || STATUS_META.active
   const canIssue = purchase.status === 'active' && !purchase.is_expired
+  const [canUndo, setCanUndo] = useState(false)
+
+  useEffect(() => {
+    const recompute = () => {
+      setCanUndo(
+        purchase.status === 'issued' && !!purchase.issued_at &&
+        (Date.now() - new Date(purchase.issued_at).getTime()) < UNDO_WINDOW_MINUTES * 60 * 1000
+      )
+    }
+    recompute()
+    const interval = setInterval(recompute, 15000)
+    return () => clearInterval(interval)
+  }, [purchase])
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -144,6 +174,15 @@ function PurchaseCard({ purchase, issuing, onIssue, onReset, t }) {
           {issuing ? <Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> : <CheckCircle2 size={16} />}
           {issuing ? t('scanner.issuing') : t('scanner.issue_btn')}
         </motion.button>
+      ) : canUndo ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={onUndo} disabled={undoing}
+            style={{ ...ghostBtn, width: '100%', justifyContent: 'center', color: 'var(--danger)', borderColor: 'var(--danger)', opacity: undoing ? 0.7 : 1 }}>
+            {undoing ? <Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Undo2 size={16} />}
+            {undoing ? t('scanner.undoing') : t('scanner.undo_btn')}
+          </motion.button>
+          <button onClick={onReset} style={{ ...ghostBtn, width: '100%', justifyContent: 'center' }}>{t('scanner.scan_another')}</button>
+        </div>
       ) : (
         <button onClick={onReset} style={{ ...ghostBtn, width: '100%', justifyContent: 'center' }}>{t('scanner.scan_another')}</button>
       )}

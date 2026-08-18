@@ -18,6 +18,11 @@ from .serializers import AdminPurchaseSerializer, PurchaseSerializer
 # category specifically, distinct from CoinSetting's other knobs.
 COUPON_MAX_PER_STUDENT = 2
 
+# How long after marking a purchase "issued" the admin can undo a mis-scan.
+# Coins/stock are never touched by issue or undo-issue — both only move
+# Purchase.status — so this is a low-risk correction window, not a refund.
+UNDO_ISSUE_WINDOW_MINUTES = 10
+
 
 class RewardPurchaseView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -151,6 +156,41 @@ class PurchaseIssueView(APIView):
             purchase.status = Purchase.Status.ISSUED
             purchase.issued_by = request.user
             purchase.issued_at = timezone.now()
+            purchase.save(update_fields=['status', 'issued_by', 'issued_at'])
+
+        return Response(AdminPurchaseSerializer(purchase, context={'request': request}).data)
+
+
+class PurchaseUndoIssueView(APIView):
+    """Admin scanner: undo an accidental 'issued' marking (mis-scan/mis-click).
+
+    Only flips status back to ACTIVE — coins and stock were already deducted
+    at purchase time, not issue time, so there's nothing to refund here."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': "Faqat admin bekor qila oladi."}, status=403)
+
+        with transaction.atomic():
+            purchase = get_object_or_404(
+                Purchase.objects.select_for_update().select_related('student', 'reward'),
+                pk=pk, student__academy=request.user.academy,
+            )
+
+            if purchase.status != Purchase.Status.ISSUED:
+                return Response({'detail': "Bu xarid \"berildi\" deb belgilanmagan."}, status=400)
+
+            elapsed = timezone.now() - purchase.issued_at
+            if elapsed > timezone.timedelta(minutes=UNDO_ISSUE_WINDOW_MINUTES):
+                return Response({
+                    'detail': f"Faqat berilgandan keyingi {UNDO_ISSUE_WINDOW_MINUTES} daqiqa ichida bekor qilish mumkin.",
+                }, status=400)
+
+            purchase.status = Purchase.Status.ACTIVE
+            purchase.issued_by = None
+            purchase.issued_at = None
             purchase.save(update_fields=['status', 'issued_by', 'issued_at'])
 
         return Response(AdminPurchaseSerializer(purchase, context={'request': request}).data)
