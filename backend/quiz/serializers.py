@@ -41,6 +41,12 @@ class QuestionSerializer(serializers.ModelSerializer):
                   'difficulty', 'options', 'correct_answer', 'created_by_id', 'created_by_name', 'created_at']
         read_only_fields = ['id', 'created_at']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if self.context.get('hide_correct_answer'):
+            data.pop('correct_answer', None)
+        return data
+
     def get_created_by_name(self, obj):
         u = obj.created_by
         return u.get_full_name() or u.username
@@ -92,7 +98,7 @@ class GameSerializer(serializers.ModelSerializer):
 
     def get_current_question_data(self, obj):
         if obj.current_question:
-            return QuestionSerializer(obj.current_question).data
+            return QuestionSerializer(obj.current_question, context=self.context).data
         return None
 
     def get_board(self, obj):

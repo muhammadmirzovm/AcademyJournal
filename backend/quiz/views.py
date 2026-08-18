@@ -321,9 +321,15 @@ def get_group_and_check_teacher(group_pk, user):
     return group, is_teacher
 
 
-def game_response(game):
-    """Serialize game including board. Board is a SerializerMethodField so always present."""
-    return GameSerializer(game).data
+def game_response(game, is_teacher=False):
+    """Serialize game including board. Board is a SerializerMethodField so always present.
+
+    correct_answer is stripped from current_question_data for students —
+    it's never used for auto-grading (the teacher marks correct/wrong by
+    eye), so there's no reason to ship the answer key to student browsers.
+    """
+    context = {} if is_teacher else {'hide_correct_answer': True}
+    return GameSerializer(game, context=context).data
 
 
 def pick_questions_by_difficulty(topic_id, diff_counts):
@@ -382,16 +388,16 @@ class GameListCreateView(APIView):
         if chosen:
             game.questions.set(chosen)
 
-        return Response(game_response(game), status=201)
+        return Response(game_response(game, is_teacher), status=201)
 
 
 class GameDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, group_pk, game_pk):
-        group, _ = get_group_and_check_teacher(group_pk, request.user)
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
         game = get_object_or_404(Game, pk=game_pk, group=group)
-        return Response(game_response(game))
+        return Response(game_response(game, is_teacher))
 
     def delete(self, request, group_pk, game_pk):
         group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
@@ -437,7 +443,7 @@ class GameStartView(APIView):
             game.double_question = random.choice(questions)
         game.status = Game.ACTIVE
         game.save()
-        return Response(game_response(game))
+        return Response(game_response(game, is_teacher))
 
 
 class GamePickView(APIView):
@@ -460,7 +466,7 @@ class GamePickView(APIView):
         game.current_question = question
         game.current_team     = team
         game.save()
-        return Response(game_response(game))
+        return Response(game_response(game, is_teacher))
 
 
 class GameAnswerView(APIView):
@@ -510,7 +516,7 @@ class GameAnswerView(APIView):
         game.current_question = None
         game.current_team     = None
         game.save()
-        return Response(game_response(game))
+        return Response(game_response(game, is_teacher))
 
 
 class GameFinishView(APIView):
@@ -525,7 +531,7 @@ class GameFinishView(APIView):
         game.current_question = None
         game.current_team     = None
         game.save()
-        return Response(game_response(game))
+        return Response(game_response(game, is_teacher))
 
 
 class GameResetView(APIView):
@@ -545,7 +551,7 @@ class GameResetView(APIView):
         game.current_question = None
         game.current_team     = None
         game.save()
-        return Response(game_response(game))
+        return Response(game_response(game, is_teacher))
 
 
 class GameSwapMembersView(APIView):
@@ -575,7 +581,7 @@ class GameSwapMembersView(APIView):
         team_b.members.remove(b_id)
         team_a.members.add(b_id)
         team_b.members.add(a_id)
-        return Response(game_response(game))
+        return Response(game_response(game, is_teacher))
 
 
 class GameReshuffleView(APIView):
@@ -600,7 +606,7 @@ class GameReshuffleView(APIView):
         teams = [Team.objects.create(game=game, name=shuffled_names[i]) for i in range(game.team_count)]
         for i, student in enumerate(students):
             teams[i % game.team_count].members.add(student)
-        return Response(game_response(game))
+        return Response(game_response(game, is_teacher))
 
 
 class GameCopyView(APIView):

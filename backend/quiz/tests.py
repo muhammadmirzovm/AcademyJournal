@@ -6,7 +6,8 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from academies.models import Academy
-from quiz.models import Question, Topic
+from groups.models import Group, GroupMembership
+from quiz.models import Game, Question, Topic
 
 User = get_user_model()
 
@@ -171,3 +172,29 @@ def test_import_requires_teacher(student):
     rows = [['Mavzu', 'Savol', 'open', '', '', '', '', '', '', '', '']]
     res = _client_for('q_student').post('/api/quiz/questions/import/', {'file': _upload(rows)}, format='multipart')
     assert res.status_code == 403
+
+
+@pytest.mark.django_db
+def test_student_does_not_see_correct_answer_but_teacher_does(teacher, student):
+    group = Group.objects.create(name='G1', teacher=teacher, class_days=[0, 2, 4])
+    GroupMembership.objects.create(group=group, student=student)
+
+    topic = Topic.objects.create(name='T1', created_by=teacher)
+    question = Question.objects.create(
+        topic=topic, text='2+2=?', answer_type='mcq',
+        options={'a': '3', 'b': '4', 'c': '5', 'd': '6'}, correct_answer='b',
+        created_by=teacher,
+    )
+    game = Game.objects.create(
+        group=group, name='Game 1', created_by=teacher,
+        current_question=question, status=Game.ACTIVE,
+    )
+
+    teacher_res = _client_for('q_teacher').get(f'/api/groups/{group.id}/games/{game.id}/')
+    assert teacher_res.status_code == 200
+    assert teacher_res.data['current_question_data']['correct_answer'] == 'b'
+
+    student_res = _client_for('q_student').get(f'/api/groups/{group.id}/games/{game.id}/')
+    assert student_res.status_code == 200
+    assert 'correct_answer' not in student_res.data['current_question_data']
+    assert student_res.data['current_question_data']['options'] == {'a': '3', 'b': '4', 'c': '5', 'd': '6'}

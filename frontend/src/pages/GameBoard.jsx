@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Crown, ChevronRight, RotateCcw, Trophy, Zap, Check, X, Loader2, Lightbulb, Flag, Users, Clock, HelpCircle, AlertTriangle, XCircle } from 'lucide-react'
+import { Crown, ChevronRight, RotateCcw, Trophy, Zap, Check, X, Loader2, Lightbulb, Flag, Users, Clock, HelpCircle, AlertTriangle, XCircle, KeyRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { getGame, startGame, pickSquare, answerQuestion, finishGame, resetGame, swapTeamMembers, reshuffleTeams } from '../api/quiz'
@@ -304,10 +304,11 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
   const [loading,      setLoading]    = useState(false)
   const [stolenBy,     setStolenBy]   = useState(null)
   const [hintVisible,  setHintVisible] = useState(false)
+  const [answerVisible, setAnswerVisible] = useState(false)
   const intervalRef = useRef(null)
 
   useEffect(() => {
-    setTimeLeft(timerTotal); setPhase('answering'); setHintVisible(false); setStolenBy(null)
+    setTimeLeft(timerTotal); setPhase('answering'); setHintVisible(false); setAnswerVisible(false); setStolenBy(null)
     intervalRef.current = setInterval(() => {
       setTimeLeft(s => { if (s <= 1) { clearInterval(intervalRef.current); return 0 } return s - 1 })
     }, 1000)
@@ -368,6 +369,12 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
                   <Lightbulb size={13} /> {t('quiz.hint_btn')}
                 </motion.button>
               )}
+              {isTeacher && question.correct_answer && (
+                <motion.button whileTap={{ scale: 0.94 }} onClick={() => setAnswerVisible(v => !v)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: `1px solid ${answerVisible ? 'var(--success)' : 'var(--border)'}`, background: answerVisible ? 'rgba(5,150,105,0.12)' : 'transparent', color: answerVisible ? 'var(--success)' : 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  <KeyRound size={13} /> {t('quiz.answer_key_btn')}
+                </motion.button>
+              )}
               <TimerRing seconds={timeLeft} total={timerTotal} />
             </div>
           </div>
@@ -378,6 +385,21 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                 style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#F59E0B', fontStyle: 'italic', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                 <Lightbulb size={14} style={{ flexShrink: 0, marginTop: 1 }} />{question.hint}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Answer key (teacher-only, private reference) */}
+          <AnimatePresence>
+            {answerVisible && question.correct_answer && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                style={{ background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <KeyRound size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                {question.answer_type === 'mcq'
+                  ? `${question.correct_answer.toUpperCase()}) ${question.options?.[question.correct_answer] || ''}`
+                  : question.answer_type === 'true_false'
+                    ? (question.correct_answer === 'true' ? t('quiz.true') : t('quiz.false'))
+                    : question.correct_answer}
               </motion.div>
             )}
           </AnimatePresence>
