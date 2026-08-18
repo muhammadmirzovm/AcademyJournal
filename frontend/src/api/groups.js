@@ -49,6 +49,7 @@ export const finishExam       = (gid, eid)         => api.patch(`/groups/${gid}/
 export const deleteExam       = (gid, eid)         => api.delete(`/groups/${gid}/exams/${eid}/`)
 
 export const getAcademyTeachers = () => api.get('/academy/members/', { params: { role: 'teacher', page_size: 100 } })
+export const getAcademyStudents = () => api.get('/academy/members/', { params: { role: 'student' } })
 
 export const exportExcel = async (gid, groupName) => {
   const res = await api.get(`/groups/${gid}/export/excel/`, { responseType: 'blob' })

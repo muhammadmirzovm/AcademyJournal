@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework import permissions
@@ -9,6 +10,8 @@ from rest_framework.views import APIView
 from purchases.models import Purchase
 
 from .models import CoinTransaction
+
+User = get_user_model()
 
 
 class MyBalanceView(APIView):
@@ -55,3 +58,48 @@ class CoinReportView(APIView):
             'spent_last_30_days': spent_30d,
             'spend_by_category': spend_by_category,
         })
+
+
+class CoinAdjustView(APIView):
+    """Admin-only: bulk add or subtract coins for a chosen set of students
+    (individual pick or a whole group, resolved to student ids by the
+    frontend so the confirm step can show exactly who's affected). Each
+    student gets their own reason-tagged ADJUSTMENT ledger entry — the
+    in-app, no-Django-admin-required sibling of the "reset to 0" admin
+    action."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        if request.user.role != 'admin':
+            return Response({'detail': "Faqat admin tangacha qo'sha yoki ayira oladi."}, status=403)
+
+        try:
+            amount = int(request.data.get('amount'))
+        except (TypeError, ValueError):
+            return Response({'detail': "Miqdor noto'g'ri."}, status=400)
+        if amount == 0:
+            return Response({'detail': "Miqdor 0 bo'lishi mumkin emas."}, status=400)
+
+        reason = (request.data.get('reason') or '').strip()
+        if not reason:
+            return Response({'detail': "Sabab kiritilishi shart."}, status=400)
+
+        student_ids = request.data.get('student_ids')
+        if not isinstance(student_ids, list) or not student_ids:
+            return Response({'detail': "Kamida bitta o'quvchi tanlanishi kerak."}, status=400)
+
+        students = list(User.objects.filter(
+            id__in=student_ids, role='student', academy=request.user.academy,
+        ))
+        if not students:
+            return Response({'detail': "Tanlangan o'quvchilar topilmadi."}, status=400)
+
+        CoinTransaction.objects.bulk_create([
+            CoinTransaction(
+                student=s, amount=amount, type=CoinTransaction.Type.ADJUSTMENT,
+                reason=reason, created_by=request.user,
+            ) for s in students
+        ])
+
+        return Response({'affected': len(students), 'amount': amount})

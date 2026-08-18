@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Coins, Wallet, TrendingUp, TrendingDown, Receipt, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
-import { getCoinReport } from '../api/coins'
+import { Coins, Wallet, TrendingUp, TrendingDown, Receipt, ChevronLeft, ChevronRight, Loader2, PlusCircle, Search, Users } from 'lucide-react'
+import { getCoinReport, adjustCoins } from '../api/coins'
 import { getAdminPurchases } from '../api/purchases'
+import { getGroups, getMembers, getAcademyStudents } from '../api/groups'
 import { useToast } from '../context/ToastContext'
 import { formatDate } from '../utils/date'
 
@@ -55,6 +56,8 @@ export default function CoinReport() {
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{t('coin_report.title')}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('coin_report.subtitle')}</p>
       </div>
+
+      <CoinAdjustPanel onAdjusted={load} t={t} />
 
       {loading || !report ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
@@ -191,6 +194,231 @@ function SpendByCategory({ rows, t }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+const AMOUNT_PRESETS = [-50, -10, 10, 50, 100]
+
+function CoinAdjustPanel({ onAdjusted, t }) {
+  const { show } = useToast()
+  const [open, setOpen] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [groups, setGroups] = useState([])
+  const [students, setStudents] = useState([])
+
+  const [mode, setMode] = useState('group') // group | students
+  const [groupSearch, setGroupSearch] = useState('')
+  const [selectedGroup, setSelectedGroup] = useState(null)
+  const [groupMembers, setGroupMembers] = useState([])
+  const [groupMembersLoading, setGroupMembersLoading] = useState(false)
+  const [studentSearch, setStudentSearch] = useState('')
+  const [selectedStudentIds, setSelectedStudentIds] = useState(new Set())
+
+  const [amount, setAmount] = useState('')
+  const [reason, setReason] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  const toggleOpen = async () => {
+    const next = !open
+    setOpen(next)
+    if (next && !loaded) {
+      try {
+        const [g, s] = await Promise.all([getGroups(), getAcademyStudents()])
+        setGroups(g.data.filter(gr => !gr.is_graduated))
+        setStudents(s.data)
+        setLoaded(true)
+      } catch { show(t('coin_report.toast_adjust_load_fail'), 'error') }
+    }
+  }
+
+  const pickGroup = async (gr) => {
+    setSelectedGroup(gr)
+    setGroupMembersLoading(true)
+    try {
+      const { data } = await getMembers(gr.id)
+      setGroupMembers(data)
+    } catch { show(t('coin_report.toast_adjust_load_fail'), 'error') }
+    finally { setGroupMembersLoading(false) }
+  }
+
+  const toggleStudent = (id) => {
+    setSelectedStudentIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const affectedIds = mode === 'group'
+    ? groupMembers.map(m => m.id)
+    : [...selectedStudentIds]
+
+  const numAmount = Number(amount) || 0
+  const canSubmit = affectedIds.length > 0 && numAmount !== 0 && reason.trim().length > 0
+
+  const reset = () => {
+    setMode('group'); setSelectedGroup(null); setGroupMembers([]); setGroupSearch('')
+    setSelectedStudentIds(new Set()); setStudentSearch('')
+    setAmount(''); setReason(''); setConfirming(false)
+  }
+
+  const submit = async () => {
+    setSubmitting(true)
+    try {
+      const { data } = await adjustCoins({ student_ids: affectedIds, amount: numAmount, reason: reason.trim() })
+      show(t('coin_report.toast_adjusted', { count: data.affected }), 'success')
+      reset(); setOpen(false)
+      onAdjusted()
+    } catch (err) {
+      show(err.response?.data?.detail || t('coin_report.toast_adjust_fail'), 'error')
+    } finally { setSubmitting(false) }
+  }
+
+  const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(groupSearch.trim().toLowerCase()))
+  const filteredStudents = students.filter(s =>
+    `${s.first_name} ${s.last_name} ${s.username}`.toLowerCase().includes(studentSearch.trim().toLowerCase()))
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <button onClick={toggleOpen}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, border: '1px solid var(--accent)', background: open ? 'var(--accent-bg)' : 'transparent', color: 'var(--accent)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+        <PlusCircle size={15} /> {t('coin_report.adjust_btn')}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: 'hidden' }}>
+            <div style={{ marginTop: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
+
+              {!loaded ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+                  <Loader2 size={20} color="var(--accent)" style={{ animation: 'spin 0.7s linear infinite' }} />
+                </div>
+              ) : confirming ? (
+                <div>
+                  <p style={{ fontSize: 14, marginBottom: 14 }}>
+                    {t('coin_report.adjust_confirm_body', { count: affectedIds.length, amount: numAmount > 0 ? `+${numAmount}` : numAmount })}
+                  </p>
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 18 }}>"{reason.trim()}"</p>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setConfirming(false)} disabled={submitting}
+                      style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                      {t('coin_report.adjust_back')}
+                    </button>
+                    <motion.button whileTap={{ scale: 0.97 }} onClick={submit} disabled={submitting}
+                      style={{ padding: '9px 16px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: submitting ? 0.7 : 1 }}>
+                      {submitting && <Loader2 size={13} style={{ animation: 'spin 0.7s linear infinite' }} />}
+                      {t('coin_report.adjust_confirm_btn')}
+                    </motion.button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Mode tabs */}
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+                    {['group', 'students'].map(m => (
+                      <button key={m} onClick={() => setMode(m)}
+                        style={{ padding: '6px 14px', borderRadius: 8, border: `1.5px solid ${mode === m ? 'var(--accent)' : 'var(--border)'}`, background: mode === m ? 'var(--accent-bg)' : 'transparent', color: mode === m ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                        {t(`coin_report.adjust_mode_${m}`)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {mode === 'group' ? (
+                    <div style={{ marginBottom: 14 }}>
+                      {groups.length > 6 && (
+                        <div style={{ position: 'relative', marginBottom: 8 }}>
+                          <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                          <input value={groupSearch} onChange={e => setGroupSearch(e.target.value)}
+                            placeholder={t('coin_report.adjust_search_group')}
+                            style={{ width: '100%', padding: '7px 10px 7px 30px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                        </div>
+                      )}
+                      <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {filteredGroups.map(g => (
+                          <button key={g.id} onClick={() => pickGroup(g)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${selectedGroup?.id === g.id ? 'var(--accent)' : 'var(--border)'}`, background: selectedGroup?.id === g.id ? 'var(--accent-bg)' : 'transparent', color: selectedGroup?.id === g.id ? 'var(--accent)' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
+                            <Users size={13} /> {g.name}
+                          </button>
+                        ))}
+                      </div>
+                      {selectedGroup && (
+                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                          {groupMembersLoading
+                            ? t('coin_report.adjust_loading_members')
+                            : t('coin_report.adjust_group_member_count', { count: groupMembers.length })}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                        <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
+                          placeholder={t('coin_report.adjust_search_student')}
+                          style={{ width: '100%', padding: '7px 10px 7px 30px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                      <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {filteredStudents.map(s => {
+                          const checked = selectedStudentIds.has(s.id)
+                          return (
+                            <button key={s.id} onClick={() => toggleStudent(s.id)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`, background: checked ? 'var(--accent-bg)' : 'transparent', color: checked ? 'var(--accent)' : 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
+                              {(s.first_name || s.last_name) ? `${s.first_name} ${s.last_name}`.trim() : s.username}
+                              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>@{s.username}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                        {t('coin_report.adjust_selected_count', { count: selectedStudentIds.size })}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Amount */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                      {t('coin_report.adjust_amount')}
+                    </label>
+                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
+                      placeholder="±10"
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                    <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+                      {AMOUNT_PRESETS.map(p => (
+                        <button key={p} onClick={() => setAmount(String(p))}
+                          style={{ padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: `1px solid ${numAmount === p ? 'var(--accent)' : 'var(--border)'}`, background: numAmount === p ? 'var(--accent-bg)' : 'transparent', color: numAmount === p ? 'var(--accent)' : 'var(--text-muted)' }}>
+                          {p > 0 ? `+${p}` : p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Reason */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                      {t('coin_report.adjust_reason')}
+                    </label>
+                    <input value={reason} onChange={e => setReason(e.target.value)}
+                      placeholder={t('coin_report.adjust_reason_placeholder')}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <motion.button whileTap={{ scale: 0.97 }} disabled={!canSubmit} onClick={() => setConfirming(true)}
+                      style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: canSubmit ? 'var(--accent)' : 'var(--border)', color: canSubmit ? '#fff' : 'var(--text-muted)', fontWeight: 700, fontSize: 13, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
+                      {t('coin_report.adjust_review_btn')}
+                    </motion.button>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

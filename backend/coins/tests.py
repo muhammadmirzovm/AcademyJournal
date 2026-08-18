@@ -144,3 +144,89 @@ def test_report_excludes_other_academy_data(academy, admin_user, student):
     res = _client_for('coin_admin').get('/api/coins/report/')
     assert res.status_code == 200
     assert res.data['outstanding_balance'] == 10  # not 1009 — other academy excluded
+
+
+@pytest.fixture
+def student2(academy):
+    return User.objects.create_user(username='coin_student2', password='pass1234', role='student', academy=academy)
+
+
+@pytest.mark.django_db
+def test_adjust_adds_coins_to_multiple_students(admin_user, student, student2):
+    res = _client_for('coin_admin').post('/api/coins/adjust/', {
+        'student_ids': [student.id, student2.id], 'amount': 10, 'reason': 'Bayram bonusi',
+    }, format='json')
+    assert res.status_code == 200
+    assert res.data['affected'] == 2
+    assert CoinTransaction.balance_for(student) == 10
+    assert CoinTransaction.balance_for(student2) == 10
+    txn = CoinTransaction.objects.get(student=student)
+    assert txn.type == CoinTransaction.Type.ADJUSTMENT
+    assert txn.reason == 'Bayram bonusi'
+    assert txn.created_by == admin_user
+
+
+@pytest.mark.django_db
+def test_adjust_can_subtract_coins(admin_user, student):
+    CoinTransaction.objects.create(student=student, amount=30, type=CoinTransaction.Type.GAME_PLACE, reason='seed')
+    res = _client_for('coin_admin').post('/api/coins/adjust/', {
+        'student_ids': [student.id], 'amount': -10, 'reason': 'Tuzatish',
+    }, format='json')
+    assert res.status_code == 200
+    assert CoinTransaction.balance_for(student) == 20
+
+
+@pytest.mark.django_db
+def test_adjust_requires_admin(teacher, student):
+    res = _client_for('coin_teacher').post('/api/coins/adjust/', {
+        'student_ids': [student.id], 'amount': 10, 'reason': 'x',
+    }, format='json')
+    assert res.status_code == 403
+    assert CoinTransaction.balance_for(student) == 0
+
+
+@pytest.mark.django_db
+def test_adjust_requires_reason(admin_user, student):
+    res = _client_for('coin_admin').post('/api/coins/adjust/', {
+        'student_ids': [student.id], 'amount': 10, 'reason': '',
+    }, format='json')
+    assert res.status_code == 400
+    assert CoinTransaction.balance_for(student) == 0
+
+
+@pytest.mark.django_db
+def test_adjust_rejects_zero_amount(admin_user, student):
+    res = _client_for('coin_admin').post('/api/coins/adjust/', {
+        'student_ids': [student.id], 'amount': 0, 'reason': 'x',
+    }, format='json')
+    assert res.status_code == 400
+
+
+@pytest.mark.django_db
+def test_adjust_requires_student_ids(admin_user):
+    res = _client_for('coin_admin').post('/api/coins/adjust/', {
+        'student_ids': [], 'amount': 10, 'reason': 'x',
+    }, format='json')
+    assert res.status_code == 400
+
+
+@pytest.mark.django_db
+def test_adjust_ignores_other_academy_students(admin_user, student):
+    other_academy = Academy.objects.create(name='Other Adjust Academy', slug='other-adjust-academy')
+    other_student = User.objects.create_user(username='other_adjust_student', password='pass1234', role='student', academy=other_academy)
+
+    res = _client_for('coin_admin').post('/api/coins/adjust/', {
+        'student_ids': [student.id, other_student.id], 'amount': 10, 'reason': 'x',
+    }, format='json')
+    assert res.status_code == 200
+    assert res.data['affected'] == 1  # only the same-academy student
+    assert CoinTransaction.balance_for(student) == 10
+    assert CoinTransaction.balance_for(other_student) == 0
+
+
+@pytest.mark.django_db
+def test_adjust_ignores_non_student_ids(admin_user, teacher):
+    res = _client_for('coin_admin').post('/api/coins/adjust/', {
+        'student_ids': [teacher.id], 'amount': 10, 'reason': 'x',
+    }, format='json')
+    assert res.status_code == 400  # no valid students resolved
