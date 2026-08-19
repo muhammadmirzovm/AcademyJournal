@@ -147,7 +147,19 @@ export default function NotificationBell() {
       </AnimatePresence>
       <style>{`
         @media (max-width: 720px) {
-          .notif-dropdown { width: 260px !important; right: 0 !important; }
+          /* This bell is reused inside the mobile drawer, where it sits near
+             the LEFT edge of a ~270px-wide drawer — a panel positioned via
+             right:0 relative to the bell's own tiny wrapper would extend
+             far off the left edge of the screen. Anchor to the viewport
+             instead so it always stays fully visible. */
+          .notif-dropdown {
+            position: fixed !important;
+            left: 12px !important;
+            right: 12px !important;
+            top: 68px !important;
+            width: auto !important;
+            max-width: none !important;
+          }
         }
       `}</style>
     </div>
