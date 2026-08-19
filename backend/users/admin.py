@@ -1,31 +1,49 @@
 from django.contrib import admin, messages
+from django.db.models import Sum
 from django.contrib.auth.admin import UserAdmin
 from django.template.response import TemplateResponse
 from .models import User
+
+
+def _balances_for(students):
+    """One aggregate query for every student's balance, instead of a
+    separate CoinTransaction.balance_for() query per student."""
+    from coins.models import CoinTransaction
+
+    by_id = {
+        row['student']: row['balance']
+        for row in CoinTransaction.objects.filter(student__in=students)
+            .values('student').annotate(balance=Sum('amount'))
+    }
+    return {s.id: by_id.get(s.id, 0) for s in students}
 
 
 @admin.action(description="Tangacha balansini 0 ga tushirish (tanlangan o'quvchilar)")
 def reset_coin_balance(modeladmin, request, queryset):
     from coins.models import CoinTransaction
 
-    students = queryset.filter(role=User.STUDENT)
+    students = list(queryset.filter(role=User.STUDENT))
     if not request.user.is_superuser:
-        students = students.filter(academy=request.user.academy)
+        students = [s for s in students if s.academy_id == request.user.academy_id]
+
+    balances = _balances_for(students)
 
     if 'apply' in request.POST:
         reset_count, already_zero = 0, 0
+        txns = []
         for student in students:
-            balance = CoinTransaction.balance_for(student)
+            balance = balances[student.id]
             if balance != 0:
-                CoinTransaction.objects.create(
+                txns.append(CoinTransaction(
                     student=student, amount=-balance,
                     type=CoinTransaction.Type.ADJUSTMENT,
                     reason="Balans 0 ga tushirildi (admin, ommaviy)",
                     created_by=request.user,
-                )
+                ))
                 reset_count += 1
             else:
                 already_zero += 1
+        CoinTransaction.objects.bulk_create(txns)
         modeladmin.message_user(
             request,
             f"{reset_count} ta o'quvchi balansi 0 ga tushirildi. "
@@ -34,11 +52,8 @@ def reset_coin_balance(modeladmin, request, queryset):
         )
         return None
 
-    rows, total = [], 0
-    for student in students:
-        balance = CoinTransaction.balance_for(student)
-        rows.append((student, balance))
-        total += balance
+    rows = [(student, balances[student.id]) for student in students]
+    total = sum(balances[student.id] for student in students)
 
     return TemplateResponse(request, 'admin/users/reset_coins_confirm.html', {
         'students': rows,

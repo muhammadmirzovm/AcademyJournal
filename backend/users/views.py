@@ -832,13 +832,39 @@ class TeacherLeaderboardView(APIView):
         if request.user.role != 'teacher':
             return Response({'detail': 'Forbidden.'}, status=403)
 
-        from groups.models import GroupMembership, Score, Attendance
+        from groups.models import GroupMembership, Lesson, Score, Attendance
 
-        memberships = (
+        memberships = list(
             GroupMembership.objects
             .filter(group__teacher=request.user, group__is_graduated=False, student__is_active=True)
             .select_related('student', 'group')
         )
+        if not memberships:
+            return Response([])
+
+        # Bulk-fetch everything up front (4 queries total, independent of
+        # membership count) instead of re-querying Lesson/Score/Attendance
+        # per membership — that used to be ~5 queries each, which got very
+        # slow once lesson/score history grew.
+        group_ids = {m.group_id for m in memberships}
+        lessons_by_group = {}
+        for gid, lid, date in Lesson.objects.filter(group_id__in=group_ids).values_list('group_id', 'id', 'date'):
+            lessons_by_group.setdefault(gid, []).append((lid, date))
+        all_lesson_ids = [lid for lessons in lessons_by_group.values() for lid, _ in lessons]
+
+        student_ids = {m.student_id for m in memberships}
+        score_by_key = {
+            (student_id, lesson_id): value
+            for student_id, lesson_id, value in Score.objects
+                .filter(lesson_id__in=all_lesson_ids, student_id__in=student_ids)
+                .values_list('student_id', 'lesson_id', 'value')
+        }
+        attendance_by_key = {
+            (student_id, lesson_id): present
+            for student_id, lesson_id, present in Attendance.objects
+                .filter(lesson_id__in=all_lesson_ids, student_id__in=student_ids)
+                .values_list('student_id', 'lesson_id', 'present')
+        }
 
         student_map = {}
         for m in memberships:
@@ -852,35 +878,32 @@ class TeacherLeaderboardView(APIView):
                     'groups':        set(),
                     'total_score':   0,
                     'total_possible': 0,
+                    'total_att':     0,
+                    'present_att':   0,
                 }
-            student_map[sid]['groups'].add(m.group.name)
-            join_date    = m.joined_at.date()
-            lessons      = m.group.lessons.filter(date__gte=join_date)
-            lesson_count = lessons.count()
-            if lesson_count > 0:
-                score_sum = Score.objects.filter(
-                    lesson__in=lessons, student=s
-                ).aggregate(total=Sum('value'))['total'] or 0
-                student_map[sid]['total_score']    += score_sum
-                student_map[sid]['total_possible'] += lesson_count * 5
+            data = student_map[sid]
+            data['groups'].add(m.group.name)
+            join_date = m.joined_at.date()
+            eligible_lesson_ids = [lid for lid, date in lessons_by_group.get(m.group_id, []) if date >= join_date]
+            if eligible_lesson_ids:
+                data['total_score']    += sum(score_by_key.get((sid, lid), 0) for lid in eligible_lesson_ids)
+                data['total_possible'] += len(eligible_lesson_ids) * 5
+                for lid in eligible_lesson_ids:
+                    present = attendance_by_key.get((sid, lid))
+                    if present is not None:
+                        data['total_att']   += 1
+                        data['present_att'] += 1 if present else 0
 
         results = []
         for sid, data in student_map.items():
             comp = round(data['total_score'] / data['total_possible'] * 100) if data['total_possible'] > 0 else None
-            total_att   = 0
-            present_att = 0
-            for m in [m for m in memberships if m.student.id == sid]:
-                join_date  = m.joined_at.date()
-                lesson_ids = list(m.group.lessons.filter(date__gte=join_date).values_list('id', flat=True))
-                total_att   += Attendance.objects.filter(lesson_id__in=lesson_ids, student_id=sid).count()
-                present_att += Attendance.objects.filter(lesson_id__in=lesson_ids, student_id=sid, present=True).count()
             results.append({
                 'id':           data['id'],
                 'display_name': data['display_name'],
                 'username':     data['username'],
                 'groups':       sorted(data['groups']),
                 'avg_score':    comp,
-                'attendance':   round(present_att / total_att * 100) if total_att else None,
+                'attendance':   round(data['present_att'] / data['total_att'] * 100) if data['total_att'] else None,
             })
 
         results.sort(key=lambda x: (x['avg_score'] is None, -(x['avg_score'] or 0)))

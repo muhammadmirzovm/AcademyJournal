@@ -43,16 +43,30 @@ class Game(models.Model):
         student's current balance so someone who already spent those coins
         (e.g. on a reward) is never pushed negative; already-redeemed coins
         simply aren't recoverable."""
+        from django.db.models import Sum
         from coins.models import CoinTransaction
-        for result in self.results.filter(coins__gt=0).select_related('student'):
-            balance = CoinTransaction.balance_for(result.student)
+
+        results = list(self.results.filter(coins__gt=0).select_related('student'))
+        if not results:
+            return
+
+        balances = {
+            row['student']: row['balance']
+            for row in CoinTransaction.objects.filter(student__in=[r.student for r in results])
+                .values('student').annotate(balance=Sum('amount'))
+        }
+
+        txns = []
+        for result in results:
+            balance = balances.get(result.student_id, 0)
             reversal = min(result.coins, balance)
             if reversal <= 0:
                 continue
-            CoinTransaction.objects.create(
+            txns.append(CoinTransaction(
                 student=result.student, amount=-reversal, type=CoinTransaction.Type.ADJUSTMENT,
                 reason=f"Dars o'chirildi: {self.group.name} — {self.date}", created_by=actor,
-            )
+            ))
+        CoinTransaction.objects.bulk_create(txns)
 
 
 class GameResult(models.Model):
