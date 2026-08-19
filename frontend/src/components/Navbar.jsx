@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Sun, Moon, Menu, X, GraduationCap, LogOut, User, LayoutDashboard, Users, Globe, BookMarked, Settings, Gift } from 'lucide-react'
+import { Sun, Moon, Menu, X, GraduationCap, LogOut, User, LayoutDashboard, Users, Globe, BookMarked, Settings, Gift, HelpCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -93,6 +93,11 @@ export default function Navbar() {
           <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             {/* Notifications */}
             {user && <NotificationBell />}
+
+            {/* Help / guide */}
+            <a href="/guide.html" target="_blank" rel="noopener noreferrer" className="nav-ctrl-btn" style={circleBtn} title={t('nav.help')}>
+              <HelpCircle size={15} color="#CBD5E1" />
+            </a>
 
             {/* Theme toggle */}
             <button onClick={toggle} className="nav-ctrl-btn" style={circleBtn} title="Toggle theme">
@@ -212,6 +217,12 @@ export default function Navbar() {
                   {t('nav.profile')}
                 </DrawerLink>
               )}
+
+              <a href="/guide.html" target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#CBD5E1', fontSize: 14, fontWeight: 500, textDecoration: 'none', padding: '10px 12px', borderRadius: 9 }}>
+                <span style={{ color: '#64748B' }}><HelpCircle size={16} /></span>
+                {t('nav.help')}
+              </a>
 
               {/* Language section */}
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: 8, paddingTop: 14 }}>
