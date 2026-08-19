@@ -159,3 +159,91 @@ def test_student_cannot_create_group(student):
     client.credentials(HTTP_AUTHORIZATION=f'Bearer {res.data["access"]}')
     res = client.post('/api/groups/', {'name': 'Hack', 'class_days': []})
     assert res.status_code == 403
+
+
+# ── End lesson: coin notifications ─────────────────────────────────────────
+
+def test_render_coin_line():
+    from users.telegram_bot import render_coin_line
+
+    assert render_coin_line('uz', 0, 10) == ''
+    assert render_coin_line('uz', 5, 15) == '\n🪙 +5 tangacha (jami: 15)'
+    assert render_coin_line('ru', 5, 15) == '\n🪙 +5 монет (всего: 15)'
+
+
+class _FakeBot:
+    sent = []
+
+    def __init__(self, token):
+        pass
+
+    async def send_message(self, chat_id, text, parse_mode=None):
+        _FakeBot.sent.append((chat_id, text))
+
+
+@pytest.mark.django_db
+def test_end_lesson_includes_coin_line_when_game_awarded_coins(teacher_client, teacher, group, student, monkeypatch):
+    from games.models import Game, GameResult
+    from users import telegram_bot
+
+    _FakeBot.sent = []
+    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 'test-token')
+    monkeypatch.setattr(telegram_bot, 'Bot', _FakeBot)
+
+    student.telegram_id = 111
+    student.telegram_lang = 'uz'
+    student.save()
+
+    group.memberships.create(student=student)
+    lesson = Lesson.objects.create(group=group, title='Lesson 1', date='2026-08-10')
+    Attendance.objects.create(lesson=lesson, student=student, present=True)
+
+    game = Game.objects.create(lesson=lesson, group=group, teacher=teacher, date=lesson.date, status=Game.Status.CLOSED)
+    GameResult.objects.create(game=game, student=student, place=1, coins=10)
+
+    from coins.models import CoinTransaction
+    CoinTransaction.objects.create(student=student, amount=10, type=CoinTransaction.Type.GAME_PLACE, reason='1-o\'rin')
+
+    res = teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/end/')
+    assert res.status_code == 200
+
+    from users.models import Notification
+    notif = Notification.objects.exclude(type='lesson').get(user=student, title=lesson.title)
+    assert '+10 tangacha' in notif.body
+
+    student_texts = [text for chat_id, text in _FakeBot.sent if chat_id == student.telegram_id]
+    assert len(student_texts) == 1
+    assert '+10 tangacha (jami: 10)' in student_texts[0]
+
+
+@pytest.mark.django_db
+def test_end_lesson_no_coin_line_without_a_game(teacher_client, group, student):
+    group.memberships.create(student=student)
+    lesson = Lesson.objects.create(group=group, title='Lesson 2', date='2026-08-11')
+    Attendance.objects.create(lesson=lesson, student=student, present=True)
+
+    res = teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/end/')
+    assert res.status_code == 200
+
+    from users.models import Notification
+    notif = Notification.objects.exclude(type='lesson').get(user=student, title=lesson.title)
+    assert 'tangacha' not in notif.body
+
+
+@pytest.mark.django_db
+def test_end_lesson_no_coin_line_for_student_with_zero_coins(teacher_client, teacher, group, student):
+    from games.models import Game, GameResult
+
+    group.memberships.create(student=student)
+    lesson = Lesson.objects.create(group=group, title='Lesson 3', date='2026-08-12')
+    Attendance.objects.create(lesson=lesson, student=student, present=False)
+
+    game = Game.objects.create(lesson=lesson, group=group, teacher=teacher, date=lesson.date, status=Game.Status.CLOSED)
+    GameResult.objects.create(game=game, student=student, effort=GameResult.Effort.NONE, coins=0)
+
+    res = teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/end/')
+    assert res.status_code == 200
+
+    from users.models import Notification
+    notif = Notification.objects.exclude(type='lesson').get(user=student, title=lesson.title)
+    assert 'tangacha' not in notif.body

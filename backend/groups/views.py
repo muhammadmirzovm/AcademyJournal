@@ -446,7 +446,8 @@ class EndLessonView(APIView):
             lesson.save(update_fields=['ended_at'])
 
         from users.models import Notification
-        from users.telegram_bot import send_notification
+        from users.telegram_bot import send_notification, render_coin_line
+        from coins.models import CoinTransaction
 
         group      = lesson.group
         attendances = {a.student_id: a.present for a in Attendance.objects.filter(lesson=lesson)}
@@ -459,6 +460,18 @@ class EndLessonView(APIView):
             .prefetch_related('student__parents__parent')
         )
 
+        # Coins this lesson's "winning game" awarded, if the teacher ran one
+        # and closed it — {student_id: coins}. Balances only fetched (one
+        # bulk query) for students who actually earned something.
+        coin_game = getattr(lesson, 'game', None)
+        coins_by_student = {}
+        if coin_game is not None:
+            coins_by_student = {r.student_id: r.coins for r in coin_game.results.filter(coins__gt=0)}
+        balances_by_student = (
+            CoinTransaction.balances_for(m.student for m in memberships if m.student_id in coins_by_student)
+            if coins_by_student else {}
+        )
+
         for membership in memberships:
             student = membership.student
             present = attendances.get(student.id, False)
@@ -466,6 +479,7 @@ class EndLessonView(APIView):
             name    = f'{student.first_name} {student.last_name}'.strip() or student.username
             scored  = score is not None
             ntype   = 'score' if scored else 'absent'
+            coins_earned = coins_by_student.get(student.id, 0)
 
             # Pick message key variant
             attendance_key = 'present' if present else 'absent'
@@ -478,6 +492,8 @@ class EndLessonView(APIView):
                 s_body = f'{"Qatnashdingiz" if not scored else f"Qatnashdingiz · Ball: {score}/5"} — {group.name}'
             else:
                 s_body = f'{"Kelmadingiz" if not scored else f"Kelmadingiz · Ball: {score}/5"} — {group.name}'
+            if coins_earned:
+                s_body += f' · +{coins_earned} tangacha'
 
             Notification.objects.create(
                 user=student, type=ntype,
@@ -486,11 +502,13 @@ class EndLessonView(APIView):
 
             if student.telegram_id:
                 try:
+                    lang = student.telegram_lang or 'uz'
                     kwargs = dict(lesson=lesson.title, group=group.name)
                     if scored:
                         kwargs['score'] = score
+                    kwargs['coin_line'] = render_coin_line(lang, coins_earned, balances_by_student.get(student.id, 0))
                     async_to_sync(send_notification)(
-                        student.telegram_id, student_key, student.telegram_lang or 'uz', **kwargs,
+                        student.telegram_id, student_key, lang, **kwargs,
                     )
                 except Exception:
                     pass
@@ -502,6 +520,8 @@ class EndLessonView(APIView):
                     p_body = f'{name} · {"Qatnashdi" if not scored else f"Qatnashdi · Ball: {score}/5"} — {group.name}'
                 else:
                     p_body = f'{name} · {"Kelmadi" if not scored else f"Kelmadi · Ball: {score}/5"} — {group.name}'
+                if coins_earned:
+                    p_body += f' · +{coins_earned} tangacha'
 
                 Notification.objects.create(
                     user=parent, type=ntype,
@@ -509,11 +529,13 @@ class EndLessonView(APIView):
                 )
                 if parent.telegram_id:
                     try:
+                        parent_lang = parent.telegram_lang or 'uz'
                         kwargs = dict(name=name, lesson=lesson.title, group=group.name)
                         if scored:
                             kwargs['score'] = score
+                        kwargs['coin_line'] = render_coin_line(parent_lang, coins_earned, balances_by_student.get(student.id, 0))
                         async_to_sync(send_notification)(
-                            parent.telegram_id, parent_key, parent.telegram_lang or 'uz', **kwargs,
+                            parent.telegram_id, parent_key, parent_lang, **kwargs,
                         )
                     except Exception:
                         pass

@@ -1058,14 +1058,15 @@ NOTIF_MSG = {
         'absent':                   "⚠️ *{lesson}* darsida qatnashmagansiz ({group})",
         'score_parent':             "📊 *{name}*: *{lesson}* darsida *{score}/5* ball oldi ({group})",
         'absent_parent':            "⚠️ *{name}*: *{lesson}* darsida qatnashmadi ({group})",
-        'student_present_scored':   "✅ *{lesson}* darsida qatnashdingiz.\n⭐ Balingiz: *{score}/5* | {group}",
-        'student_present_unscored': "✅ *{lesson}* darsida qatnashdingiz. | {group}",
-        'student_absent_scored':    "⚠️ *{lesson}* darsiga kelmadingiz.\n⭐ Balingiz: *{score}/5* | {group}",
-        'student_absent_unscored':  "⚠️ *{lesson}* darsiga kelmadingiz. | {group}",
-        'parent_present_scored':    "✅ *{name}* *{lesson}* darsida qatnashdi.\n⭐ Ball: *{score}/5* | {group}",
-        'parent_present_unscored':  "✅ *{name}* *{lesson}* darsida qatnashdi. | {group}",
-        'parent_absent_scored':     "⚠️ *{name}* *{lesson}* darsiga kelmadi.\n⭐ Ball: *{score}/5* | {group}",
-        'parent_absent_unscored':   "⚠️ *{name}* *{lesson}* darsiga kelmadi. | {group}",
+        'student_present_scored':   "✅ *{lesson}* darsida qatnashdingiz.\n⭐ Balingiz: *{score}/5* | {group}{coin_line}",
+        'student_present_unscored': "✅ *{lesson}* darsida qatnashdingiz. | {group}{coin_line}",
+        'student_absent_scored':    "⚠️ *{lesson}* darsiga kelmadingiz.\n⭐ Balingiz: *{score}/5* | {group}{coin_line}",
+        'student_absent_unscored':  "⚠️ *{lesson}* darsiga kelmadingiz. | {group}{coin_line}",
+        'parent_present_scored':    "✅ *{name}* *{lesson}* darsida qatnashdi.\n⭐ Ball: *{score}/5* | {group}{coin_line}",
+        'parent_present_unscored':  "✅ *{name}* *{lesson}* darsida qatnashdi. | {group}{coin_line}",
+        'parent_absent_scored':     "⚠️ *{name}* *{lesson}* darsiga kelmadi.\n⭐ Ball: *{score}/5* | {group}{coin_line}",
+        'parent_absent_unscored':   "⚠️ *{name}* *{lesson}* darsiga kelmadi. | {group}{coin_line}",
+        'coin_line':                "\n🪙 +{coins} tangacha (jami: {balance})",
         'hw_notification':          "📝 *{lesson}* darsi uchun uy vazifasi ({group}):\n\n{homework}",
         'announcement':             "📌 *E'lon:* {title}\n\n{body}",
         'announcement_group':       "📌 *E'lon ({group}):* {title}\n\n{body}",
@@ -1083,14 +1084,15 @@ NOTIF_MSG = {
         'absent':                   "⚠️ Вы отсутствовали на уроке «{lesson}» ({group})",
         'score_parent':             "📊 *{name}*: получил(а) *{score}/5* в уроке «{lesson}» ({group})",
         'absent_parent':            "⚠️ *{name}*: отсутствовал(а) на уроке «{lesson}» ({group})",
-        'student_present_scored':   "✅ Вы посетили урок *{lesson}*.\n⭐ Ваша оценка: *{score}/5* | {group}",
-        'student_present_unscored': "✅ Вы посетили урок *{lesson}*. | {group}",
-        'student_absent_scored':    "⚠️ Вы пропустили урок *{lesson}*.\n⭐ Ваша оценка: *{score}/5* | {group}",
-        'student_absent_unscored':  "⚠️ Вы пропустили урок *{lesson}*. | {group}",
-        'parent_present_scored':    "✅ *{name}* посетил(а) урок *{lesson}*.\n⭐ Оценка: *{score}/5* | {group}",
-        'parent_present_unscored':  "✅ *{name}* посетил(а) урок *{lesson}*. | {group}",
-        'parent_absent_scored':     "⚠️ *{name}* пропустил(а) урок *{lesson}*.\n⭐ Оценка: *{score}/5* | {group}",
-        'parent_absent_unscored':   "⚠️ *{name}* пропустил(а) урок *{lesson}*. | {group}",
+        'student_present_scored':   "✅ Вы посетили урок *{lesson}*.\n⭐ Ваша оценка: *{score}/5* | {group}{coin_line}",
+        'student_present_unscored': "✅ Вы посетили урок *{lesson}*. | {group}{coin_line}",
+        'student_absent_scored':    "⚠️ Вы пропустили урок *{lesson}*.\n⭐ Ваша оценка: *{score}/5* | {group}{coin_line}",
+        'student_absent_unscored':  "⚠️ Вы пропустили урок *{lesson}*. | {group}{coin_line}",
+        'parent_present_scored':    "✅ *{name}* посетил(а) урок *{lesson}*.\n⭐ Оценка: *{score}/5* | {group}{coin_line}",
+        'parent_present_unscored':  "✅ *{name}* посетил(а) урок *{lesson}*. | {group}{coin_line}",
+        'parent_absent_scored':     "⚠️ *{name}* пропустил(а) урок *{lesson}*.\n⭐ Оценка: *{score}/5* | {group}{coin_line}",
+        'parent_absent_unscored':   "⚠️ *{name}* пропустил(а) урок *{lesson}*. | {group}{coin_line}",
+        'coin_line':                "\n🪙 +{coins} монет (всего: {balance})",
         'hw_notification':          "📝 Домашнее задание по уроку *{lesson}* ({group}):\n\n{homework}",
         'announcement':             "📌 *Объявление:* {title}\n\n{body}",
         'announcement_group':       "📌 *Объявление ({group}):* {title}\n\n{body}",
@@ -1119,6 +1121,15 @@ async def send_notification(telegram_id: int, msg_key: str, lang: str = 'uz', **
         await bot.send_message(chat_id=telegram_id, text=text, parse_mode='Markdown')
     except Exception as e:
         logger.error('Telegram notification error: %s', e)
+
+
+def render_coin_line(lang: str, coins: int, balance: int) -> str:
+    """Renders the '+N coins (balance: M)' suffix appended to attendance/
+    score notifications, or '' if no coins were earned this lesson."""
+    if coins <= 0:
+        return ''
+    msgs = NOTIF_MSG.get(lang, NOTIF_MSG['uz'])
+    return msgs.get('coin_line', '').format(coins=coins, balance=balance)
 
 
 # ── Application singleton ─────────────────────────────────────────────────────

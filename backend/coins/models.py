@@ -84,3 +84,16 @@ class CoinTransaction(models.Model):
     @staticmethod
     def balance_for(student):
         return CoinTransaction.objects.filter(student=student).aggregate(s=Sum('amount'))['s'] or 0
+
+    @staticmethod
+    def balances_for(students):
+        """Bulk version of balance_for() — one aggregate query for many
+        students instead of one query each. Returns {student_id: balance},
+        defaulting students with no transactions yet to 0."""
+        students = list(students)
+        by_id = {
+            row['student']: row['balance']
+            for row in CoinTransaction.objects.filter(student__in=students)
+                .values('student').annotate(balance=Sum('amount'))
+        }
+        return {s.id: by_id.get(s.id, 0) for s in students}
