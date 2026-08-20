@@ -299,3 +299,54 @@ def test_patch_settings_scoped_to_own_academy(admin_user, academy):
 
     other_setting = CoinSetting.get(other_academy)
     assert other_setting.place_1_normal == 5  # untouched default, not 99
+
+
+@pytest.mark.django_db
+def test_coin_leaderboard_ranks_top_10_by_balance(academy, admin_user):
+    students = [
+        User.objects.create_user(username=f'lb_s{i}', password='pass1234', role='student', academy=academy)
+        for i in range(12)
+    ]
+    for i, s in enumerate(students):
+        CoinTransaction.objects.create(student=s, amount=(i + 1) * 5, type=CoinTransaction.Type.GAME_PLACE, reason='x')
+
+    res = _client_for('coin_admin').get('/api/coins/leaderboard/')
+    assert res.status_code == 200
+    assert len(res.data) == 10
+    balances = [row['balance'] for row in res.data]
+    assert balances == sorted(balances, reverse=True)
+    assert res.data[0]['balance'] == 60  # student 11 (index 11): (11+1)*5
+    assert res.data[0]['username'] == 'lb_s11'
+
+
+@pytest.mark.django_db
+def test_coin_leaderboard_nets_multiple_transactions(academy, admin_user, student):
+    CoinTransaction.objects.create(student=student, amount=20, type=CoinTransaction.Type.GAME_PLACE, reason='x')
+    CoinTransaction.objects.create(student=student, amount=-5, type=CoinTransaction.Type.PURCHASE, reason='y')
+
+    res = _client_for('coin_admin').get('/api/coins/leaderboard/')
+    assert res.status_code == 200
+    assert res.data[0]['balance'] == 15
+
+
+@pytest.mark.django_db
+def test_coin_leaderboard_excludes_non_students(academy, admin_user, teacher):
+    CoinTransaction.objects.create(student=teacher, amount=100, type=CoinTransaction.Type.ADJUSTMENT, reason='x')
+
+    res = _client_for('coin_admin').get('/api/coins/leaderboard/')
+    assert res.status_code == 200
+    assert res.data == []
+
+
+@pytest.mark.django_db
+def test_coin_leaderboard_scoped_to_own_academy(academy, admin_user, student):
+    other_academy = Academy.objects.create(name='Other Leaderboard Academy', slug='other-leaderboard-academy')
+    other_student = User.objects.create_user(username='other_lb_student', password='pass1234', role='student', academy=other_academy)
+
+    CoinTransaction.objects.create(student=student, amount=10, type=CoinTransaction.Type.GAME_PLACE, reason='x')
+    CoinTransaction.objects.create(student=other_student, amount=999, type=CoinTransaction.Type.GAME_PLACE, reason='x')
+
+    res = _client_for('coin_admin').get('/api/coins/leaderboard/')
+    assert res.status_code == 200
+    assert len(res.data) == 1
+    assert res.data[0]['username'] == 'coin_student'

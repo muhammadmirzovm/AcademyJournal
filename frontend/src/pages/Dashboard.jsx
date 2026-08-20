@@ -6,6 +6,7 @@ import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Tr
 import { getGroups, joinGroup, getAcademyAnnouncements, createAcademyAnnouncement, deleteAnnouncement } from '../api/groups'
 import { getAdminStats, getTeacherLeaderboard } from '../api/users'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
+import CoinLeaderboard from '../components/CoinLeaderboard'
 import AdminCharts from '../components/charts/AdminCharts'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -177,6 +178,8 @@ export default function Dashboard() {
         onPost={handlePostAnn}
         onDelete={handleDeleteAnn}
       />
+
+      <CoinLeaderboard />
 
       <div className="fade-up-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 32 }}>
         {role === 'admin' ? (

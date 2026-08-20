@@ -128,3 +128,37 @@ class CoinSettingView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class CoinLeaderboardView(APIView):
+    """Academy-wide top-10 students by total coin balance — shown on every
+    role's dashboard, not just teachers' (unlike TeacherLeaderboardView,
+    which ranks a single teacher's own students by score/attendance)."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        if not request.user.academy:
+            return Response([])
+
+        rows = (
+            CoinTransaction.objects
+            .filter(student__academy=request.user.academy, student__role='student')
+            .values('student')
+            .annotate(balance=Sum('amount'))
+            .order_by('-balance')[:10]
+        )
+        students = User.objects.in_bulk([r['student'] for r in rows])
+
+        results = []
+        for r in rows:
+            student = students.get(r['student'])
+            if not student:
+                continue
+            results.append({
+                'id': student.id,
+                'display_name': f'{student.first_name} {student.last_name}'.strip() or student.username,
+                'username': student.username,
+                'balance': r['balance'],
+            })
+        return Response(results)

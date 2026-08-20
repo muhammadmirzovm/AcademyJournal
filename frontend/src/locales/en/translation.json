@@ -275,6 +275,7 @@
     "quick_scanner_desc": "Look up a purchase code and mark it issued",
     "quick_coin_report_desc": "Outstanding balance, liability, spend by category",
     "leaderboard": "Student Leaderboard",
+    "coin_leaderboard": "Top 10 — Coin Leaderboard",
     "at_risk": "Needs Attention",
     "below_80": "below 80%",
     "teachers_section": "Teachers",
