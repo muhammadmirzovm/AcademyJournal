@@ -131,9 +131,18 @@ class CoinSettingView(APIView):
 
 
 class CoinLeaderboardView(APIView):
-    """Academy-wide top-10 students by total coin balance — shown on every
-    role's dashboard, not just teachers' (unlike TeacherLeaderboardView,
-    which ranks a single teacher's own students by score/attendance)."""
+    """Academy-wide top-10 students by TOTAL COINS EARNED (lifetime), shown
+    on every role's dashboard — not just teachers' (unlike
+    TeacherLeaderboardView, which ranks a single teacher's own students by
+    score/attendance).
+
+    Deliberately ranks by lifetime earnings rather than current spendable
+    balance: a student who redeems coins for a reward is using the coin
+    system exactly as intended and shouldn't see their rank drop for it.
+    PURCHASE/REFUND are wallet-only movements (money already counted once
+    when it was originally earned) and are excluded so they can't be
+    double-counted or used to game rank; ADJUSTMENT is included since a
+    correction genuinely changes how much was legitimately earned."""
 
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -144,9 +153,10 @@ class CoinLeaderboardView(APIView):
         rows = (
             CoinTransaction.objects
             .filter(student__academy=request.user.academy, student__role='student')
+            .exclude(type__in=[CoinTransaction.Type.PURCHASE, CoinTransaction.Type.REFUND])
             .values('student')
-            .annotate(balance=Sum('amount'))
-            .order_by('-balance')[:10]
+            .annotate(earned=Sum('amount'))
+            .order_by('-earned')[:10]
         )
         students = User.objects.in_bulk([r['student'] for r in rows])
 
@@ -159,6 +169,6 @@ class CoinLeaderboardView(APIView):
                 'id': student.id,
                 'display_name': f'{student.first_name} {student.last_name}'.strip() or student.username,
                 'username': student.username,
-                'balance': r['balance'],
+                'earned': r['earned'],
             })
         return Response(results)

@@ -40,12 +40,13 @@ export default function CoinLeaderboard() {
       background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
       padding: 20, marginBottom: 32, boxShadow: 'var(--shadow-sm)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Coins size={16} color="#F59E0B" />
         </div>
         <h3 style={{ fontWeight: 700, fontSize: 16 }}>{t('dashboard.coin_leaderboard')}</h3>
       </div>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, marginLeft: 38 }}>{t('dashboard.coin_leaderboard_sub')}</p>
 
       {top.length === 3 && (
         <div className="podium-wrap" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 12, marginBottom: 22 }}>
@@ -74,7 +75,7 @@ export default function CoinLeaderboard() {
                     </span>
                   )}
                   <p style={{ fontSize: 12, color: medal.color, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                    <Coins size={11} /> {s.balance}
+                    <Coins size={11} /> {s.earned}
                   </p>
                 </Link>
                 <div style={{ width: '100%', background: medal.bg, border: `1px solid ${medal.color}40`, borderRadius: '8px 8px 0 0', height: medal.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -111,7 +112,7 @@ export default function CoinLeaderboard() {
                   )}
                 </Link>
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#F59E0B', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Coins size={12} /> {s.balance}
+                  <Coins size={12} /> {s.earned}
                 </span>
               </motion.div>
             )

@@ -302,7 +302,7 @@ def test_patch_settings_scoped_to_own_academy(admin_user, academy):
 
 
 @pytest.mark.django_db
-def test_coin_leaderboard_ranks_top_10_by_balance(academy, admin_user):
+def test_coin_leaderboard_ranks_top_10_by_earned(academy, admin_user):
     students = [
         User.objects.create_user(username=f'lb_s{i}', password='pass1234', role='student', academy=academy)
         for i in range(12)
@@ -313,20 +313,33 @@ def test_coin_leaderboard_ranks_top_10_by_balance(academy, admin_user):
     res = _client_for('coin_admin').get('/api/coins/leaderboard/')
     assert res.status_code == 200
     assert len(res.data) == 10
-    balances = [row['balance'] for row in res.data]
-    assert balances == sorted(balances, reverse=True)
-    assert res.data[0]['balance'] == 60  # student 11 (index 11): (11+1)*5
+    earned = [row['earned'] for row in res.data]
+    assert earned == sorted(earned, reverse=True)
+    assert res.data[0]['earned'] == 60  # student 11 (index 11): (11+1)*5
     assert res.data[0]['username'] == 'lb_s11'
 
 
 @pytest.mark.django_db
-def test_coin_leaderboard_nets_multiple_transactions(academy, admin_user, student):
-    CoinTransaction.objects.create(student=student, amount=20, type=CoinTransaction.Type.GAME_PLACE, reason='x')
-    CoinTransaction.objects.create(student=student, amount=-5, type=CoinTransaction.Type.PURCHASE, reason='y')
+def test_coin_leaderboard_excludes_purchases_and_refunds_from_earned_total(academy, admin_user, student):
+    CoinTransaction.objects.create(student=student, amount=50, type=CoinTransaction.Type.GAME_PLACE, reason='x')
+    CoinTransaction.objects.create(student=student, amount=-20, type=CoinTransaction.Type.PURCHASE, reason='y')
+    CoinTransaction.objects.create(student=student, amount=20, type=CoinTransaction.Type.REFUND, reason='z')
 
     res = _client_for('coin_admin').get('/api/coins/leaderboard/')
     assert res.status_code == 200
-    assert res.data[0]['balance'] == 15
+    # Wallet balance would be 50 (50-20+20), but redeeming a reward (and it
+    # later expiring/refunding) must not move the lifetime-earned ranking.
+    assert res.data[0]['earned'] == 50
+
+
+@pytest.mark.django_db
+def test_coin_leaderboard_adjustment_corrections_reduce_earned_total(academy, admin_user, student):
+    CoinTransaction.objects.create(student=student, amount=50, type=CoinTransaction.Type.GAME_PLACE, reason='x')
+    CoinTransaction.objects.create(student=student, amount=-10, type=CoinTransaction.Type.ADJUSTMENT, reason='mistake correction')
+
+    res = _client_for('coin_admin').get('/api/coins/leaderboard/')
+    assert res.status_code == 200
+    assert res.data[0]['earned'] == 40
 
 
 @pytest.mark.django_db
