@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Coins } from 'lucide-react'
 import { getCoinLeaderboard } from '../api/coins'
+import { useAuth } from '../context/AuthContext'
 
 const MEDALS = [
   { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', height: 78 },
@@ -13,7 +14,8 @@ const MEDALS = [
 const MEDAL_EMOJI = ['🥇', '🥈', '🥉']
 
 export default function CoinLeaderboard() {
-  const { t } = useTranslation()
+  const { t }    = useTranslation()
+  const { user } = useAuth()
   const [rows, setRows]       = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -50,14 +52,27 @@ export default function CoinLeaderboard() {
           {order.map((s, i) => {
             const rank  = medalFor(s)
             const medal = MEDALS[rank]
+            const isMe  = user && s.id === user.id
             return (
               <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: 1, maxWidth: 140 }}>
                 <Link to={`/profile/${s.id}`} style={{ textDecoration: 'none', textAlign: 'center' }}>
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: medal.bg, border: `2px solid ${medal.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: 20 }}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: '50%', background: medal.bg,
+                    border: `2px solid ${medal.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 4px', fontSize: 20, position: 'relative',
+                    boxShadow: isMe ? '0 0 0 3px var(--accent-bg), 0 0 0 4.5px var(--accent)' : 'none',
+                  }}>
                     {MEDAL_EMOJI[rank]}
                   </div>
-                  <p className="podium-name" style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{s.display_name}</p>
+                  <p className="podium-name" style={{ fontWeight: 700, fontSize: 13, color: isMe ? 'var(--accent)' : 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>
+                    {s.display_name}
+                  </p>
+                  {isMe && (
+                    <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, color: 'var(--accent)', background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: 99, padding: '1px 7px', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 3 }}>
+                      {t('dashboard.you_badge')}
+                    </span>
+                  )}
                   <p style={{ fontSize: 12, color: medal.color, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
                     <Coins size={11} /> {s.balance}
                   </p>
@@ -75,14 +90,25 @@ export default function CoinLeaderboard() {
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 6 }}>
           {rest.map((s, i) => {
             const rank = i + 3
+            const isMe = user && s.id === user.id
             return (
               <motion.div key={s.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderBottom: rank < rows.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 8px', margin: '0 -8px', borderRadius: 9,
+                  background: isMe ? 'var(--accent-bg)' : 'transparent',
+                  border: isMe ? '1px solid var(--accent)' : '1px solid transparent',
+                  borderBottom: isMe ? '1px solid var(--accent)' : (rank < rows.length - 1 ? '1px solid var(--border)' : '1px solid transparent'),
+                }}>
+                <span style={{ width: 24, height: 24, borderRadius: '50%', background: isMe ? 'var(--accent)' : 'var(--bg)', border: '1px solid var(--border)', color: isMe ? '#fff' : 'var(--text-muted)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {rank + 1}
                 </span>
-                <Link to={`/profile/${s.id}`} style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 13, color: 'var(--text)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {s.display_name}
+                <Link to={`/profile/${s.id}`} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, color: isMe ? 'var(--accent)' : 'var(--text)', textDecoration: 'none' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display_name}</span>
+                  {isMe && (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent)', background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: 99, padding: '1px 7px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      {t('dashboard.you_badge')}
+                    </span>
+                  )}
                 </Link>
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#F59E0B', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Coins size={12} /> {s.balance}
