@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Crown, ChevronRight, RotateCcw, Trophy, Zap, Check, X, Loader2, Lightbulb, Flag, Users, Clock, HelpCircle, AlertTriangle, XCircle, KeyRound } from 'lucide-react'
+import { Crown, ChevronRight, RotateCcw, Trophy, Zap, Check, X, Loader2, Lightbulb, Flag, Users, Clock, HelpCircle, AlertTriangle, XCircle, KeyRound, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { getGame, startGame, pickSquare, answerQuestion, finishGame, resetGame, swapTeamMembers, reshuffleTeams } from '../api/quiz'
@@ -220,24 +220,23 @@ function TeamSplitScreen({ teams: initialTeams, isTeacher, groupId, gameId, onDo
 
 // ── Scoreboard sidebar ────────────────────────────────────────────────────────
 function Scoreboard({ teams, currentTeamId, t }) {
-  const sorted = [...teams].sort((a, b) => b.score - a.score)
   return (
     <div style={{ flex: '1 1 180px', minWidth: 180, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{t('quiz.scoreboard')}</p>
-      {sorted.map((team, i) => {
+      {teams.map(team => {
         const color = TEAM_COLORS[teams.indexOf(team) % TEAM_COLORS.length]
         const isCurrent = team.id === currentTeamId
         return (
           <motion.div key={team.id} layout
             style={{ background: isCurrent ? `${color}18` : 'var(--surface)', border: `1.5px solid ${isCurrent ? color : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px', transition: 'border-color 0.2s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {i === 0 && <Trophy size={12} color="#F59E0B" />}
               <span style={{ fontWeight: 700, fontSize: 13, color, flex: 1 }}>{team.name}</span>
-              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>{team.score}</span>
+              <EyeOff size={14} color="var(--text-muted)" />
             </div>
           </motion.div>
         )
       })}
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t('quiz.scores_hidden')}</p>
     </div>
   )
 }
