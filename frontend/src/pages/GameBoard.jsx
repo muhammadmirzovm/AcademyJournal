@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Crown, ChevronRight, RotateCcw, Trophy, Zap, Check, X, Loader2, Lightbulb, Flag, Users, Clock, HelpCircle, AlertTriangle, XCircle, KeyRound, EyeOff } from 'lucide-react'
+import { Crown, ChevronRight, RotateCcw, Trophy, Zap, Check, X, Loader2, Lightbulb, Flag, Users, Clock, HelpCircle, AlertTriangle, XCircle, KeyRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { getGame, startGame, pickSquare, answerQuestion, finishGame, resetGame, swapTeamMembers, reshuffleTeams } from '../api/quiz'
@@ -218,39 +218,16 @@ function TeamSplitScreen({ teams: initialTeams, isTeacher, groupId, gameId, onDo
   )
 }
 
-// ── Scoreboard sidebar ────────────────────────────────────────────────────────
-function Scoreboard({ teams, currentTeamId, t }) {
-  return (
-    <div style={{ flex: '1 1 180px', minWidth: 180, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{t('quiz.scoreboard')}</p>
-      {teams.map(team => {
-        const color = TEAM_COLORS[teams.indexOf(team) % TEAM_COLORS.length]
-        const isCurrent = team.id === currentTeamId
-        return (
-          <motion.div key={team.id} layout
-            style={{ background: isCurrent ? `${color}18` : 'var(--surface)', border: `1.5px solid ${isCurrent ? color : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px', transition: 'border-color 0.2s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontWeight: 700, fontSize: 13, color, flex: 1 }}>{team.name}</span>
-              <EyeOff size={14} color="var(--text-muted)" />
-            </div>
-          </motion.div>
-        )
-      })}
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t('quiz.scores_hidden')}</p>
-    </div>
-  )
-}
-
 // ── Game board grid ───────────────────────────────────────────────────────────
 function Board({ board, answeredIds, doubleId, currentTeam, isTeacher, onPickSquare, t }) {
   const topics = Object.keys(board)
   if (!topics.length) return <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>{t('quiz.no_questions_in_game')}</p>
 
   return (
-    <div style={{ flex: 1, overflowX: 'auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${topics.length}, minmax(120px, 1fr))`, gap: 8, minWidth: topics.length * 130 }}>
+    <div style={{ overflowX: 'auto', maxWidth: 900, margin: '0 auto', width: '100%' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${topics.length}, minmax(140px, 1fr))`, gap: 10, minWidth: topics.length * 150 }}>
         {topics.map(topic => (
-          <div key={topic} style={{ background: 'var(--accent)', borderRadius: 10, padding: '10px 14px', textAlign: 'center', fontWeight: 800, fontSize: 13, color: '#fff' }}>
+          <div key={topic} style={{ background: 'var(--accent)', borderRadius: 10, padding: '12px 14px', textAlign: 'center', fontWeight: 800, fontSize: 14, color: '#fff' }}>
             {topic}
           </div>
         ))}
@@ -265,23 +242,23 @@ function Board({ board, answeredIds, doubleId, currentTeam, isTeacher, onPickSqu
               const isDouble  = cell.id === doubleId
               const pickable  = isTeacher && !answered && currentTeam
               cells.push(
-                <motion.button key={cell.id} whileHover={pickable ? { scale: 1.04 } : {}} whileTap={pickable ? { scale: 0.97 } : {}}
+                <motion.button key={cell.id} whileHover={pickable ? { scale: 1.05, boxShadow: `0 6px 18px ${DIFF_COLOR[cell.difficulty]}33` } : {}} whileTap={pickable ? { scale: 0.97 } : {}}
                   onClick={() => pickable && onPickSquare(cell)}
                   disabled={answered || !isTeacher}
                   style={{
-                    position: 'relative', padding: '18px 10px', borderRadius: 10,
+                    position: 'relative', padding: '24px 10px', borderRadius: 12,
                     border: `2px solid ${answered ? 'var(--border)' : isDouble ? '#F59E0B' : DIFF_COLOR[cell.difficulty]}`,
                     background: answered ? 'var(--bg)' : isDouble ? 'rgba(245,158,11,0.08)' : `${DIFF_COLOR[cell.difficulty]}12`,
                     cursor: pickable ? 'pointer' : 'default', textAlign: 'center', transition: 'opacity 0.2s',
                     opacity: answered ? 0.35 : 1,
                   }}>
                   {isDouble && !answered && (
-                    <span style={{ position: 'absolute', top: 4, right: 6, fontSize: 10, fontWeight: 800, color: '#F59E0B' }}>2×</span>
+                    <span style={{ position: 'absolute', top: 5, right: 7, fontSize: 10, fontWeight: 800, color: '#F59E0B' }}>2×</span>
                   )}
-                  <span style={{ fontWeight: 800, fontSize: 22, color: answered ? 'var(--border)' : DIFF_COLOR[cell.difficulty], display: 'block' }}>
+                  <span style={{ fontWeight: 800, fontSize: 26, color: answered ? 'var(--border)' : DIFF_COLOR[cell.difficulty], display: 'block' }}>
                     {answered ? '✓' : cell.points}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginTop: 3 }}>
                     {answered ? '' : t(`quiz.${cell.difficulty}`)}
                   </span>
                 </motion.button>
@@ -896,12 +873,9 @@ export default function GameBoard() {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
-            <Board board={game.board || {}} answeredIds={game.answered_question_ids || []}
-              doubleId={game.double_question_id} currentTeam={game.current_team}
-              isTeacher={isTeacher} onPickSquare={handleSelectTeamAndPick} t={t} />
-            <Scoreboard teams={game.teams} currentTeamId={game.current_team} t={t} />
-          </div>
+          <Board board={game.board || {}} answeredIds={game.answered_question_ids || []}
+            doubleId={game.double_question_id} currentTeam={game.current_team}
+            isTeacher={isTeacher} onPickSquare={handleSelectTeamAndPick} t={t} />
 
           {isTeacher && (
             <div style={{ marginTop: 24, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
