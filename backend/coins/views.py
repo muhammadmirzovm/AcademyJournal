@@ -152,7 +152,7 @@ class CoinLeaderboardView(APIView):
 
         rows = (
             CoinTransaction.objects
-            .filter(student__academy=request.user.academy, student__role='student')
+            .filter(student__academy=request.user.academy, student__role='student', student__is_active=True)
             .exclude(type__in=[CoinTransaction.Type.PURCHASE, CoinTransaction.Type.REFUND])
             .values('student')
             .annotate(earned=Sum('amount'))

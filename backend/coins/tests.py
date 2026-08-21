@@ -352,6 +352,17 @@ def test_coin_leaderboard_excludes_non_students(academy, admin_user, teacher):
 
 
 @pytest.mark.django_db
+def test_coin_leaderboard_excludes_deactivated_students(academy, admin_user, student):
+    CoinTransaction.objects.create(student=student, amount=100, type=CoinTransaction.Type.GAME_PLACE, reason='x')
+    student.is_active = False
+    student.save()
+
+    res = _client_for('coin_admin').get('/api/coins/leaderboard/')
+    assert res.status_code == 200
+    assert res.data == []
+
+
+@pytest.mark.django_db
 def test_coin_leaderboard_scoped_to_own_academy(academy, admin_user, student):
     other_academy = Academy.objects.create(name='Other Leaderboard Academy', slug='other-leaderboard-academy')
     other_student = User.objects.create_user(username='other_lb_student', password='pass1234', role='student', academy=other_academy)

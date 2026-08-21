@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star, MessageCircle, AlertTriangle, BookMarked, ClipboardList, ScanLine, PiggyBank } from 'lucide-react'
+import { Users, BookOpen, Plus, LogIn, ArrowRight, GraduationCap, X, Loader2, Trophy, Star, MessageCircle, BookMarked, ClipboardList, ScanLine, PiggyBank } from 'lucide-react'
 import { getGroups, joinGroup, getAcademyAnnouncements, createAcademyAnnouncement, deleteAnnouncement } from '../api/groups'
-import { getAdminStats, getTeacherLeaderboard } from '../api/users'
+import { getAdminStats } from '../api/users'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
-import CoinLeaderboard from '../components/CoinLeaderboard'
+import DashboardLeaderboard from '../components/DashboardLeaderboard'
 import AdminCharts from '../components/charts/AdminCharts'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -40,10 +40,6 @@ export default function Dashboard() {
   const [children,   setChildren]   = useState([])
   const [adminStats, setAdminStats] = useState(null)
   const [loading,    setLoading]    = useState(true)
-
-  const [leaderboard, setLeaderboard] = useState([])
-  const [lbPage,      setLbPage]      = useState(1)
-  const LB_PAGE_SIZE = 20
 
   const [showJoin, setShowJoin] = useState(false)
   const [joinKey,  setJoinKey]  = useState('')
@@ -88,10 +84,7 @@ export default function Dashboard() {
     } else if (role === 'admin') {
       getAdminStats().then(r => setAdminStats(r.data)).finally(() => setLoading(false))
     } else if (role === 'teacher') {
-      Promise.all([
-        getGroups().then(r => setGroups(r.data)),
-        getTeacherLeaderboard().then(r => setLeaderboard(r.data)),
-      ]).finally(() => setLoading(false))
+      getGroups().then(r => setGroups(r.data)).finally(() => setLoading(false))
     } else {
       getGroups().then(r => setGroups(r.data)).finally(() => setLoading(false))
     }
@@ -179,7 +172,7 @@ export default function Dashboard() {
         onDelete={handleDeleteAnn}
       />
 
-      <CoinLeaderboard />
+      <DashboardLeaderboard />
 
       <div className="fade-up-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 32 }}>
         {role === 'admin' ? (
@@ -492,123 +485,6 @@ export default function Dashboard() {
               </Link>
             ))}
           </div>
-
-          {/* Podium */}
-          {!loading && leaderboard.length >= 3 && (() => {
-            const top = leaderboard.slice(0, 3)
-            const MEDALS = [
-              { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', height: 80, label: '🥇' },
-              { color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', height: 60, label: '🥈' },
-              { color: '#CD7F32', bg: 'rgba(205,127,50,0.12)', height: 50, label: '🥉' },
-            ]
-            const order = [top[1], top[0], top[2]]
-            const heights = [MEDALS[1], MEDALS[0], MEDALS[2]]
-            return (
-              <div style={{ marginBottom: 32 }}>
-                <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 20 }}>{t('dashboard.leaderboard')}</h3>
-                <div className="podium-wrap" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 12, marginBottom: 24 }}>
-                  {order.map((s, i) => {
-                    const medal = heights[i]
-                    const rank = i === 1 ? 0 : i === 0 ? 1 : 2
-                    return (
-                      <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: 1, maxWidth: 140 }}>
-                        <Link to={`/profile/${s.id}`} style={{ textDecoration: 'none', textAlign: 'center' }}>
-                          <div style={{ width: 48, height: 48, borderRadius: '50%', background: medal.bg, border: `2px solid ${medal.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: 20 }}>
-                            {MEDALS[rank].label}
-                          </div>
-                          <p className="podium-name" style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{s.display_name}</p>
-                          <p style={{ fontSize: 12, color: medal.color, fontWeight: 800 }}>{s.avg_score ?? '—'}%</p>
-                        </Link>
-                        <div style={{ width: '100%', background: medal.bg, border: `1px solid ${medal.color}40`, borderRadius: '8px 8px 0 0', height: medal.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ fontSize: 22, fontWeight: 900, color: medal.color }}>{rank + 1}</span>
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                </div>
-
-                {/* Full ranking */}
-                {(() => {
-                  const lbPageCount = Math.ceil(leaderboard.length / LB_PAGE_SIZE)
-                  const safeLbPage  = Math.min(lbPage, lbPageCount)
-                  const visible     = leaderboard.slice((safeLbPage - 1) * LB_PAGE_SIZE, safeLbPage * LB_PAGE_SIZE)
-                  const globalOffset = (safeLbPage - 1) * LB_PAGE_SIZE
-                  return (
-                    <>
-                      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)', marginBottom: lbPageCount > 1 ? 0 : 24 }}>
-                        {visible.map((s, i) => {
-                          const gi = globalOffset + i
-                          return (
-                            <motion.div key={s.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: i < visible.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                              <span style={{ width: 26, height: 26, borderRadius: '50%', background: gi < 3 ? ['rgba(245,158,11,0.15)','rgba(148,163,184,0.15)','rgba(205,127,50,0.15)'][gi] : 'var(--bg)', border: '1px solid var(--border)', color: gi < 3 ? ['#F59E0B','#94A3B8','#CD7F32'][gi] : 'var(--text-muted)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                {gi + 1}
-                              </span>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <Link to={`/profile/${s.id}`} style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display_name}</Link>
-                                <p className="lb-group" style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.groups?.join(', ')}</p>
-                              </div>
-                              {s.attendance != null && (
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{s.attendance}% att.</span>
-                              )}
-                              <span style={{ fontSize: 13, fontWeight: 700, color: s.avg_score == null ? 'var(--text-muted)' : s.avg_score >= 80 ? '#14B8A8' : s.avg_score >= 60 ? '#F59E0B' : '#EF4444', flexShrink: 0, minWidth: 40, textAlign: 'right' }}>
-                                {s.avg_score != null ? `${s.avg_score}%` : '—'}
-                              </span>
-                            </motion.div>
-                          )
-                        })}
-                      </div>
-
-                      {lbPageCount > 1 && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 14px 14px', marginBottom: 24 }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                            {(safeLbPage - 1) * LB_PAGE_SIZE + 1}–{Math.min(safeLbPage * LB_PAGE_SIZE, leaderboard.length)} / {leaderboard.length}
-                          </span>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button onClick={() => setLbPage(p => Math.max(1, p - 1))} disabled={safeLbPage === 1}
-                              style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: safeLbPage === 1 ? 'default' : 'pointer', opacity: safeLbPage === 1 ? 0.4 : 1 }}>
-                              ← Oldingi
-                            </button>
-                            {Array.from({ length: lbPageCount }, (_, i) => i + 1).map(p => (
-                              <button key={p} onClick={() => setLbPage(p)}
-                                style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${p === safeLbPage ? 'var(--accent)' : 'var(--border)'}`, background: p === safeLbPage ? 'var(--accent)' : 'transparent', color: p === safeLbPage ? '#fff' : 'var(--text-muted)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                                {p}
-                              </button>
-                            ))}
-                            <button onClick={() => setLbPage(p => Math.min(lbPageCount, p + 1))} disabled={safeLbPage === lbPageCount}
-                              style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: safeLbPage === lbPageCount ? 'default' : 'pointer', opacity: safeLbPage === lbPageCount ? 0.4 : 1 }}>
-                              Keyingi →
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )
-                })()}
-
-                {/* At-risk students */}
-                {leaderboard.filter(s => s.avg_score != null && s.avg_score < 80).length > 0 && (
-                  <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 14, padding: 20 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <AlertTriangle size={16} color="#EF4444" />
-                      <p style={{ fontWeight: 700, fontSize: 14, color: '#EF4444' }}>{t('dashboard.at_risk')} <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>({t('dashboard.below_80')})</span></p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {leaderboard.filter(s => s.avg_score != null && s.avg_score < 80).map((s, i) => (
-                        <motion.div key={s.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Link to={`/profile/${s.id}`} style={{ flex: 1, fontWeight: 600, fontSize: 13, color: 'var(--text)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display_name}</Link>
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{s.groups?.join(', ')}</span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#EF4444', flexShrink: 0, minWidth: 36, textAlign: 'right' }}>{s.avg_score}%</span>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })()}
 
           {/* Groups */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
