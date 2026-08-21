@@ -14,7 +14,10 @@
     "exams": "Exams",
     "rewards": "Rewards",
     "coin_report": "Coin report",
-    "scanner": "Scanner"
+    "scanner": "Scanner",
+    "theme": "Theme",
+    "theme_light": "Light",
+    "theme_dark": "Dark"
   },
   "students": {
     "title": "All Students",

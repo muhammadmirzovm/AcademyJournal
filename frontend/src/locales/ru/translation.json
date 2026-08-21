@@ -14,7 +14,10 @@
     "exams": "Экзамены",
     "rewards": "Награды",
     "coin_report": "Отчёт по монетам",
-    "scanner": "Сканер"
+    "scanner": "Сканер",
+    "theme": "Тема",
+    "theme_light": "Светлая",
+    "theme_dark": "Тёмная"
   },
   "students": {
     "title": "Все ученики",

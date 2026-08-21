@@ -14,7 +14,10 @@
     "exams": "Imtihonlar",
     "rewards": "Sovg'alar",
     "coin_report": "Tangacha hisoboti",
-    "scanner": "Skaner"
+    "scanner": "Skaner",
+    "theme": "Mavzu",
+    "theme_light": "Yorug'",
+    "theme_dark": "Qorong'i"
   },
   "students": {
     "title": "Barcha o'quvchilar",

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Sun, Moon, Menu, X, GraduationCap, LogOut, User, LayoutDashboard, Users, Globe, BookMarked, Settings, Gift, HelpCircle } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
@@ -21,8 +21,9 @@ export default function Navbar() {
   const location             = useLocation()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [langOpen,   setLangOpen]   = useState(false)
+  const [menuOpen,   setMenuOpen]   = useState(false)
   const [scrolled,   setScrolled]   = useState(false)
+  const menuRef = useRef(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -30,12 +31,17 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // close drawer on route change
-  useEffect(() => { setDrawerOpen(false); setLangOpen(false) }, [location.pathname])
+  useEffect(() => {
+    const handler = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // close drawer/menu on route change
+  useEffect(() => { setDrawerOpen(false); setMenuOpen(false) }, [location.pathname])
 
   const handleLogout = () => { logout(); navigate('/login') }
-  const setLang = (code) => { i18n.changeLanguage(code); setLangOpen(false) }
-  const currentLang = LANGS.find(l => l.code === i18n.language) || LANGS[0]
+  const setLang = (code) => { i18n.changeLanguage(code) }
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
@@ -94,54 +100,60 @@ export default function Navbar() {
             {/* Notifications */}
             {user && <NotificationBell />}
 
-            {/* Help / guide */}
-            <a href="/guide.html" target="_blank" rel="noopener noreferrer" className="nav-ctrl-btn" style={circleBtn} title={t('nav.help')}>
-              <HelpCircle size={15} color="#CBD5E1" />
-            </a>
-
-            {/* Theme toggle */}
-            <button onClick={toggle} className="nav-ctrl-btn" style={circleBtn} title="Toggle theme">
-              {theme === 'dark'
-                ? <Sun size={15} color="#CBD5E1" />
-                : <Moon size={15} color="#CBD5E1" />}
-            </button>
-
-            {/* Lang switcher */}
-            <div style={{ position: 'relative' }}>
-              <button onClick={() => setLangOpen(o => !o)} className="nav-ctrl-btn"
-                style={{ ...circleBtn, width: 'auto', padding: '0 12px', borderRadius: 8, gap: 5, fontSize: 12, fontWeight: 700, color: '#CBD5E1' }}>
-                <Globe size={13} color="#CBD5E1" />
-                {currentLang.label}
-              </button>
-              <AnimatePresence>
-                {langOpen && (
-                  <motion.div initial={{ opacity: 0, y: -6, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                    style={{ position: 'absolute', right: 0, top: 46, background: 'var(--nav-bg)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, overflow: 'hidden', minWidth: 130, boxShadow: '0 12px 32px rgba(0,0,0,0.4)', zIndex: 300 }}>
-                    {LANGS.map(l => (
-                      <button key={l.code} onClick={() => setLang(l.code)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '9px 14px', background: i18n.language === l.code ? 'rgba(16,185,129,0.12)' : 'transparent', border: 'none', cursor: 'pointer', color: i18n.language === l.code ? 'var(--accent)' : '#94A3B8', fontSize: 13, fontWeight: 600, textAlign: 'left' }}>
-                        <span>{l.full}</span>
-                        <span style={{ fontSize: 11, opacity: 0.6 }}>{l.label}</span>
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
             {user ? (
-              <>
-                {/* Avatar → profile */}
-                <Link to={`/profile/${user.id}`}
-                  style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), #059669)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', textDecoration: 'none', flexShrink: 0, boxShadow: '0 0 0 2px rgba(16,185,129,0.3)' }}
-                  title={t('nav.profile')}>
+              <div ref={menuRef} style={{ position: 'relative' }}>
+                <button onClick={() => setMenuOpen(o => !o)} className="nav-ctrl-btn"
+                  style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), #059669)', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', cursor: 'pointer', flexShrink: 0, boxShadow: '0 0 0 2px rgba(16,185,129,0.3)' }}
+                  title={user.first_name || user.username}>
                   {initials}
-                </Link>
-                <button onClick={handleLogout} className="nav-ctrl-btn" style={circleBtn} title={t('nav.logout')}>
-                  <LogOut size={15} color="#CBD5E1" />
                 </button>
-              </>
+                <AnimatePresence>
+                  {menuOpen && (
+                    <motion.div initial={{ opacity: 0, y: -6, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      style={{ position: 'absolute', right: 0, top: 46, width: 240, background: 'var(--nav-bg)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.4)', zIndex: 300 }}>
+
+                      <div style={{ padding: '13px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.first_name || user.username}</p>
+                        <p style={{ fontSize: 11, color: '#64748B', textTransform: 'capitalize' }}>{user.role}</p>
+                      </div>
+
+                      <Link to={`/profile/${user.id}`} onClick={() => setMenuOpen(false)} className="nav-menu-item" style={menuItemStyle}>
+                        <User size={14} color="#94A3B8" /> {t('nav.profile')}
+                      </Link>
+                      <a href="/guide.html" target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)} className="nav-menu-item" style={menuItemStyle}>
+                        <HelpCircle size={14} color="#94A3B8" /> {t('nav.help')}
+                      </a>
+                      <button onClick={toggle} className="nav-menu-item" style={menuItemStyle}>
+                        {theme === 'dark' ? <Sun size={14} color="#94A3B8" /> : <Moon size={14} color="#94A3B8" />}
+                        {t('nav.theme')}
+                        <span style={{ marginLeft: 'auto', fontSize: 11, color: '#64748B' }}>
+                          {theme === 'dark' ? t('nav.theme_dark') : t('nav.theme_light')}
+                        </span>
+                      </button>
+
+                      <div style={{ padding: '10px 16px 12px' }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 7, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Globe size={11} /> {t('nav.language')}
+                        </p>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {LANGS.map(l => (
+                            <button key={l.code} onClick={() => setLang(l.code)}
+                              style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${i18n.language === l.code ? 'var(--accent)' : 'rgba(255,255,255,0.07)'}`, background: i18n.language === l.code ? 'rgba(16,185,129,0.12)' : 'transparent', color: i18n.language === l.code ? 'var(--accent)' : '#64748B', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                              {l.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
+                      <button onClick={handleLogout} className="nav-menu-item" style={{ ...menuItemStyle, color: '#F87171' }}>
+                        <LogOut size={14} /> {t('nav.logout')}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             ) : (
               <>
                 <Link to="/login"
@@ -266,6 +278,7 @@ export default function Navbar() {
         .nav-ctrl-btn { transition: background 0.15s, border-color 0.15s, transform 0.1s; }
         .nav-ctrl-btn:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.18); }
         .nav-ctrl-btn:active { transform: scale(0.92); }
+        .nav-menu-item:hover { background: rgba(255,255,255,0.06); }
         @media (max-width: 900px) {
           .desktop-nav { display: none !important; }
           .mobile-nav  { display: flex !important; }
@@ -317,4 +330,11 @@ const circleBtn = {
   background: 'transparent', cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   flexShrink: 0, transition: 'border-color 0.15s, background 0.15s',
+}
+
+const menuItemStyle = {
+  display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box',
+  padding: '10px 16px', background: 'transparent', border: 'none',
+  color: '#CBD5E1', fontSize: 13, fontWeight: 500, textDecoration: 'none',
+  cursor: 'pointer', textAlign: 'left',
 }
