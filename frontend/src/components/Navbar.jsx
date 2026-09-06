@@ -156,6 +156,14 @@ export default function Navbar() {
               </div>
             ) : (
               <>
+                <div style={{ display: 'flex', gap: 4, marginRight: 4 }}>
+                  {LANGS.map(l => (
+                    <button key={l.code} onClick={() => setLang(l.code)}
+                      style={{ padding: '6px 10px', borderRadius: 7, border: `1.5px solid ${i18n.language === l.code ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: i18n.language === l.code ? 'rgba(16,185,129,0.12)' : 'transparent', color: i18n.language === l.code ? 'var(--accent)' : '#94A3B8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
                 <Link to="/login"
                   style={{ display: 'inline-flex', alignItems: 'center', padding: '7px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#94A3B8', fontSize: 13, fontWeight: 600, textDecoration: 'none', transition: 'border-color 0.15s, color 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = '#fff' }}
