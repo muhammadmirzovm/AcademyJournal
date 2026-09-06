@@ -54,7 +54,7 @@ class GroupSerializer(serializers.ModelSerializer):
         return f'{obj.teacher.first_name} {obj.teacher.last_name}'.strip() or obj.teacher.username
 
     def get_member_count(self, obj):
-        return obj.memberships.count()
+        return obj.memberships.filter(student__is_active=True).count()
 
     def get_is_member(self, obj):
         request = self.context.get('request')

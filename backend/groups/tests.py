@@ -301,3 +301,37 @@ def test_end_lesson_no_coin_line_for_student_with_zero_coins(teacher_client, tea
     from users.models import Notification
     notif = Notification.objects.exclude(type='lesson').get(user=student, title=lesson.title)
     assert 'tangacha' not in notif.body
+
+
+@pytest.mark.django_db
+def test_end_lesson_excludes_deactivated_students(teacher_client, academy, group, student):
+    from users.models import Notification
+
+    inactive = User.objects.create_user(
+        username='inactive_student', password='pass1234', role='student', academy=academy, is_active=False,
+    )
+    group.memberships.create(student=student)
+    group.memberships.create(student=inactive)
+    lesson = Lesson.objects.create(group=group, title='Lesson 4', date='2026-08-13')
+    Attendance.objects.create(lesson=lesson, student=student, present=True)
+    Attendance.objects.create(lesson=lesson, student=inactive, present=False)
+
+    res = teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/end/')
+    assert res.status_code == 200
+    assert res.data['notified'] == 1
+
+    assert Notification.objects.filter(user=student, title=lesson.title).exclude(type='lesson').exists()
+    assert not Notification.objects.filter(user=inactive, title=lesson.title).exclude(type='lesson').exists()
+
+
+@pytest.mark.django_db
+def test_group_member_count_excludes_deactivated_students(teacher_client, academy, group, student):
+    inactive = User.objects.create_user(
+        username='inactive_student2', password='pass1234', role='student', academy=academy, is_active=False,
+    )
+    group.memberships.create(student=student)
+    group.memberships.create(student=inactive)
+
+    res = teacher_client.get(f'/api/groups/{group.id}/')
+    assert res.status_code == 200
+    assert res.data['member_count'] == 1

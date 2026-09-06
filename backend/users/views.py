@@ -292,11 +292,11 @@ class UserGroupsView(APIView):
                     'id':           g.id,
                     'name':         g.name,
                     'teacher_name': teacher_full,
-                    'member_count': g.memberships.count(),
+                    'member_count': g.memberships.filter(student__is_active=True).count(),
                 })
         elif target.role == 'teacher':
             gs = Group.objects.filter(teacher=target)
-            groups = [{'id': g.id, 'name': g.name, 'member_count': g.memberships.count()} for g in gs]
+            groups = [{'id': g.id, 'name': g.name, 'member_count': g.memberships.filter(student__is_active=True).count()} for g in gs]
         else:
             groups = []
         return Response(groups)

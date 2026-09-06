@@ -482,7 +482,7 @@ class EndLessonView(APIView):
 
         memberships = (
             GroupMembership.objects
-            .filter(group=group)
+            .filter(group=group, student__is_active=True)
             .select_related('student')
             .prefetch_related('student__parents__parent')
         )
@@ -1179,7 +1179,7 @@ class UpcomingExamsView(APIView):
             return {
                 'id':              g.id,
                 'name':            g.name,
-                'member_count':    g.memberships.count(),
+                'member_count':    g.memberships.filter(student__is_active=True).count(),
                 'class_days':      g.class_days or [],
                 'class_time':      g.class_time or '',
                 'teacher_name':    f'{g.teacher.first_name} {g.teacher.last_name}'.strip() or g.teacher.username,

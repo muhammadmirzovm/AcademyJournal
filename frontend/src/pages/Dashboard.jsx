@@ -243,7 +243,9 @@ export default function Dashboard() {
               {todayGroups.map((g, i) => {
                 const lesson = todayLessons[g.id]
                 const dayOff = todayDayOffs[g.id]
-                const overdue = !lesson && !dayOff && isClassOverdue(g.class_time)
+                // Don't know yet whether a lesson/day-off already exists while
+                // this is still loading — treat as not-overdue to avoid a red flash.
+                const overdue = !todayLessonsLoading && !lesson && !dayOff && isClassOverdue(g.class_time)
                 const accent = dayOff ? 'var(--text-muted)' : lesson ? (lesson.ended_at ? '#22C55E' : '#F59E0B') : (overdue ? '#EF4444' : 'var(--accent)')
                 const pickerOpen = dayOffPickerFor === g.id
                 return (
