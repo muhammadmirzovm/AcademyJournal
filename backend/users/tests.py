@@ -114,6 +114,71 @@ def test_change_password(auth_client):
     assert res.status_code == 200
 
 
+@pytest.mark.django_db
+def test_admin_can_update_student_name_in_own_academy(admin_user):
+    student = User.objects.create_user(
+        username='rename_student', password='pass1234',
+        role='student', academy=admin_user.academy,
+        first_name='Old', last_name='Name',
+    )
+    client = APIClient()
+    client.force_authenticate(admin_user)
+
+    res = client.patch(f'/api/auth/admin/students/{student.id}/', {
+        'first_name': 'New',
+        'last_name': 'Student',
+        'role': 'admin',
+    }, format='json')
+
+    student.refresh_from_db()
+    assert res.status_code == 200
+    assert student.first_name == 'New'
+    assert student.last_name == 'Student'
+    assert student.role == 'student'
+
+
+@pytest.mark.django_db
+def test_admin_cannot_update_student_name_in_other_academy(admin_user):
+    from academies.models import Academy
+    other = Academy.objects.create(name='Other Academy', slug='other-academy')
+    student = User.objects.create_user(
+        username='other_rename_student', password='pass1234',
+        role='student', academy=other, first_name='Old',
+    )
+    client = APIClient()
+    client.force_authenticate(admin_user)
+
+    res = client.patch(f'/api/auth/admin/students/{student.id}/', {
+        'first_name': 'New',
+    }, format='json')
+
+    student.refresh_from_db()
+    assert res.status_code == 404
+    assert student.first_name == 'Old'
+
+
+@pytest.mark.django_db
+def test_teacher_cannot_update_student_name(admin_user):
+    teacher = User.objects.create_user(
+        username='rename_teacher', password='pass1234',
+        role='teacher', academy=admin_user.academy,
+    )
+    student = User.objects.create_user(
+        username='teacher_rename_student', password='pass1234',
+        role='student', academy=admin_user.academy, first_name='Old',
+    )
+    client = APIClient()
+    client.force_authenticate(teacher)
+
+    res = client.patch(f'/api/auth/admin/students/{student.id}/', {
+        'first_name': 'New',
+    }, format='json')
+
+    student.refresh_from_db()
+    assert res.status_code == 403
+    assert student.first_name == 'Old'
+
+
 # ── Teacher leaderboard (rewritten to bulk-fetch instead of N+1 querying) ──
 
 def _teacher_client(username):

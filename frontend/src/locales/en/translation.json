@@ -39,7 +39,12 @@
     "deactivate": "Deactivate",
     "activate": "Activate",
     "deactivated_toast": "Student deactivated",
-    "activated_toast": "Student activated"
+    "activated_toast": "Student activated",
+    "edit_name": "Edit name",
+    "edit_name_title": "Edit student name",
+    "save_name": "Save name",
+    "updated_toast": "Student name updated",
+    "update_fail": "Failed to update student"
   },
   "landing": {
     "badge": "Now live — start for free",

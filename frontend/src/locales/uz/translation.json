@@ -39,7 +39,12 @@
     "deactivate": "Nofaol qilish",
     "activate": "Faollashtirish",
     "deactivated_toast": "O'quvchi nofaol qilindi",
-    "activated_toast": "O'quvchi faollashtirildi"
+    "activated_toast": "O'quvchi faollashtirildi",
+    "edit_name": "Ismni tahrirlash",
+    "edit_name_title": "O'quvchi ismini tahrirlash",
+    "save_name": "Ismni saqlash",
+    "updated_toast": "O'quvchi ismi yangilandi",
+    "update_fail": "O'quvchini yangilab bo'lmadi"
   },
   "landing": {
     "badge": "Endi jonli — bepul boshlang",

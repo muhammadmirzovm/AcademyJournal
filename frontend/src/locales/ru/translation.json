@@ -39,7 +39,12 @@
     "deactivate": "Деактивировать",
     "activate": "Активировать",
     "deactivated_toast": "Ученик деактивирован",
-    "activated_toast": "Ученик активирован"
+    "activated_toast": "Ученик активирован",
+    "edit_name": "Изменить имя",
+    "edit_name_title": "Изменить имя ученика",
+    "save_name": "Сохранить имя",
+    "updated_toast": "Имя ученика обновлено",
+    "update_fail": "Не удалось обновить ученика"
   },
   "landing": {
     "badge": "Уже в сети — начните бесплатно",

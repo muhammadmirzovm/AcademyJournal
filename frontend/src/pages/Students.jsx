@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Search, Users, GraduationCap, MessageCircle, UserCheck, UserX, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { Search, Users, GraduationCap, MessageCircle, UserCheck, UserX, ChevronLeft, ChevronRight, Loader2, Pencil, Save, X } from 'lucide-react'
 import api from '../api/axios'
-import { setStudentActive } from '../api/users'
+import { setStudentActive, updateStudentName } from '../api/users'
 import { useAuth } from '../context/auth'
 import { useToast } from '../context/toast'
 
@@ -39,6 +39,9 @@ export default function Students() {
   const [page,     setPage]     = useState(1)
   const [total,    setTotal]    = useState(0)
   const [pages,    setPages]    = useState(1)
+  const [editing,  setEditing]  = useState(null)
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '' })
+  const [saving,   setSaving]   = useState(false)
 
   const fetchStudents = useCallback(async (p) => {
     setLoading(true)
@@ -62,6 +65,37 @@ export default function Students() {
       show(s.is_active ? t('students.deactivated_toast') : t('students.activated_toast'), 'success')
       fetchStudents(page)
     } catch { show('Error', 'error') }
+  }
+
+  const openEdit = (e, s) => {
+    e.stopPropagation()
+    setEditing(s)
+    setEditForm({ first_name: s.first_name || '', last_name: s.last_name || '' })
+  }
+
+  const closeEdit = () => {
+    setEditing(null)
+    setEditForm({ first_name: '', last_name: '' })
+  }
+
+  const handleSaveName = async (e) => {
+    e.preventDefault()
+    if (!editing) return
+    setSaving(true)
+    try {
+      const payload = {
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim(),
+      }
+      const { data } = await updateStudentName(editing.id, payload)
+      setStudents(prev => prev.map(s => s.id === editing.id ? { ...s, ...data } : s))
+      show(t('students.updated_toast'), 'success')
+      closeEdit()
+    } catch {
+      show(t('students.update_fail'), 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   useEffect(() => {
@@ -214,6 +248,16 @@ export default function Students() {
                     <UserX size={12} /> {t('students.inactive_badge')}
                   </span>
                 )}
+                {user?.role === 'admin' && (
+                  <button onClick={e => openEdit(e, s)}
+                    title={t('students.edit_name')}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+                      border: '1px solid rgba(13,148,136,0.3)',
+                      background: 'rgba(13,148,136,0.08)',
+                      color: '#0D9488' }}>
+                    <Pencil size={12} /> {t('students.edit_name')}
+                  </button>
+                )}
                 <button onClick={e => handleToggleActive(e, s)}
                   title={s.is_active ? t('students.deactivate') : t('students.activate')}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
@@ -258,6 +302,60 @@ export default function Students() {
             }}>
             <ChevronRight size={16} />
           </button>
+        </div>
+      )}
+
+      {editing && (
+        <div
+          onClick={closeEdit}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(15,23,42,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+          }}
+        >
+          <form
+            onSubmit={handleSaveName}
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 420, background: 'var(--card)', color: 'var(--text)',
+              borderRadius: 14, border: '1px solid var(--border)', padding: 20,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{t('students.edit_name_title')}</h2>
+              <button type="button" onClick={closeEdit}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+              {t('auth.first_name')}
+            </label>
+            <input
+              value={editForm.first_name}
+              onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
+              maxLength={150}
+              style={{ width: '100%', boxSizing: 'border-box', marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14 }}
+            />
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+              {t('auth.last_name')}
+            </label>
+            <input
+              value={editForm.last_name}
+              onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))}
+              maxLength={150}
+              style={{ width: '100%', boxSizing: 'border-box', marginBottom: 20, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14 }}
+            />
+
+            <button type="submit" disabled={saving}
+              style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 14px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 800, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+              {saving ? <Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={16} />}
+              {t('students.save_name')}
+            </button>
+          </form>
         </div>
       )}
     </div>

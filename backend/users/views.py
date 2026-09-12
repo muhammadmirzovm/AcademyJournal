@@ -619,6 +619,41 @@ class AdminStudentsView(APIView):
         })
 
 
+class AdminStudentDetailView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def patch(self, request, pk):
+        actor = request.user
+        if actor.role != 'admin' or not actor.academy:
+            return Response({'detail': 'Admin only.'}, status=403)
+        try:
+            student = User.objects.get(pk=pk, role='student', academy=actor.academy)
+        except User.DoesNotExist:
+            return Response({'detail': 'Student not found.'}, status=404)
+
+        allowed = {'first_name', 'last_name'}
+        updates = {}
+        for field in allowed:
+            if field in request.data:
+                value = str(request.data.get(field) or '').strip()
+                if len(value) > 150:
+                    return Response({field: 'Ensure this field has no more than 150 characters.'}, status=400)
+                updates[field] = value
+
+        if not updates:
+            return Response({'detail': 'Nothing to update.'}, status=400)
+
+        for field, value in updates.items():
+            setattr(student, field, value)
+        student.save(update_fields=list(updates))
+        return Response({
+            'id': student.id,
+            'username': student.username,
+            'first_name': student.first_name,
+            'last_name': student.last_name,
+        })
+
+
 class StudentActiveView(APIView):
     """Activate / deactivate a student. A deactivated student cannot log in and
     is hidden from every roster, ranking, stat and report — but their data is
@@ -1083,4 +1118,3 @@ class PushSubscribeView(APIView):
         if endpoint:
             PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
         return Response(status=204)
-
