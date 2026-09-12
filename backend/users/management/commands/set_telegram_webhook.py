@@ -23,10 +23,10 @@ class Command(BaseCommand):
             api_url = f'https://api.telegram.org/bot{token}/deleteWebhook'
             data = urllib.parse.urlencode({}).encode()
         else:
+            if not secret:
+                raise CommandError('TELEGRAM_WEBHOOK_SECRET is required to register the webhook')
             api_url = f'https://api.telegram.org/bot{token}/setWebhook'
-            payload = {'url': options['url']}
-            if secret:
-                payload['secret_token'] = secret
+            payload = {'url': options['url'], 'secret_token': secret}
             data = urllib.parse.urlencode(payload).encode()
 
         req = urllib.request.Request(api_url, data=data, method='POST')

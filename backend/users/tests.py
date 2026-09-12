@@ -5,6 +5,47 @@ from rest_framework.test import APIClient
 User = get_user_model()
 
 
+@pytest.mark.parametrize('expected, supplied', [('', ''), ('', 'anything'), ('secret', ''), ('secret', 'wrong')])
+def test_webhook_rejects_unverified_requests(settings, monkeypatch, expected, supplied):
+    from rest_framework.test import APIRequestFactory
+    from users.views import TelegramWebhookView
+    settings.TELEGRAM_WEBHOOK_SECRET = expected
+    called = []
+    monkeypatch.setattr('users.telegram_bot.get_application', lambda: called.append(True))
+    request = APIRequestFactory().post('/api/auth/telegram/webhook/', {}, format='json',
+        HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN=supplied)
+    assert TelegramWebhookView.as_view()(request).status_code == 403
+    assert called == []
+
+
+def test_webhook_processes_verified_update(settings, monkeypatch):
+    from unittest.mock import AsyncMock, Mock
+    from rest_framework.test import APIRequestFactory
+    from users.views import TelegramWebhookView
+    settings.TELEGRAM_WEBHOOK_SECRET = 'secret'
+    app = Mock()
+    app.process_update = AsyncMock()
+    update = object()
+    monkeypatch.setattr('users.telegram_bot.get_application', lambda: app)
+    monkeypatch.setattr('telegram.Update.de_json', lambda data, bot: update)
+    request = APIRequestFactory().post('/api/auth/telegram/webhook/', {'update_id': 1}, format='json',
+        HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN='secret')
+    assert TelegramWebhookView.as_view()(request).status_code == 200
+    app.process_update.assert_awaited_once_with(update)
+
+
+def test_register_webhook_requires_secret(monkeypatch):
+    from django.core.management.base import CommandError
+    from users.management.commands.set_telegram_webhook import Command
+    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 'test-token')
+    monkeypatch.delenv('TELEGRAM_WEBHOOK_SECRET', raising=False)
+    def unexpected_network(*args, **kwargs):
+        pytest.fail('Must reject configuration before contacting Telegram')
+    monkeypatch.setattr('urllib.request.urlopen', unexpected_network)
+    with pytest.raises(CommandError, match='TELEGRAM_WEBHOOK_SECRET'):
+        Command().handle(url='https://example.com/api/auth/telegram/webhook/', delete=False)
+
+
 @pytest.fixture
 def client():
     return APIClient()

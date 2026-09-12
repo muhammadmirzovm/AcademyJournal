@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Coins, Trophy, AlertTriangle } from 'lucide-react'
 import { getCoinLeaderboard } from '../api/coins'
 import { getTeacherLeaderboard } from '../api/users'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/auth'
 
 const COIN_MEDALS = [
   { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', height: 78 },
@@ -25,7 +25,7 @@ export default function DashboardLeaderboard() {
   const { user } = useAuth()
   const isTeacher = user?.role === 'teacher'
 
-  const [tab, setTab] = useState('coins')
+  const [selectedTab, setTab] = useState(null)
 
   const [coinRows, setCoinRows]       = useState([])
   const [coinLoading, setCoinLoading] = useState(true)
@@ -37,14 +37,7 @@ export default function DashboardLeaderboard() {
     getCoinLeaderboard().then(r => setCoinRows(r.data)).catch(() => {}).finally(() => setCoinLoading(false))
   }, [])
 
-  // If the academy hasn't earned any coins yet but this teacher's students
-  // do have score/attendance data, don't default onto an empty coins tab.
-  useEffect(() => {
-    if (!coinLoading && !scoreLoading && isTeacher && coinRows.length === 0 && scoreRows.length > 0) {
-      setTab('score')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coinLoading, scoreLoading])
+  const tab = selectedTab ?? (!coinLoading && !scoreLoading && isTeacher && coinRows.length === 0 && scoreRows.length > 0 ? 'score' : 'coins')
 
   useEffect(() => {
     if (!isTeacher) return

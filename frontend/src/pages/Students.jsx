@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Users, GraduationCap, MessageCircle, UserCheck, UserX, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import api from '../api/axios'
 import { setStudentActive } from '../api/users'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 
 const PAGE_SIZE = 20
 
@@ -40,7 +40,7 @@ export default function Students() {
   const [total,    setTotal]    = useState(0)
   const [pages,    setPages]    = useState(1)
 
-  const fetchStudents = useCallback(async (p = page) => {
+  const fetchStudents = useCallback(async (p) => {
     setLoading(true)
     try {
       const params = { page: p, page_size: PAGE_SIZE, status }
@@ -53,7 +53,7 @@ export default function Students() {
     } catch {
       show('Error loading students', 'error')
     } finally { setLoading(false) }
-  }, [page, search, groupId, status])
+  }, [search, groupId, status, show])
 
   const handleToggleActive = async (e, s) => {
     e.stopPropagation()
@@ -69,11 +69,9 @@ export default function Students() {
   }, [])
 
   useEffect(() => {
-    const timer = setTimeout(() => { setPage(1); fetchStudents(1) }, 300)
+    const timer = setTimeout(() => { fetchStudents(page) }, 300)
     return () => clearTimeout(timer)
-  }, [search, groupId, status])
-
-  useEffect(() => { fetchStudents(page) }, [page])
+  }, [fetchStudents, page])
 
   if (!['admin', 'teacher'].includes(user?.role)) return null
 
@@ -98,7 +96,7 @@ export default function Students() {
           <input
             placeholder={t('students.search')}
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
             style={{
               width: '100%', padding: '10px 12px 10px 36px', borderRadius: 10,
               border: '1.5px solid rgba(0,0,0,0.1)', background: 'var(--card)',
@@ -108,7 +106,7 @@ export default function Students() {
         </div>
         <select
           value={groupId}
-          onChange={e => setGroupId(e.target.value)}
+          onChange={e => { setGroupId(e.target.value); setPage(1) }}
           style={{
             padding: '10px 14px', borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.1)',
             background: 'var(--card)', color: 'var(--text)', fontSize: 13, minWidth: 160,
@@ -128,7 +126,7 @@ export default function Students() {
         ].map(tab => {
           const on = status === tab.key
           return (
-            <button key={tab.key} onClick={() => setStatus(tab.key)}
+            <button key={tab.key} onClick={() => { setStatus(tab.key); setPage(1) }}
               style={{ padding: '7px 15px', borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
                 background: on ? 'var(--accent)' : 'var(--card)', color: on ? '#fff' : 'var(--text)' }}>

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Plus, Minus, ClipboardList, CheckCircle2, ChevronDown, ChevronUp, Loader2, UserX, ChevronLeft, ChevronRight, Pencil, FileDown, Trash2 } from 'lucide-react'
 import { toggleExamReady, createExam, submitExam, getExams, exportExamExcel, deleteExam } from '../api/groups'
-import { useToast } from '../context/ToastContext'
+import { useToast } from '../context/toast'
 import Modal from './ui/Modal'
 import { formatDayMonthTime } from '../utils/date'
 
@@ -411,17 +411,18 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
 
   const activeExam = view ? exams.find(e => e.id === view.examId) : null
 
-  const fetchExams = useCallback(async (p = page) => {
+  const fetchExams = useCallback(async (p = 1) => {
     setLoadingExams(true)
     try {
       const { data } = await getExams(groupId, p)
       setExams(data.results)
       setTotalPages(data.pages)
       setPage(data.page)
-    } catch {}
+    } catch { show('Request failed. Please try again.', 'error') }
     finally { setLoadingExams(false) }
-  }, [groupId])
+  }, [groupId, show])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
   useEffect(() => { fetchExams(1) }, [fetchExams])
 
   const handleToggleReady = () => {
@@ -442,7 +443,7 @@ export default function ExamsTab({ group, members, isAdmin, isTeacher, userId, g
       setExamReadyAt(data.exam_ready_at || null)
       setExamReadyNote(data.exam_ready_note || '')
       if (data.exam_ready) show(t('exam.ready_toast'), 'success')
-    } catch {}
+    } catch { show('Request failed. Please try again.', 'error') }
     finally { setReadyLoading(false) }
   }
 

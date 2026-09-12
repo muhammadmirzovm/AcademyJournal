@@ -917,7 +917,7 @@ class TelegramWebhookView(APIView):
     def post(self, request):
         secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
         expected = getattr(settings, 'TELEGRAM_WEBHOOK_SECRET', '')
-        if expected and secret != expected:
+        if not expected or not secrets.compare_digest(secret.encode(), expected.encode()):
             return Response(status=403)
 
         try:
@@ -1083,5 +1083,4 @@ class PushSubscribeView(APIView):
         if endpoint:
             PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
         return Response(status=204)
-
 

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, Loader2, ChevronRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/auth'
 import { getUpcomingExams, createExam } from '../api/groups'
-import { useToast } from '../context/ToastContext'
+import { useToast } from '../context/toast'
 import Modal from '../components/ui/Modal'
 import { formatDayMonthTime } from '../utils/date'
 
@@ -35,16 +35,17 @@ export default function Exams() {
   const isTeacher = user?.role === 'teacher'
   const isStudent = user?.role === 'student'
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const { data: d } = await getUpcomingExams()
       setData(d)
     } catch { show('Error loading exams', 'error') }
     finally { setLoading(false) }
-  }
+  }, [show])
 
-  useEffect(() => { load() }, [])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
+  useEffect(() => { load() }, [load])
 
   const handleCreate = async e => {
     e.preventDefault()

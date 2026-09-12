@@ -1,21 +1,20 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import api from '../api/axios'
 import { registerPush } from '../utils/push'
 
-const AuthContext = createContext(null)
+import { AuthContext } from './auth'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('access')))
 
   useEffect(() => {
     const token = localStorage.getItem('access')
     if (token) {
       api.get('/auth/me/').then(r => { setUser(r.data); registerPush() }).catch(() => {
-        localStorage.clear()
+        localStorage.removeItem('access')
+        localStorage.removeItem('refresh')
       }).finally(() => setLoading(false))
-    } else {
-      setLoading(false)
     }
   }, [])
 
@@ -27,7 +26,8 @@ export function AuthProvider({ children }) {
   }
 
   const logout = () => {
-    localStorage.clear()
+    localStorage.removeItem('access')
+    localStorage.removeItem('refresh')
     setUser(null)
   }
 
@@ -37,5 +37,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   )
 }
-
-export const useAuth = () => useContext(AuthContext)

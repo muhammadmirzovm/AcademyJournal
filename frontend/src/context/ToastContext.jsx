@@ -1,8 +1,8 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCircle, XCircle, AlertCircle, X } from 'lucide-react'
 
-const ToastContext = createContext(null)
+import { ToastContext } from './toast'
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
@@ -49,5 +49,3 @@ export function ToastProvider({ children }) {
     </ToastContext.Provider>
   )
 }
-
-export const useToast = () => useContext(ToastContext)

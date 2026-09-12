@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useEffectEvent, useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   GraduationCap, BookOpen, Users, Shield, Heart,
   Edit2, Save, X, Loader2, TrendingUp, CalendarCheck, Trophy, Lock, MessageCircle, ExternalLink, Unlink, Bell, Send, CheckCircle2, AlertCircle, Coins, UserCheck, ClipboardCheck,
 } from 'lucide-react'
 import { getProfile, getUserStats, updateMe, getUserChildren, getUserGroups, changePassword, connectTelegram, disconnectTelegram, getNotifyInfo, sendDirectNotification } from '../api/users'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 import ScoreLineChart from '../components/charts/ScoreLineChart'
 import AttendanceDoughnut from '../components/charts/AttendanceDoughnut'
 import TeacherStats from '../components/charts/TeacherStats'
@@ -45,6 +45,7 @@ export default function Profile() {
   const [notifyOpen, setNotifyOpen] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
     setLoading(true)
     setEditing(false)
     Promise.all([
@@ -78,7 +79,7 @@ export default function Profile() {
       }
     }).catch(() => show(t('profile.fail_load'), 'error'))
     .finally(() => setLoading(false))
-  }, [id])
+  }, [id, me?.id, me?.role, navigate, show, t])
 
   const setField = (k, v) => setEditForm(f => ({ ...f, [k]: v }))
 
@@ -643,6 +644,8 @@ function SendNotificationModal({ studentId, studentName, onClose, t, show }) {
   const [message, setMessage]   = useState('')
   const [sending, setSending]   = useState(false)
 
+  const closeOnError = useEffectEvent(() => onClose())
+
   useEffect(() => {
     getNotifyInfo(studentId).then(r => {
       setInfo(r.data)
@@ -652,9 +655,9 @@ function SendNotificationModal({ studentId, studentName, onClose, t, show }) {
       setSelected(defaults.length ? defaults : ['student'])
     }).catch(() => {
       show(t('profile.notify_toast_fail'), 'error')
-      onClose()
+      closeOnError()
     }).finally(() => setLoading(false))
-  }, [studentId])
+  }, [studentId, show, t])
 
   const toggle = key => setSelected(prev =>
     prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]

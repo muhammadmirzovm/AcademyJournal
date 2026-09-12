@@ -32,6 +32,13 @@ class UserSerializer(serializers.ModelSerializer):
             'role', 'bio', 'academy', 'academy_name', 'academy_color',
             'has_password', 'telegram_id', 'last_seen', 'date_joined',
         )
+        read_only_fields = (
+            'role',
+            'academy',
+            'telegram_id',
+            'last_seen',
+            'date_joined',
+        )
 
     def get_has_password(self, obj):
         return obj.has_usable_password()

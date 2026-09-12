@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffectEvent, useCallback, useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Crown, ChevronRight, RotateCcw, Trophy, Zap, Check, X, Loader2, Lightbulb, Flag, Users, Clock, HelpCircle, AlertTriangle, XCircle, KeyRound } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 import { getGame, startGame, pickSquare, answerQuestion, finishGame, resetGame, swapTeamMembers, reshuffleTeams } from '../api/quiz'
 
 const DIFF_COLOR = { easy: '#22C55E', medium: '#F59E0B', hard: '#EF4444' }
@@ -41,13 +41,14 @@ function playSound(type) {
       o.connect(g); o.start(); o.stop(ctx.currentTime + 0.3)
     }
     setTimeout(() => ctx.close(), 2000)
-  } catch {}
+  } catch { /* Browsers may block optional game audio until user interaction. */ }
 }
 
 // ── Typewriter text ────────────────────────────────────────────────────────────
 function Typewriter({ text, speed = 22 }) {
   const [shown, setShown] = useState('')
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Restart the animation when its source text changes; the interval owns subsequent updates.
     setShown('')
     let i = 0
     const id = setInterval(() => {
@@ -56,12 +57,12 @@ function Typewriter({ text, speed = 22 }) {
       if (i >= text.length) clearInterval(id)
     }, speed)
     return () => clearInterval(id)
-  }, [text])
+  }, [text, speed])
   return <span>{shown}</span>
 }
 
 // ── Timer ring ────────────────────────────────────────────────────────────────
-function TimerRing({ seconds, total, onTick }) {
+function TimerRing({ seconds, total }) {
   const r = 32, circ = 2 * Math.PI * r
   const pct = Math.max(0, seconds / total)
   const color = pct > 0.5 ? '#22C55E' : pct > 0.25 ? '#F59E0B' : '#EF4444'
@@ -81,7 +82,8 @@ function TimerRing({ seconds, total, onTick }) {
 
 // ── STOLEN! flash ─────────────────────────────────────────────────────────────
 function StolenFlash({ teamColor, teamName, onDone }) {
-  useEffect(() => { playSound('steal'); const t = setTimeout(onDone, 1800); return () => clearTimeout(t) }, [])
+  const finishFlash = useEffectEvent(onDone)
+  useEffect(() => { playSound('steal'); const t = setTimeout(() => finishFlash(), 1800); return () => clearTimeout(t) }, [])
   return (
     <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.3 }}
       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
@@ -104,7 +106,11 @@ function TeamSplitScreen({ teams: initialTeams, isTeacher, groupId, gameId, onDo
   const [swapping, setSwapping]     = useState(false)
   const [reshuffling, setReshuffling] = useState(false)
 
-  useEffect(() => { setTeams(initialTeams) }, [initialTeams])
+  const [previousTeams, setPreviousTeams] = useState(null)
+  if (!previousTeams || previousTeams[0] !== initialTeams) {
+    setPreviousTeams([initialTeams])
+    setTeams(initialTeams)
+  }
 
   const handleMemberClick = async (student, team) => {
     if (!isTeacher) return
@@ -284,12 +290,13 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
   const intervalRef = useRef(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset the question timer and answer controls together before starting its interval.
     setTimeLeft(timerTotal); setPhase('answering'); setHintVisible(false); setAnswerVisible(false); setStolenBy(null)
     intervalRef.current = setInterval(() => {
       setTimeLeft(s => { if (s <= 1) { clearInterval(intervalRef.current); return 0 } return s - 1 })
     }, 1000)
     return () => clearInterval(intervalRef.current)
-  }, [question?.id])
+  }, [question?.id, timerTotal])
 
   const markAnswer = async (correct, stealTeamId = null, partialPct = null) => {
     clearInterval(intervalRef.current)
@@ -474,112 +481,9 @@ function QuestionOverlay({ question, team, timerTotal, isTeacher, teams, groupId
   )
 }
 
-// ── Final round ───────────────────────────────────────────────────────────────
-function FinalRound({ game, groupId, isTeacher, onUpdate, t }) {
-  const { show } = useToast()
-  const [bets, setBets]   = useState({})
-  const [phase, setPhase] = useState('bet')
-  const [loading, setLoading] = useState(false)
-
-  const submitBets = async () => {
-    setLoading(true)
-    try {
-      for (const team of game.teams) {
-        const amt = Number(bets[team.id] || 0)
-        await placeBet(groupId, game.id, { team_id: team.id, amount: amt })
-      }
-      setPhase('answer')
-    } catch { show(t('quiz.toast_bet_fail'), 'error') }
-    finally { setLoading(false) }
-  }
-
-  const markFinal = async (teamId, correct) => {
-    if (correct) playSound('correct'); else playSound('wrong')
-    try {
-      const { data } = await answerFinal(groupId, game.id, { team_id: teamId, correct })
-      onUpdate(data)
-    } catch { show(t('quiz.toast_answer_fail'), 'error') }
-  }
-
-  const finish = async () => {
-    try {
-      const { data } = await finishGame(groupId, game.id)
-      onUpdate(data)
-    } catch { show(t('quiz.toast_finish_fail'), 'error') }
-  }
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      style={{ maxWidth: 600, margin: '40px auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 32, boxShadow: 'var(--shadow-sm)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-        <Trophy size={22} color="#F59E0B" />
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800 }}>{t('quiz.final_round')}</h2>
-      </div>
-
-      {game.current_question_data && (
-        <div style={{ background: 'var(--bg)', borderRadius: 12, padding: 16, marginBottom: 24, fontSize: 16, fontWeight: 600, lineHeight: 1.5, color: 'var(--text)' }}>
-          {game.current_question_data.text}
-        </div>
-      )}
-
-      {phase === 'bet' ? (
-        <>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>{t('quiz.bet_hint')}</p>
-          {game.teams.map(team => (
-            <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{team.name}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('quiz.balance')}: {team.score}</span>
-              {isTeacher && (
-                <input type="number" min={0} max={team.score} placeholder="0"
-                  value={bets[team.id] || ''}
-                  onChange={e => setBets(b => ({ ...b, [team.id]: e.target.value }))}
-                  style={{ width: 80, padding: '6px 10px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
-              )}
-            </div>
-          ))}
-          {isTeacher && (
-            <motion.button whileTap={{ scale: 0.97 }} onClick={submitBets} disabled={loading}
-              style={{ ...primaryBtn, width: '100%', justifyContent: 'center', marginTop: 8 }}>
-              {loading ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : null}
-              {t('quiz.lock_bets')}
-            </motion.button>
-          )}
-        </>
-      ) : (
-        <>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>{t('quiz.mark_teams')}</p>
-          {game.teams.map(team => (
-            <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <span style={{ fontWeight: 700, flex: 1 }}>{team.name}</span>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('quiz.bet')}: {team.final_bet ?? 0}</span>
-              {isTeacher && (
-                <>
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => markFinal(team.id, true)}
-                    style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: '#22C55E18', color: '#22C55E', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Check size={13} /> {t('quiz.correct')}
-                  </motion.button>
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => markFinal(team.id, false)}
-                    style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: '#EF444418', color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <X size={13} /> {t('quiz.wrong')}
-                  </motion.button>
-                </>
-              )}
-            </div>
-          ))}
-          {isTeacher && (
-            <motion.button whileTap={{ scale: 0.97 }} onClick={finish}
-              style={{ ...primaryBtn, width: '100%', justifyContent: 'center', marginTop: 16 }}>
-              {t('quiz.finish_game')}
-            </motion.button>
-          )}
-        </>
-      )}
-    </motion.div>
-  )
-}
 
 // ── Winner screen ─────────────────────────────────────────────────────────────
-function WinnerScreen({ teams, groupId, gameId, isTeacher, onReset, t }) {
+function WinnerScreen({ teams, isTeacher, onReset, t }) {
   const sorted = [...teams].sort((a, b) => b.score - a.score)
   const top3   = [sorted[1], sorted[0], sorted[2]].filter(Boolean)
   const heights = [70, 110, 50]
@@ -662,13 +566,14 @@ export default function GameBoard() {
 
   const isTeacher = user?.role === 'teacher'
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try { const { data } = await getGame(groupId, gameId); setGame(data) }
     catch { show(t('quiz.toast_load_fail'), 'error') }
     finally { setLoading(false) }
-  }
+  }, [groupId, gameId, show, t])
 
-  useEffect(() => { load() }, [gameId])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
+  useEffect(() => { load() }, [load])
 
   const handleStart = async () => {
     try {

@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { GraduationCap, BookOpen, Users, Sparkles, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import api from '../api/axios'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 
 const ROLE_ICONS = { teacher: GraduationCap, student: BookOpen, admin: Users, parent: Users }
 
@@ -65,7 +65,7 @@ export default function InviteLanding() {
 
     setLoading(true)
     try {
-      const { confirm: _, ...payload } = form
+      const {  ...payload } = form
       const { data } = await api.post('/auth/register/', {
         ...payload,
         role: invite.role,

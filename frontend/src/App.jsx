@@ -1,32 +1,36 @@
-import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { useTranslation } from 'react-i18next'
+import { lazy, Suspense, useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './context/auth'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import SplashLoader from './components/SplashLoader'
 import Landing from './pages/Landing'
-import Register from './pages/Register'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Groups from './pages/Groups'
-import GroupDetail from './pages/GroupDetail'
-import LessonDetail from './pages/LessonDetail'
-import Profile from './pages/Profile'
-import QuestionBank from './pages/QuestionBank'
-import GameBoard from './pages/GameBoard'
-import InviteLanding from './pages/InviteLanding'
-import Settings from './pages/Settings'
-import Students from './pages/Students'
-import ForgotPassword from './pages/ForgotPassword'
-import NotFound from './pages/NotFound'
-import Exams from './pages/Exams'
-import Rewards from './pages/Rewards'
-import CoinReport from './pages/CoinReport'
-import PurchaseScanner from './pages/PurchaseScanner'
+
+const Register = lazy(() => import('./pages/Register'))
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Groups = lazy(() => import('./pages/Groups'))
+const GroupDetail = lazy(() => import('./pages/GroupDetail'))
+const LessonDetail = lazy(() => import('./pages/LessonDetail'))
+const Profile = lazy(() => import('./pages/Profile'))
+const QuestionBank = lazy(() => import('./pages/QuestionBank'))
+const GameBoard = lazy(() => import('./pages/GameBoard'))
+const InviteLanding = lazy(() => import('./pages/InviteLanding'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Students = lazy(() => import('./pages/Students'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+const Exams = lazy(() => import('./pages/Exams'))
+const Rewards = lazy(() => import('./pages/Rewards'))
+const CoinReport = lazy(() => import('./pages/CoinReport'))
+const PurchaseScanner = lazy(() => import('./pages/PurchaseScanner'))
 
 function AppShell() {
+  const { t } = useTranslation()
   const { loading } = useAuth()
   const [splashDone, setSplashDone] = useState(false)
 
@@ -42,6 +46,7 @@ function AppShell() {
       <SplashLoader done={done} />
       {done && (
         <Layout>
+          <Suspense fallback={<div role="status" style={{ padding: 24 }}>{t('common.loading')}</div>}>
           <Routes>
             <Route path="/"          element={<Landing />} />
             <Route path="/register"  element={<Register />} />
@@ -63,6 +68,7 @@ function AppShell() {
             <Route path="/scanner"           element={<ProtectedRoute roles={['admin']}><PurchaseScanner /></ProtectedRoute>} />
             <Route path="*"                  element={<NotFound />} />
           </Routes>
+          </Suspense>
         </Layout>
       )}
     </>

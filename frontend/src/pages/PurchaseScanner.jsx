@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ScanLine, Search, Loader2, CheckCircle2, Clock, User, Coins, Undo2 } from 'lucide-react'
 import { lookupPurchase, issuePurchase, undoIssuePurchase } from '../api/purchases'
 import { formatDate } from '../utils/date'
-import { useToast } from '../context/ToastContext'
+import { useToast } from '../context/toast'
 
 // Mirrors backend UNDO_ISSUE_WINDOW_MINUTES — display-only; the server is
 // the actual authority and will reject an undo past its own window.

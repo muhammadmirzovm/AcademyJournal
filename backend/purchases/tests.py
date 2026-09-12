@@ -1,10 +1,14 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, BrokenBarrierError
+
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection, connections
 from django.test import RequestFactory
 from django.utils import timezone
 from rest_framework.test import APIClient
 from academies.models import Academy
-from coins.models import CoinTransaction
+from coins.models import CoinSetting, CoinTransaction
 from groups.models import Group, GroupMembership
 from rewards.models import Reward
 from purchases.admin import PurchaseAdmin
@@ -75,6 +79,63 @@ def test_insufficient_balance_is_rejected(student, reward):
     assert CoinTransaction.balance_for(student) == 5  # untouched
     reward.refresh_from_db()
     assert reward.stock == 5  # untouched
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize('coupon_limit', [False, True], ids=['balance', 'coupon-limit'])
+def test_concurrent_purchases_of_different_rewards(student, monkeypatch, coupon_limit):
+    if connection.vendor != 'postgresql':
+        pytest.skip('Concurrent row-lock behavior requires PostgreSQL.')
+
+    CoinSetting.get(student.academy)
+    _give_coins(student, 100)
+    category = Reward.Category.COUPON if coupon_limit else Reward.Category.SNACK
+    rewards = [Reward.objects.create(
+        academy=student.academy, name=f'Concurrent reward {i}',
+        price=1 if coupon_limit else 80, stock=5,
+        status=Reward.Status.AVAILABLE, category=category,
+    ) for i in range(2)]
+    quantity = 2 if coupon_limit else 1
+    start = Barrier(2)
+    reads = Barrier(2)
+    original_balance = CoinTransaction.balance_for
+
+    def overlapping_balance(user):
+        balance = original_balance(user)
+        # Without the student lock, both requests can read before either
+        # spends. With it, the first times out here, commits, then the second
+        # reads the updated balance (or is rejected by the coupon limit).
+        try:
+            reads.wait(timeout=1)
+        except BrokenBarrierError:
+            pass
+        return balance
+
+    monkeypatch.setattr(CoinTransaction, 'balance_for', staticmethod(overlapping_balance))
+
+    def buy(reward_id):
+        try:
+            user = User.objects.get(pk=student.pk)
+            client = APIClient()
+            client.force_authenticate(user=user)
+            with connection.cursor() as cursor:
+                cursor.execute("SET lock_timeout = '5s'")
+            start.wait(timeout=5)
+            response = client.post(
+                f'/api/rewards/{reward_id}/purchase/', {'quantity': quantity}, format='json',
+            )
+            return response.status_code
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        statuses = list(pool.map(buy, [reward.pk for reward in rewards]))
+
+    assert sorted(statuses) == [201, 400]
+    assert Purchase.objects.filter(student=student).count() == 1
+    assert original_balance(student) == (98 if coupon_limit else 20)
+    assert sorted(Reward.objects.filter(pk__in=[r.pk for r in rewards])
+                  .values_list('stock', flat=True)) == [5 - quantity, 5]
 
 
 @pytest.mark.django_db

@@ -9,8 +9,8 @@ import { AnnouncementsSection } from '../components/AnnouncementCard'
 import DashboardLeaderboard from '../components/DashboardLeaderboard'
 import AdminCharts from '../components/charts/AdminCharts'
 import api from '../api/axios'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 import { CardSkeleton } from '../components/ui/Skeleton'
 
 const ROLE_SUB = {
@@ -54,6 +54,7 @@ export default function Dashboard() {
   useEffect(() => {
     const dow = (new Date().getDay() + 6) % 7
     const groupsToday = groups.filter(g => !g.is_graduated && (g.class_days || []).includes(dow))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
     if (role !== 'teacher' || groupsToday.length === 0) { setTodayLessonsLoading(false); return }
     const todayStr = new Date().toISOString().slice(0, 10)
     setTodayLessonsLoading(true)
@@ -143,7 +144,7 @@ export default function Dashboard() {
     } else {
       getGroups().then(r => setGroups(r.data)).finally(() => setLoading(false))
     }
-  }, [role])
+  }, [role, isParent])
 
   const handleJoin = async e => {
     e.preventDefault()

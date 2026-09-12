@@ -9,8 +9,8 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, Search, X,
 } from 'lucide-react'
 import api from '../api/axios'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 import { formatDate } from '../utils/date'
 
 const ALL_TABS = [
@@ -74,7 +74,7 @@ function CopyButton({ text }) {
 function CreateAcademy({ onCreated }) {
   const { t } = useTranslation()
   const { show }  = useToast()
-  const { setUser, user } = useAuth()
+  const { setUser } = useAuth()
   const [form, setForm]   = useState({ name: '', primary_color: '#0D9488' })
   const [loading, setLoading] = useState(false)
   const [errors, setErrors]   = useState({})
@@ -473,10 +473,11 @@ function MembersTab({ userRole }) {
       setTotalPages(data.pages)
       setTotal(data.total)
       setPage(data.page)
-    } catch {}
+    } catch { show('Request failed. Please try again.', 'error') }
     finally { setLoading(false) }
-  }, [])
+  }, [show])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
   useEffect(() => { fetchPage(1, '', '') }, [fetchPage])
 
   const handleSearch = e => {
@@ -769,13 +770,13 @@ function InvitesTab({ academy, userRole }) {
     (ROLE_OPTIONS_BY_ROLE[userRole] || ['student', 'parent']).includes(r.value)
   )
 
-  const fetchInvites = async (page) => {
+  const fetchInvites = useCallback(async (page) => {
     const params = { page }
     if (filterSearch.trim()) params.search = filterSearch.trim()
     if (filterRole) params.role = filterRole
     const { data } = await api.get('/invites/', { params })
     setInvites(data.results); setInvitePages(data.pages); setInvitePage(data.page)
-  }
+  }, [filterSearch, filterRole])
 
   useEffect(() => {
     Promise.all([
@@ -793,7 +794,7 @@ function InvitesTab({ academy, userRole }) {
     if (!didMountFilters.current) { didMountFilters.current = true; return }
     const timer = setTimeout(() => { fetchInvites(1) }, 350)
     return () => clearTimeout(timer)
-  }, [filterSearch, filterRole])
+  }, [fetchInvites])
 
   const handleDeleteInvite = async (id) => {
     try {
@@ -1112,7 +1113,9 @@ function Dropdown({ value, onChange, options, placeholder, searchPlaceholder }) 
   }, [])
 
   useEffect(() => {
-    if (open) { setQuery(''); setTimeout(() => searchRef.current?.focus(), 50) }
+    if (!open) return
+    const timer = setTimeout(() => searchRef.current?.focus(), 50)
+    return () => clearTimeout(timer)
   }, [open])
 
   const selected = options.find(o => o.value === value)
@@ -1123,7 +1126,7 @@ function Dropdown({ value, onChange, options, placeholder, searchPlaceholder }) 
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button type="button" onClick={() => setOpen(o => !o)}
+      <button type="button" onClick={() => { setQuery(''); setOpen(o => !o) }}
         style={{ ...inputStyle(false), display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
         <span style={{ color: selected ? 'var(--text)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {selected ? selected.label : placeholder}
@@ -1176,16 +1179,17 @@ export default function Settings() {
   const [fetched, setFetched]     = useState(false)
 
   useEffect(() => {
-    if (!user) return
-    if (user.academy) {
+    if (!user?.id) return
+    if (user?.academy) {
       api.get('/academy/')
         .then(r => setAcademy(r.data))
         .catch(() => {})
         .finally(() => setFetched(true))
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Finish account setup loading immediately when there is no academy to fetch.
       setFetched(true)
     }
-  }, [user?.id])
+  }, [user?.id, user?.academy])
 
   if (!user) return null
 

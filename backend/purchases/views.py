@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import F, Sum
 from django.shortcuts import get_object_or_404
@@ -39,6 +40,10 @@ class RewardPurchaseView(APIView):
             return Response({'detail': "Miqdor kamida 1 bo'lishi kerak."}, status=400)
 
         with transaction.atomic():
+            # Different rewards still share one student's balance and coupon
+            # allowance. Lock the student before reading either, until commit.
+            # NO KEY UPDATE allows unrelated foreign-key inserts to proceed.
+            get_user_model().objects.select_for_update(no_key=True).get(pk=request.user.pk)
             reward = get_object_or_404(Reward.objects.select_for_update(), pk=reward_id, academy=request.user.academy)
 
             if reward.status != Reward.Status.AVAILABLE:

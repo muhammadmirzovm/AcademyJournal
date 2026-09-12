@@ -13,7 +13,6 @@ function timeAgo(iso) {
 
 export function AnnouncementCard({ ann, canDelete, onDelete }) {
   const [deleting, setDeleting] = useState(false)
-  const { t } = useTranslation()
 
   const handleDelete = async () => {
     setDeleting(true)

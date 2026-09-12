@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -13,8 +13,8 @@ import { AnnouncementsSection } from '../components/AnnouncementCard'
 import ExamsTab from '../components/ExamsTab'
 import GameHistoryTab from '../components/GameHistoryTab'
 import { getGames, createGame, deleteGame, getTopics, duplicateGame } from '../api/quiz'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 import Modal from '../components/ui/Modal'
 import { formatDayMonthYear, formatShortDayMonthYear } from '../utils/date'
 
@@ -176,7 +176,7 @@ export default function GroupDetail() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const [g, m, l, gm, anns] = await Promise.all([
@@ -188,7 +188,7 @@ export default function GroupDetail() {
       setAnnouncements(anns.data)
     } catch { show(t('group_detail.toast_load_fail'), 'error') }
     finally { setLoading(false) }
-  }
+  }, [id, show, t])
 
   const handlePostGroupAnn = async data => {
     const { data: ann } = await createGroupAnnouncement(id, data)
@@ -202,15 +202,16 @@ export default function GroupDetail() {
     show(t('ann.toast_deleted'), 'success')
   }
 
-  useEffect(() => { load() }, [id])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
+  useEffect(() => { load() }, [load])
 
   useEffect(() => {
     if (new URLSearchParams(location.search).get('newLesson') === '1') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Consume the newLesson URL action once when entering this page.
       setShowAddLesson(true)
       navigate(`/groups/${id}`, { replace: true })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [id, location.search, navigate])
 
   const copy = () => { navigator.clipboard.writeText(group.join_key); setCopied(true); setTimeout(() => setCopied(false), 2000) }
 
@@ -517,7 +518,7 @@ export default function GroupDetail() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {games.map((g, i) => <GameRow key={g.id} game={g} groupId={id} index={i} isTeacher={isTeacher}
-                onDelete={async () => { try { await deleteGame(id, g.id); setGames(gs => gs.filter(x => x.id !== g.id)) } catch {} }}
+                onDelete={async () => { try { await deleteGame(id, g.id); setGames(gs => gs.filter(x => x.id !== g.id)) } catch { show('Request failed. Please try again.', 'error') } }}
                 onDuplicated={copy => setGames(gs => [copy, ...gs])} />)}
             </div>
           )}
@@ -793,7 +794,12 @@ function EditLessonModal({ open, onClose, onUpdated, lesson, groupId }) {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ title: '', date: '' })
   const [error, setError] = useState('')
-  useEffect(() => { if (lesson) setForm({ title: lesson.title, date: lesson.date }) }, [lesson])
+  const [previousLesson, setPreviousLesson] = useState(null)
+  if (!previousLesson || previousLesson[0] !== lesson) {
+    setPreviousLesson([lesson])
+    if (lesson) setForm({ title: lesson.title, date: lesson.date })
+  }
+
   const submit = async e => {
     e.preventDefault()
     if (!form.title.trim()) { setError(t('group_detail.err_title_required')); return }
@@ -837,7 +843,9 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
   const [form, setForm] = useState({ name: '', description: '', class_days: [], class_time_start: '', class_time_end: '', telegram_chat_id: '', language: 'uz' })
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  const [previousGroup, setPreviousGroup] = useState(null)
+  if (!previousGroup || previousGroup[0] !== group) {
+    setPreviousGroup([group])
     if (group) {
       const parts = (group.class_time || '').split('-')
       setForm({
@@ -850,7 +858,7 @@ function EditGroupModal({ open, onClose, onUpdated, group, groupId }) {
         language: group.language || 'uz',
       })
     }
-  }, [group])
+  }
 
   const toggleDay = day => setForm(f => ({
     ...f,
@@ -982,7 +990,12 @@ function DeleteGroupModal({ open, onClose, onConfirm }) {
 function EditJoinDateModal({ open, onClose, onUpdated, membership, groupId }) {
   const { show } = useToast(); const { t } = useTranslation()
   const [loading, setLoading] = useState(false); const [date, setDate] = useState('')
-  useEffect(() => { if (membership) setDate(membership.joined_at?.slice(0, 10) || '') }, [membership])
+  const [previousMembership, setPreviousMembership] = useState(null)
+  if (!previousMembership || previousMembership[0] !== membership) {
+    setPreviousMembership([membership])
+    if (membership) setDate(membership.joined_at?.slice(0, 10) || '')
+  }
+
   const submit = async e => {
     e.preventDefault(); if (!date) return; setLoading(true)
     try { const { data } = await updateMembership(groupId, membership.membership_id, { joined_at: date }); onUpdated(data) }
@@ -1016,21 +1029,24 @@ function AddStudentModal({ open, onClose, groupId, onAdded }) {
   const [loading, setLoading] = useState(false)
   const [adding,  setAdding]  = useState(null)
 
-  useEffect(() => {
+  const [previousOpen, setPreviousOpen] = useState(null)
+  if (!previousOpen || previousOpen[0] !== open) {
+    setPreviousOpen([open])
     if (!open) { setQuery(''); setResults([]) }
-  }, [open])
+  }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Clear stale search results as soon as the search query becomes empty.
     if (!query.trim()) { setResults([]); return }
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
         const { data } = await searchStudents(query)
         setResults(data.results || data)
-      } catch {} finally { setLoading(false) }
+      } catch { show('Request failed. Please try again.', 'error') } finally { setLoading(false) }
     }, 300)
     return () => clearTimeout(timer)
-  }, [query])
+  }, [query, show])
 
   const handleAdd = async (student) => {
     setAdding(student.id)
@@ -1106,7 +1122,7 @@ function AddStudentModal({ open, onClose, groupId, onAdded }) {
 const STATUS_COLOR = { waiting: 'var(--text-muted)', active: 'var(--success)', final: 'var(--warning)', finished: 'var(--accent)' }
 
 function GameRow({ game, groupId, index, isTeacher, onDelete, onDuplicated }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { show } = useToast()
   const [confirm,    setConfirm]    = useState(false)
   const [copying,    setCopying]    = useState(false)
@@ -1221,6 +1237,7 @@ function NewGameModal({ open, onClose, groupId, onCreated }) {
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
       setTopicsLoading(true)
       getTopics().then(res => {
         setTopics(res.data)
@@ -1415,7 +1432,6 @@ function Spinner() {
 const primaryBtn       = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 7, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }
 const ghostBtn         = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' }
 const dangerBtn        = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 7, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }
-const dangerOutlineBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 7, border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', fontSize: 13, cursor: 'pointer', fontWeight: 600 }
 const iconActionBtn    = { background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', borderRadius: 6 }
 const menuItemStyle    = (color) => ({ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '10px 14px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 600, color, textAlign: 'left', whiteSpace: 'nowrap' })
 const labelStyle       = { fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }

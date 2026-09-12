@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useCallback, useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Gift, Plus, Minus, Loader2, Coins, Pencil, Trash2, ShoppingCart, Receipt, Copy, Check } from 'lucide-react'
 import { getRewards, createReward, updateReward, deleteReward } from '../api/rewards'
 import { purchaseReward, getMyPurchases } from '../api/purchases'
 import { getMyBalance } from '../api/coins'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 import Modal from '../components/ui/Modal'
 import { CardSkeleton } from '../components/ui/Skeleton'
 import { formatDate } from '../utils/date'
@@ -40,11 +40,12 @@ export default function Rewards() {
   const [myPurchases, setMyPurchases]     = useState([])
   const [purchasesLoading, setPurchasesLoading] = useState(false)
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true)
     getRewards().then(r => setRewards(r.data)).catch(() => show(t('rewards.toast_load_fail'), 'error')).finally(() => setLoading(false))
-  }
-  useEffect(load, [])
+  }, [show, t])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
+  useEffect(load, [load])
 
   const loadBalance = () => {
     if (!isStudent) return
@@ -56,6 +57,7 @@ export default function Rewards() {
     setPurchasesLoading(true)
     getMyPurchases().then(r => setMyPurchases(r.data)).catch(() => {}).finally(() => setPurchasesLoading(false))
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
   useEffect(() => { if (isStudent && view === 'mine') loadMyPurchases() }, [isStudent, view])
 
   const handlePurchased = (purchase, quantity) => {
@@ -272,7 +274,9 @@ function RewardFormModal({ open, reward, onClose, onSaved }) {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
 
-  useEffect(() => {
+  const [previousReward, setPreviousReward] = useState(null)
+  if (!previousReward || previousReward[0] !== open || previousReward[1] !== reward) {
+    setPreviousReward([open, reward])
     if (open) {
       setForm(reward
         ? { name: reward.name, description: reward.description || '', icon: reward.icon || '', price: reward.price, stock: reward.stock, category: reward.category, status: reward.status }
@@ -281,7 +285,7 @@ function RewardFormModal({ open, reward, onClose, onSaved }) {
       setImagePreview(reward?.image || '')
       setError('')
     }
-  }, [open, reward])
+  }
 
   const handleImageChange = e => {
     const file = e.target.files[0]
@@ -394,7 +398,11 @@ function BuyModal({ reward, balance, onClose, onPurchased }) {
   const [quantity, setQuantity] = useState(1)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => { if (reward) setQuantity(1) }, [reward])
+  const [previousReward, setPreviousReward] = useState(null)
+  if (!previousReward || previousReward[0] !== reward) {
+    setPreviousReward([reward])
+    if (reward) setQuantity(1)
+  }
 
   if (!reward) return null
   const maxAffordable = balance == null ? reward.stock : Math.max(0, Math.floor(balance / reward.price))

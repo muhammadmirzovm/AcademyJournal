@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, Coins, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy, CheckCheck, XCircle, CheckCircle2 } from 'lucide-react'
 import { getGroup, getMembers, getLesson, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
 import { getLessonGame, startGame, cancelGame, closeGame } from '../api/games'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 import Modal from '../components/ui/Modal'
 import { weekdayName, formatDayMonthYear, formatDayMonthTime } from '../utils/date'
 
@@ -57,6 +57,7 @@ export default function LessonDetail() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
     setLoading(true)
     Promise.all([
       getGroup(groupId),
@@ -75,7 +76,7 @@ export default function LessonDetail() {
       getLesson(groupId, lessonId).then(r => setLesson(r.data))
     }).catch(() => show(t('lesson.toast_fail_load'), 'error'))
     .finally(() => setLoading(false))
-  }, [groupId, lessonId])
+  }, [groupId, lessonId, show, t])
 
   if (loading) return <Spinner />
   if (!group) return <p style={{ color: 'var(--text-muted)' }}>{t('lesson.toast_fail_load')}</p>
@@ -208,12 +209,14 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
   const [local, setLocal]   = useState({})
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
+  const [previousAttendance, setPreviousAttendance] = useState(null)
+  if (!previousAttendance || previousAttendance[0] !== attendance || previousAttendance[1] !== members) {
+    setPreviousAttendance([attendance, members])
     const map = {}
     attendance.forEach(a => { map[a.student] = a.present })
     members.forEach(m => { if (!(m.id in map)) map[m.id] = false })
     setLocal(map)
-  }, [attendance, members])
+  }
 
   const toggle = id => setLocal(l => ({ ...l, [id]: !l[id] }))
   const markAll = present => setLocal(l => {
@@ -307,12 +310,14 @@ function ScoresTab({ members, scores, groupId, lessonId, isTeacher, onSaved }) {
   const [local, setLocal]   = useState({})
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
+  const [previousScores, setPreviousScores] = useState(null)
+  if (!previousScores || previousScores[0] !== scores || previousScores[1] !== members) {
+    setPreviousScores([scores, members])
     const map = {}
     scores.forEach(s => { map[s.student] = s.value })
     members.forEach(m => { if (!(m.id in map)) map[m.id] = '' })
     setLocal(map)
-  }, [scores, members])
+  }
 
   const set = (id, val) => {
     const n = Number(val)
@@ -400,7 +405,11 @@ function JournalTab({ journal, groupId, lessonId, isTeacher, onSaved }) {
   const [body, setBody]     = useState(journal[0]?.body || '')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { if (!isTeacher) setBody(journal[0]?.body || '') }, [journal])
+  const [previousJournal, setPreviousJournal] = useState(null)
+  if (!previousJournal || previousJournal[0] !== journal || previousJournal[1] !== isTeacher) {
+    setPreviousJournal([journal, isTeacher])
+    if (!isTeacher) setBody(journal[0]?.body || '')
+  }
 
   const save = async () => {
     if (!body.trim()) { show(t('lesson.err_journal_empty'), 'error'); return }
@@ -475,10 +484,12 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
   const [savingAssignment, setSavingAssignment] = useState(false)
   const [savingSubmission, setSavingSubmission] = useState(false)
 
-  useEffect(() => {
+  const [previousHomework, setPreviousHomework] = useState(null)
+  if (!previousHomework || previousHomework[0] !== homework || previousHomework[1] !== isTeacher) {
+    setPreviousHomework([homework, isTeacher])
     setAssignment(homework.assignment || '')
     if (!isTeacher) setBody(homework.submissions[0]?.body || '')
-  }, [homework])
+  }
 
   const saveAssignment = async () => {
     setSavingAssignment(true)
@@ -593,6 +604,7 @@ function GameBlock({ groupId, lessonId, lesson, members, attendance }) {
     setLoading(true)
     getLessonGame(groupId, lessonId).then(r => setGame(r.data)).catch(() => {}).finally(() => setLoading(false))
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
   useEffect(load, [groupId, lessonId])
 
   const presentIds = new Set(attendance.filter(a => a.present).map(a => a.student))

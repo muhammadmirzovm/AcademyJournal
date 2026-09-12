@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useCallback, useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Plus, Users, Key, Copy, Check, LogIn, BookOpen, Loader2, Search } from 'lucide-react'
 import { getGroups, createGroup, joinGroup } from '../api/groups'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/auth'
+import { useToast } from '../context/toast'
 import Modal from '../components/ui/Modal'
 import { CardSkeleton } from '../components/ui/Skeleton'
 
@@ -24,11 +24,12 @@ export default function Groups() {
   const [teacherFilter, setTeacherFilter] = useState('all')
   const [category, setCategory]     = useState('all')
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true)
     getGroups().then(r => setGroups(r.data)).catch(() => show(t('groups.toast_load_fail'), 'error')).finally(() => setLoading(false))
-  }
-  useEffect(load, [])
+  }, [show, t])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
+  useEffect(load, [load])
 
   const teachers = useMemo(() => {
     if (!isAdmin) return []
@@ -354,7 +355,7 @@ function CreateGroupModal({ open, onClose, onCreated }) {
 }
 
 function JoinGroupModal({ open, onClose, onJoined }) {
-  const { show } = useToast()
+
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [key, setKey]         = useState('')

@@ -13,6 +13,7 @@ export default function GameHistoryTab({ groupId, t }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
     setLoading(true)
     getGameHistory(groupId).then(r => setGames(r.data)).catch(() => {}).finally(() => setLoading(false))
   }, [groupId])

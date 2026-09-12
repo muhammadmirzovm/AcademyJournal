@@ -1,10 +1,10 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Sun, Moon, Menu, X, GraduationCap, LogOut, User, LayoutDashboard, Users, Globe, BookMarked, Settings, Gift, HelpCircle } from 'lucide-react'
+import { Sun, Moon, Menu, X, GraduationCap, LogOut, User, LayoutDashboard, Users, Globe, Settings, Gift, HelpCircle } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
-import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/auth'
+import { useTheme } from '../context/theme'
 import NotificationBell from './NotificationBell'
 
 const LANGS = [
@@ -37,8 +37,13 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // close drawer/menu on route change
-  useEffect(() => { setDrawerOpen(false); setMenuOpen(false) }, [location.pathname])
+  // Reset before rendering the new route, without an extra effect render.
+  const [menuPath, setMenuPath] = useState(location.pathname)
+  if (menuPath !== location.pathname) {
+    setMenuPath(location.pathname)
+    setDrawerOpen(false)
+    setMenuOpen(false)
+  }
 
   const handleLogout = () => { logout(); navigate('/login') }
   const setLang = (code) => { i18n.changeLanguage(code) }

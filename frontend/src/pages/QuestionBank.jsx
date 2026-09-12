@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, Pencil, BookOpen, Loader2, X, Check, ChevronLeft, ChevronRight, Download, Upload, AlertTriangle, Search, ChevronDown } from 'lucide-react'
-import { useToast } from '../context/ToastContext'
-import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/toast'
+import { useAuth } from '../context/auth'
 import Modal from '../components/ui/Modal'
 import {
   getTopics, createTopic, deleteTopic,
@@ -48,7 +48,7 @@ export default function QuestionBank() {
     getQuestionBanks().then(res => setBanks(res.data)).catch(() => {})
   }, [])
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const [tRes, qRes] = await Promise.all([
@@ -59,10 +59,10 @@ export default function QuestionBank() {
       setQuestions(qRes.data)
     } catch { show(t('quiz.toast_load_fail'), 'error') }
     finally { setLoading(false) }
-  }
+  }, [selBank, selTopic, selDiff, show, t])
 
-  useEffect(() => { setPage(1); setSelTopic(null); load() }, [selBank])
-  useEffect(() => { setPage(1); load() }, [selTopic, selDiff])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
+  useEffect(() => { setPage(1); load() }, [load])
 
   const refreshTopics = () =>
     getTopics(selBank ? { owner: selBank } : undefined).then(r => setTopics(r.data)).catch(() => {})
@@ -154,12 +154,12 @@ export default function QuestionBank() {
       {banks.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Bank:</span>
-          <button onClick={() => setSelBank(null)}
+          <button onClick={() => { setSelBank(null); setSelTopic(null) }}
             style={{ padding: '5px 12px', borderRadius: 8, border: `1.5px solid ${!selBank ? 'var(--accent)' : 'var(--border)'}`, background: !selBank ? 'var(--accent-bg)' : 'transparent', color: !selBank ? 'var(--accent)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             All
           </button>
           {banks.map(b => (
-            <button key={b.id} onClick={() => setSelBank(b.id)}
+            <button key={b.id} onClick={() => { setSelBank(b.id); setSelTopic(null) }}
               style={{ padding: '5px 12px', borderRadius: 8, border: `1.5px solid ${selBank === b.id ? 'var(--accent)' : 'var(--border)'}`, background: selBank === b.id ? 'var(--accent-bg)' : 'transparent', color: selBank === b.id ? 'var(--accent)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               {b.name}{b.is_me ? ' (you)' : ''}
               <span style={{ marginLeft: 5, fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{b.question_count}</span>
@@ -515,7 +515,9 @@ function QuestionForm({ editing, topics, defaults, onSave, onClose }) {
 
   const [form, setForm] = useState(() => makeBlank(defaults))
 
-  useEffect(() => {
+  const [previousQuestion, setPreviousQuestion] = useState(null)
+  if (!previousQuestion || previousQuestion[0] !== editing || previousQuestion[1] !== defaults) {
+    setPreviousQuestion([editing, defaults])
     if (editing) {
       setForm({
         topic:          editing.topic,
@@ -531,7 +533,7 @@ function QuestionForm({ editing, topics, defaults, onSave, onClose }) {
       setForm(makeBlank(defaults))
     }
     setError('')
-  }, [editing])
+  }
 
   const set    = (key, val) => { setForm(f => ({ ...f, [key]: val })); setError('') }
   const setOpt = (key, val) => setForm(f => ({ ...f, options: { ...f.options, [key]: val } }))
@@ -720,7 +722,9 @@ function TopicDropdown({ value, onChange, topics }) {
   }, [])
 
   useEffect(() => {
-    if (open) { setQuery(''); setTimeout(() => searchRef.current?.focus(), 50) }
+    if (!open) return
+    const timer = setTimeout(() => searchRef.current?.focus(), 50)
+    return () => clearTimeout(timer)
   }, [open])
 
   const selected = topics.find(tp => String(tp.id) === String(value))
@@ -731,7 +735,7 @@ function TopicDropdown({ value, onChange, topics }) {
 
   return (
     <div ref={ref} style={{ position: 'relative', marginTop: 5 }}>
-      <button type="button" onClick={() => setOpen(o => !o)}
+      <button type="button" onClick={() => { setQuery(''); setOpen(o => !o) }}
         style={{ ...inputStyle(false), display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
         <span style={{ color: selected ? 'var(--text)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {selected ? selected.name : t('quiz.select_topic')}

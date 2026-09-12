@@ -6,9 +6,9 @@ import {
   Code2, Users, BarChart2, BookOpen, GraduationCap, ArrowRight,
   CheckCircle, LayoutDashboard, Star, Zap, ChevronDown, Trophy,
   ClipboardList, TrendingUp, Key, Gamepad2, ShieldCheck,
-  Baby, Database, Link2, MessageCircle, Send, Minus, Mail,
+  Baby, Database, Link2, MessageCircle, Send, Mail,
 } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/auth'
 import { getOnlineCount, getPlatformStats } from '../api/users'
 
 /* ── animation presets ───────────────────────────────────────────────── */
