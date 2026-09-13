@@ -40,7 +40,7 @@ def run_lesson_reminders(now=None):
     target_to = target_from + REMINDER_WINDOW
     local_tz = timezone.get_current_timezone()
 
-    groups = Group.objects.filter(is_graduated=False).select_related('teacher')
+    groups = Group.objects.filter(status=Group.ACTIVE).select_related('teacher')
     sent = 0
 
     for group in groups:

@@ -2,12 +2,12 @@ import { useCallback, useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronLeft, ChevronRight, Trash2, Pencil, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog, MoreVertical, GraduationCap, CheckCircle2 } from 'lucide-react'
+import { Users, BookOpen, Plus, Key, Copy, Check, Calendar, Clock, Loader2, ChevronLeft, ChevronRight, Trash2, Pencil, Crown, CopyPlus, Send, UserCheck, UserPlus, Search, FileDown, UserCog, MoreVertical, GraduationCap, CheckCircle2, PauseCircle, XCircle, PlayCircle } from 'lucide-react'
 import {
   getGroup, getMembers, getLessons, createLesson, updateLesson, deleteLesson,
   updateGroup, deleteGroup, updateMembership, removeMember,
   getGroupAnnouncements, createGroupAnnouncement, deleteAnnouncement,
-  addMemberDirect, searchStudents, toggleGraduate, exportExcel, getAcademyTeachers,
+  addMemberDirect, searchStudents, toggleGraduate, setGroupStatus, exportExcel, getAcademyTeachers,
 } from '../api/groups'
 import { AnnouncementsSection } from '../components/AnnouncementCard'
 import ExamsTab from '../components/ExamsTab'
@@ -39,6 +39,12 @@ const PODIUM_COLORS = {
   1: { border: '#F59E0B', bg: 'rgba(245,158,11,0.08)', text: '#F59E0B', height: 100 },
   2: { border: '#94A3B8', bg: 'rgba(148,163,184,0.08)', text: '#94A3B8', height: 70 },
   3: { border: '#CD7F32', bg: 'rgba(205,127,50,0.08)', text: '#CD7F32', height: 50 },
+}
+
+const GROUP_STATUS_META = {
+  paused: { label: 'paused', color: '#F59E0B' },
+  closed: { label: 'closed', color: '#64748B' },
+  graduated: { label: 'graduated', color: '#10B981' },
 }
 
 function PodiumSlot({ members, rank, delay }) {
@@ -168,7 +174,8 @@ export default function GroupDetail() {
 
   const isAdmin    = user?.role === 'admin'
   const isTeacher  = (user?.role === 'teacher' && group?.teacher === user?.id) || isAdmin
-  const isReadOnly = !!group?.is_graduated
+  const groupStatus = group?.status || (group?.is_graduated ? 'graduated' : 'active')
+  const isReadOnly = groupStatus !== 'active'
 
   useEffect(() => {
     const handler = e => { if (actionsRef.current && !actionsRef.current.contains(e.target)) setShowActions(false) }
@@ -243,9 +250,17 @@ export default function GroupDetail() {
   const handleGraduate = async () => {
     try {
       const { data } = await toggleGraduate(id)
-      setGroup(g => ({ ...g, is_graduated: data.is_graduated }))
+      setGroup(g => ({ ...g, status: data.status, is_graduated: data.is_graduated }))
       show(data.is_graduated ? t('group_detail.toast_graduated') : t('group_detail.toast_ungraduated'), 'success')
     } catch { show(t('group_detail.toast_graduate_fail'), 'error') }
+  }
+
+  const handleStatusChange = async (status) => {
+    try {
+      const { data } = await setGroupStatus(id, status)
+      setGroup(g => ({ ...g, status: data.status, is_graduated: data.is_graduated }))
+      show(t(`group_detail.toast_status_${status}`), 'success')
+    } catch { show(t('group_detail.toast_status_fail'), 'error') }
   }
 
   const openChangeTeacher = async () => {
@@ -302,9 +317,9 @@ export default function GroupDetail() {
                 INDIVIDUAL
               </span>
             )}
-            {group.is_graduated && (
-              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: 'color-mix(in srgb, #10B981 15%, transparent)', color: '#10B981', letterSpacing: '0.05em', flexShrink: 0 }}>
-                {t('group_detail.graduated')}
+            {GROUP_STATUS_META[groupStatus] && (
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: `color-mix(in srgb, ${GROUP_STATUS_META[groupStatus].color} 15%, transparent)`, color: GROUP_STATUS_META[groupStatus].color, letterSpacing: '0.05em', flexShrink: 0 }}>
+                {t(`group_detail.${GROUP_STATUS_META[groupStatus].label}`)}
               </span>
             )}
           </div>
@@ -410,9 +425,23 @@ export default function GroupDetail() {
                       <button onClick={() => { setShowActions(false); handleExport() }} disabled={exportLoading} style={menuItemStyle('#10B981')}>
                         {exportLoading ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <FileDown size={14} />} Excel
                       </button>
-                      <button onClick={() => { setShowActions(false); handleGraduate() }} style={menuItemStyle('#10B981')}>
-                        <GraduationCap size={14} /> {group.is_graduated ? t('group_detail.ungraduate') : t('group_detail.graduate')}
-                      </button>
+                      {groupStatus === 'active' ? (
+                        <>
+                          <button onClick={() => { setShowActions(false); handleStatusChange('paused') }} style={menuItemStyle('#F59E0B')}>
+                            <PauseCircle size={14} /> {t('group_detail.pause_group')}
+                          </button>
+                          <button onClick={() => { setShowActions(false); handleStatusChange('closed') }} style={menuItemStyle('#64748B')}>
+                            <XCircle size={14} /> {t('group_detail.close_group')}
+                          </button>
+                          <button onClick={() => { setShowActions(false); handleGraduate() }} style={menuItemStyle('#10B981')}>
+                            <GraduationCap size={14} /> {t('group_detail.graduate')}
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => { setShowActions(false); handleStatusChange('active') }} style={menuItemStyle('#10B981')}>
+                          <PlayCircle size={14} /> {t('group_detail.ungraduate')}
+                        </button>
+                      )}
                       <div style={{ height: 1, background: 'var(--border)' }} />
                       <button onClick={() => { setShowActions(false); setShowDeleteGroup(true) }} style={menuItemStyle('var(--danger)')}>
                         <Trash2 size={14} /> {t('group_detail.delete_group')}

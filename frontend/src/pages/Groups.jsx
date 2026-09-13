@@ -40,8 +40,10 @@ export default function Groups() {
 
   const counts = useMemo(() => ({
     all:        groups.length,
-    active:     groups.filter(g => !g.is_graduated).length,
-    graduated:  groups.filter(g =>  g.is_graduated).length,
+    active:     groups.filter(g => (g.status || (g.is_graduated ? 'graduated' : 'active')) === 'active').length,
+    paused:     groups.filter(g => g.status === 'paused').length,
+    closed:     groups.filter(g => g.status === 'closed').length,
+    graduated:  groups.filter(g => (g.status || (g.is_graduated ? 'graduated' : 'active')) === 'graduated').length,
     groups:     groups.filter(g => !g.is_individual).length,
     individual: groups.filter(g =>  g.is_individual).length,
   }), [groups])
@@ -49,10 +51,13 @@ export default function Groups() {
   const visible = useMemo(() => groups.filter(g => {
     const matchSearch  = !search || g.name.toLowerCase().includes(search.toLowerCase()) || g.teacher_name?.toLowerCase().includes(search.toLowerCase())
     const matchTeacher = !isAdmin || teacherFilter === 'all' || String(g.teacher) === teacherFilter
+    const groupStatus = g.status || (g.is_graduated ? 'graduated' : 'active')
     const matchCategory =
       category === 'all'
-      || (category === 'active'     && !g.is_graduated)
-      || (category === 'graduated'  &&  g.is_graduated)
+      || (category === 'active'     && groupStatus === 'active')
+      || (category === 'paused'     && groupStatus === 'paused')
+      || (category === 'closed'     && groupStatus === 'closed')
+      || (category === 'graduated'  && groupStatus === 'graduated')
       || (category === 'groups'     && !g.is_individual)
       || (category === 'individual' &&  g.is_individual)
     return matchSearch && matchTeacher && matchCategory
@@ -87,6 +92,8 @@ export default function Groups() {
           {[
             { key: 'all',        label: t('groups.cat_all') },
             { key: 'active',     label: t('groups.cat_active') },
+            { key: 'paused',     label: t('groups.cat_paused') },
+            { key: 'closed',     label: t('groups.cat_closed') },
             { key: 'graduated',  label: t('groups.cat_graduated') },
             { key: 'groups',     label: t('groups.cat_groups') },
             { key: 'individual', label: t('groups.cat_individual') },
@@ -153,6 +160,8 @@ export default function Groups() {
 function GroupCard({ group, index, isTeacher, isAdmin }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
+  const groupStatus = group.status || (group.is_graduated ? 'graduated' : 'active')
+  const statusMeta = GROUP_STATUS_META[groupStatus]
   const copy = (e) => {
     e.preventDefault()
     navigator.clipboard.writeText(group.join_key)
@@ -185,9 +194,9 @@ function GroupCard({ group, index, isTeacher, isAdmin }) {
               INDIVIDUAL
             </span>
           )}
-          {group.is_graduated && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'color-mix(in srgb, #10B981 15%, transparent)', color: '#10B981', letterSpacing: '0.04em' }}>
-              {t('groups.graduated')}
+          {statusMeta && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: `color-mix(in srgb, ${statusMeta.color} 15%, transparent)`, color: statusMeta.color, letterSpacing: '0.04em' }}>
+              {t(`groups.${statusMeta.label}`)}
             </span>
           )}
         </div>
@@ -197,7 +206,7 @@ function GroupCard({ group, index, isTeacher, isAdmin }) {
           {!isAdmin && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={13} />{t('groups.teacher')}: {group.teacher_name}</span>}
         </div>
 
-        {isTeacher && !group.is_individual && !group.is_graduated && (
+        {isTeacher && !group.is_individual && groupStatus === 'active' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
               <Key size={12} />
@@ -242,6 +251,12 @@ const WEEKDAYS = [
   { label: 'Sa', value: 5 },
   { label: 'Su', value: 6 },
 ]
+
+const GROUP_STATUS_META = {
+  paused: { label: 'paused', color: '#F59E0B' },
+  closed: { label: 'closed', color: '#64748B' },
+  graduated: { label: 'graduated', color: '#10B981' },
+}
 
 function CreateGroupModal({ open, onClose, onCreated }) {
   const { show } = useToast()

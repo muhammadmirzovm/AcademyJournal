@@ -197,6 +197,64 @@ def test_mark_day_off_rejects_other_teacher(academy, group, student):
 
 
 @pytest.mark.django_db
+def test_teacher_can_pause_close_and_reactivate_group(teacher_client, group):
+    res = teacher_client.post(f'/api/groups/{group.id}/status/', {'status': 'paused'})
+    assert res.status_code == 200
+    group.refresh_from_db()
+    assert group.status == Group.PAUSED
+    assert group.is_graduated is True
+
+    res = teacher_client.post(f'/api/groups/{group.id}/status/', {'status': 'closed'})
+    assert res.status_code == 200
+    group.refresh_from_db()
+    assert group.status == Group.CLOSED
+    assert group.is_graduated is True
+
+    res = teacher_client.post(f'/api/groups/{group.id}/status/', {'status': 'active'})
+    assert res.status_code == 200
+    group.refresh_from_db()
+    assert group.status == Group.ACTIVE
+    assert group.is_graduated is False
+
+
+@pytest.mark.django_db
+def test_student_cannot_join_paused_group(group, student):
+    client = APIClient()
+    client.force_authenticate(student)
+    group.status = Group.PAUSED
+    group.save(update_fields=['status'])
+
+    res = client.post('/api/groups/join/', {'join_key': group.join_key})
+
+    assert res.status_code == 400
+    assert 'not active' in res.data['detail']
+
+
+@pytest.mark.django_db
+def test_daily_report_skips_paused_groups(academy, teacher, monkeypatch):
+    import datetime
+    from users.management.commands import send_daily_report as report_mod
+
+    fixed_date = datetime.date(2026, 8, 3)  # Monday
+    monkeypatch.setattr(report_mod.timezone, 'localdate', lambda: fixed_date)
+    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 'test-token')
+    sent = []
+    monkeypatch.setattr(report_mod, '_send', lambda token, chat_id, text: sent.append((chat_id, text)))
+
+    active_group = Group.objects.create(name='Active', teacher=teacher, class_days=[0])
+    Group.objects.create(name='Paused', teacher=teacher, class_days=[0], status=Group.PAUSED)
+    teacher.telegram_id = 555
+    teacher.save()
+
+    report_mod.run_report_for_academy(academy)
+
+    reminder_texts = [text for chat_id, text in sent if chat_id == teacher.telegram_id]
+    assert len(reminder_texts) == 1
+    assert active_group.name in reminder_texts[0]
+    assert 'Paused' not in reminder_texts[0]
+
+
+@pytest.mark.django_db
 def test_list_day_off_filtered_by_date(teacher_client, group, teacher):
     GroupDayOff.objects.create(group=group, date='2026-05-25', reason='sick', created_by=teacher)
     GroupDayOff.objects.create(group=group, date='2026-05-26', reason='holiday', created_by=teacher)

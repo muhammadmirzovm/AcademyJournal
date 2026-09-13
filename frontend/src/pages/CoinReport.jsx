@@ -231,7 +231,7 @@ function CoinAdjustPanel({ onAdjusted, t }) {
     if (next && !loaded) {
       try {
         const [g, s] = await Promise.all([getGroups(), getAcademyStudents()])
-        setGroups(g.data.filter(gr => !gr.is_graduated))
+        setGroups(g.data.filter(gr => (gr.status || (gr.is_graduated ? 'graduated' : 'active')) === 'active'))
         setStudents(s.data)
         setLoaded(true)
       } catch { show(t('coin_report.toast_adjust_load_fail'), 'error') }

@@ -11,6 +11,17 @@ def generate_join_key():
 
 
 class Group(models.Model):
+    ACTIVE = 'active'
+    PAUSED = 'paused'
+    CLOSED = 'closed'
+    GRADUATED = 'graduated'
+    STATUS_CHOICES = [
+        (ACTIVE, 'Active'),
+        (PAUSED, 'Paused'),
+        (CLOSED, 'Closed'),
+        (GRADUATED, 'Graduated'),
+    ]
+
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True)
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='taught_groups')
@@ -20,6 +31,7 @@ class Group(models.Model):
     telegram_chat_id  = models.BigIntegerField(null=True, blank=True)
     language          = models.CharField(max_length=2, default='uz', choices=[('uz', 'Uzbek'), ('ru', 'Russian')])
     is_individual     = models.BooleanField(default=False)
+    status            = models.CharField(max_length=12, choices=STATUS_CHOICES, default=ACTIVE)
     is_graduated      = models.BooleanField(default=False)
     exam_ready        = models.BooleanField(default=False)
     exam_ready_at     = models.DateTimeField(null=True, blank=True)
@@ -32,6 +44,13 @@ class Group(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        self.is_graduated = self.status != self.ACTIVE
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and ('status' in update_fields or 'is_graduated' in update_fields):
+            kwargs['update_fields'] = set(update_fields) | {'is_graduated'}
+        super().save(*args, **kwargs)
 
 
 class GroupMembership(models.Model):

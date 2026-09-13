@@ -92,6 +92,9 @@ class JoinGroupView(APIView):
         if GroupMembership.objects.filter(group=group, student=request.user).exists():
             return Response({'detail': 'Already a member.'}, status=400)
 
+        if group.status != Group.ACTIVE:
+            return Response({'detail': 'This group is not active.'}, status=400)
+
         if group.is_individual and group.memberships.exists():
             return Response({'detail': 'Individual group already has a student.'}, status=400)
 
@@ -699,7 +702,7 @@ def _broadcast_academy_ann_to_group_chats(ann, academy):
     from users.telegram_bot import send_notification
     active_groups = Group.objects.filter(
         teacher__academy=academy,
-        is_graduated=False,
+        status=Group.ACTIVE,
         telegram_chat_id__isnull=False,
     )
     for group in active_groups:
@@ -735,13 +738,13 @@ class AcademyAnnouncementView(APIView):
         active_student_ids = set(
             GroupMembership.objects.filter(
                 group__teacher__academy=request.user.academy,
-                group__is_graduated=False,
+                group__status=Group.ACTIVE,
             ).values_list('student_id', flat=True)
         )
         active_teacher_ids = set(
             Group.objects.filter(
                 teacher__academy=request.user.academy,
-                is_graduated=False,
+                status=Group.ACTIVE,
             ).values_list('teacher_id', flat=True)
         )
         recipients = list(
@@ -809,9 +812,27 @@ class GroupGraduateView(APIView):
         group = get_object_or_404(Group, pk=group_pk)
         if group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher or admin can graduate this group.'}, status=403)
-        group.is_graduated = not group.is_graduated
-        group.save(update_fields=['is_graduated'])
-        return Response({'is_graduated': group.is_graduated})
+        group.status = Group.ACTIVE if group.status == Group.GRADUATED else Group.GRADUATED
+        group.save(update_fields=['status', 'is_graduated'])
+        return Response({'status': group.status, 'is_graduated': group.is_graduated})
+
+
+class GroupStatusView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, group_pk):
+        group = get_object_or_404(Group, pk=group_pk)
+        if group.teacher != request.user and request.user.role != 'admin':
+            return Response({'detail': 'Only the teacher or admin can change this group status.'}, status=403)
+
+        new_status = request.data.get('status')
+        valid = {choice[0] for choice in Group.STATUS_CHOICES}
+        if new_status not in valid:
+            return Response({'detail': 'Invalid group status.'}, status=400)
+
+        group.status = new_status
+        group.save(update_fields=['status', 'is_graduated'])
+        return Response({'status': group.status, 'is_graduated': group.is_graduated})
 
 
 # ── Exam ready toggle (teacher) ───────────────────────────────────────────────

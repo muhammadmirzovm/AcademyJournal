@@ -65,7 +65,7 @@ def _week_range():
 
 
 def _build_message(parent, week_start, week_end):
-    from groups.models import GroupMembership, Attendance, Score
+    from groups.models import Group, GroupMembership, Attendance, Score
     from coins.models import CoinTransaction
 
     lang = (getattr(parent, 'telegram_lang', None) or 'uz')
@@ -89,7 +89,7 @@ def _build_message(parent, week_start, week_end):
         if total_child_coins:
             text += m['coins'].format(coins=total_child_coins)
 
-        memberships = list(GroupMembership.objects.filter(student=child, group__is_graduated=False).select_related('group'))
+        memberships = list(GroupMembership.objects.filter(student=child, group__status=Group.ACTIVE).select_related('group'))
         if not memberships:
             text += m['no_data'] + m['sep']
             continue

@@ -44,6 +44,7 @@ export const createGroupAnnouncement    = (gid, data) => api.post(`/groups/${gid
 
 export const getUpcomingExams  = ()                 => api.get('/exams/upcoming/')
 export const toggleGraduate    = (gid)             => api.post(`/groups/${gid}/graduate/`)
+export const setGroupStatus    = (gid, status)     => api.post(`/groups/${gid}/status/`, { status })
 export const toggleExamReady   = (gid, note = '')  => api.post(`/groups/${gid}/exam-ready/`, { note })
 export const getExams         = (gid, page = 1)    => api.get(`/groups/${gid}/exams/`, { params: { page, page_size: 10 } })
 export const createExam       = (gid, data)        => api.post(`/groups/${gid}/exams/`, data)

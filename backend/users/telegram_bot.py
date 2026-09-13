@@ -1218,7 +1218,7 @@ def _teacher_groups_for_date(telegram_id, target_date):
         GroupDayOff.objects.filter(date=target_date, group__teacher=user).values_list('group_id', flat=True)
     )
     return [
-        g for g in Group.objects.filter(teacher=user, is_graduated=False)
+        g for g in Group.objects.filter(teacher=user, status=Group.ACTIVE)
         if isinstance(g.class_days, list) and weekday in g.class_days and g.id not in already
     ]
 
@@ -1388,7 +1388,7 @@ def _create_academy_holiday(telegram_id, target_date):
     user = _get_user(telegram_id)
     if not user or not user.academy_id:
         return 0
-    groups = Group.objects.filter(teacher__academy_id=user.academy_id, is_graduated=False)
+    groups = Group.objects.filter(teacher__academy_id=user.academy_id, status=Group.ACTIVE)
     count = 0
     for g in groups:
         _, created = GroupDayOff.objects.get_or_create(

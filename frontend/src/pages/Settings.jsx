@@ -903,15 +903,15 @@ function InvitesTab({ academy, userRole }) {
                 </div>
               </div>
 
-              {/* Group (optional, students only) — graduated groups excluded */}
-              {groups.some(g => !g.is_graduated) && form.role === 'student' && (
+              {/* Group (optional, students only) — only active groups accept new students */}
+              {groups.some(g => (g.status || (g.is_graduated ? 'graduated' : 'active')) === 'active') && form.role === 'student' && (
                 <div>
                   <label style={labelStyle}>{t('settings.autojoin_group')}</label>
                   <Dropdown
                     value={form.group}
                     onChange={v => setForm(f => ({ ...f, group: v }))}
                     placeholder={t('settings.no_group')}
-                    options={groups.filter(g => !g.is_graduated).map(g => ({ value: String(g.id), label: g.name }))}
+                    options={groups.filter(g => (g.status || (g.is_graduated ? 'graduated' : 'active')) === 'active').map(g => ({ value: String(g.id), label: g.name }))}
                   />
                 </div>
               )}

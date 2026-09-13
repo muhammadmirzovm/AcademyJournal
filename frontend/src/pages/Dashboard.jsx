@@ -20,6 +20,8 @@ const ROLE_SUB = {
   student: 'dashboard.student_sub',
 }
 
+const isActiveGroup = g => (g.status || (g.is_graduated ? 'graduated' : 'active')) === 'active'
+
 const ROLE_LABEL = {
   teacher: 'dashboard.role_teacher',
   admin:   'dashboard.role_admin',
@@ -43,7 +45,7 @@ export default function Dashboard() {
 
   // class_days uses 0=Monday…6=Sunday, Date#getDay() uses 0=Sunday — convert.
   const todayDow = (new Date().getDay() + 6) % 7
-  const todayGroups = groups.filter(g => !g.is_graduated && (g.class_days || []).includes(todayDow))
+  const todayGroups = groups.filter(g => isActiveGroup(g) && (g.class_days || []).includes(todayDow))
 
   const [todayLessons, setTodayLessons] = useState({}) // { [groupId]: lesson | null }
   const [todayDayOffs, setTodayDayOffs] = useState({}) // { [groupId]: dayOff | null }
@@ -53,7 +55,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const dow = (new Date().getDay() + 6) % 7
-    const groupsToday = groups.filter(g => !g.is_graduated && (g.class_days || []).includes(dow))
+    const groupsToday = groups.filter(g => isActiveGroup(g) && (g.class_days || []).includes(dow))
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
     if (role !== 'teacher' || groupsToday.length === 0) { setTodayLessonsLoading(false); return }
     const todayStr = new Date().toISOString().slice(0, 10)

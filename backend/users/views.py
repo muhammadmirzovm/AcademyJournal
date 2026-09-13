@@ -84,8 +84,8 @@ def _class_start_minutes(class_time):
 
 def _build_schedule(groups):
     """Weekly timetable rows for active groups that have class days set,
-    ordered by lesson start time so earlier classes come first. Graduated
-    groups no longer hold lessons, so they are left out."""
+    ordered by lesson start time so earlier classes come first. Paused,
+    closed and graduated groups no longer hold lessons, so they are left out."""
     return sorted(
         [
             {
@@ -95,7 +95,7 @@ def _build_schedule(groups):
                 'class_time':    g.class_time,
                 'is_individual': g.is_individual,
             }
-            for g in groups if g.class_days and not g.is_graduated
+            for g in groups if g.class_days and g.status == g.ACTIVE
         ],
         key=lambda s: _class_start_minutes(s['class_time']),
     )
@@ -130,18 +130,18 @@ class UserStatsView(APIView):
             })
 
         if user.role == 'teacher':
-            # Active groups only — graduated groups are excluded from the
+            # Active groups only — paused/closed/graduated groups are excluded from the
             # teacher's profile stats, charts and timetable.
-            groups = Group.objects.filter(teacher=user, is_graduated=False).prefetch_related('memberships', 'lessons')
+            groups = Group.objects.filter(teacher=user, status=Group.ACTIVE).prefetch_related('memberships', 'lessons')
 
             total_groups   = groups.count()
-            total_lessons  = Lesson.objects.filter(group__teacher=user, group__is_graduated=False).count()
+            total_lessons  = Lesson.objects.filter(group__teacher=user, group__status=Group.ACTIVE).count()
             total_students = (
-                GroupMembership.objects.filter(group__teacher=user, group__is_graduated=False, student__is_active=True)
+                GroupMembership.objects.filter(group__teacher=user, group__status=Group.ACTIVE, student__is_active=True)
                 .values('student').distinct().count()
             )
             avg_score_val = (
-                Score.objects.filter(lesson__group__teacher=user, lesson__group__is_graduated=False)
+                Score.objects.filter(lesson__group__teacher=user, lesson__group__status=Group.ACTIVE)
                 .aggregate(avg=Avg('value'))['avg']
             )
 
@@ -321,7 +321,7 @@ class AdminStatsView(APIView):
 
         # Top groups by avg score (converted to 0-100%) — active, non-individual
         # groups only; a 1-student individual group isn't a "group" to rank.
-        groups = Group.objects.filter(teacher__academy=academy, is_graduated=False, is_individual=False)
+        groups = Group.objects.filter(teacher__academy=academy, status=Group.ACTIVE, is_individual=False)
         group_data = []
         for g in groups:
             avg = Score.objects.filter(lesson__group=g).aggregate(avg=Avg('value'))['avg']
@@ -336,7 +336,7 @@ class AdminStatsView(APIView):
 
         # Top students by comprehension % — active groups only
         memberships = GroupMembership.objects.filter(
-            group__teacher__academy=academy, group__is_graduated=False, student__is_active=True
+            group__teacher__academy=academy, group__status=Group.ACTIVE, student__is_active=True
         ).select_related('student', 'group')
 
         student_map = {}
@@ -384,9 +384,9 @@ class AdminStatsView(APIView):
         teachers_list = []
         for tch in User.objects.filter(academy=academy, role='teacher', is_active=True):
             name  = f'{tch.first_name} {tch.last_name}'.strip() or tch.username
-            scnt  = GroupMembership.objects.filter(group__teacher=tch, group__is_graduated=False, student__is_active=True).values('student').distinct().count()
-            gcnt  = Group.objects.filter(teacher=tch, is_graduated=False).count()
-            avg   = Score.objects.filter(lesson__group__teacher=tch, lesson__group__is_graduated=False).aggregate(avg=Avg('value'))['avg']
+            scnt  = GroupMembership.objects.filter(group__teacher=tch, group__status=Group.ACTIVE, student__is_active=True).values('student').distinct().count()
+            gcnt  = Group.objects.filter(teacher=tch, status=Group.ACTIVE).count()
+            avg   = Score.objects.filter(lesson__group__teacher=tch, lesson__group__status=Group.ACTIVE).aggregate(avg=Avg('value'))['avg']
             teachers_list.append({
                 'id':            tch.id,
                 'name':          name,
@@ -408,7 +408,7 @@ class AdminStatsView(APIView):
         ]
 
         absence_qs = (
-            Attendance.objects.filter(lesson__group__teacher__academy=academy, present=False, lesson__group__is_graduated=False)
+            Attendance.objects.filter(lesson__group__teacher__academy=academy, present=False, lesson__group__status=Group.ACTIVE)
             .annotate(m=TruncMonth('lesson__date'))
             .values('m').annotate(c=Count('id')).order_by('m')
         )
@@ -867,11 +867,11 @@ class TeacherLeaderboardView(APIView):
         if request.user.role != 'teacher':
             return Response({'detail': 'Forbidden.'}, status=403)
 
-        from groups.models import GroupMembership, Lesson, Score, Attendance
+        from groups.models import Group, GroupMembership, Lesson, Score, Attendance
 
         memberships = list(
             GroupMembership.objects
-            .filter(group__teacher=request.user, group__is_graduated=False, student__is_active=True)
+            .filter(group__teacher=request.user, group__status=Group.ACTIVE, student__is_active=True)
             .select_related('student', 'group')
         )
         if not memberships:

@@ -288,6 +288,39 @@ def test_lesson_reminder_skips_day_off_and_inactive_students(admin_user, monkeyp
     assert sent == []
 
 
+@pytest.mark.django_db
+def test_lesson_reminder_skips_paused_groups(admin_user, monkeypatch):
+    from datetime import datetime
+    from django.utils import timezone
+    from groups.models import Group, GroupMembership
+    from users.management.commands.send_lesson_reminders import run_lesson_reminders
+
+    teacher = User.objects.create_user(
+        username='reminder_teacher5', password='pass1234',
+        role='teacher', academy=admin_user.academy,
+    )
+    student = User.objects.create_user(
+        username='reminder_student5', password='pass1234',
+        role='student', academy=admin_user.academy,
+        telegram_id=555,
+    )
+    group = Group.objects.create(
+        name='Paused IELTS', teacher=teacher,
+        class_days=[0], class_time='10:00-11:30',
+        status=Group.PAUSED,
+    )
+    GroupMembership.objects.create(group=group, student=student)
+    sent = []
+    async def fake_send(telegram_id, msg_key, lang='uz', **kwargs):
+        sent.append(telegram_id)
+    monkeypatch.setattr('users.telegram_bot.send_notification', fake_send)
+
+    count = run_lesson_reminders(timezone.make_aware(datetime(2026, 9, 14, 9, 0)))
+
+    assert count == 0
+    assert sent == []
+
+
 # ── Teacher leaderboard (rewritten to bulk-fetch instead of N+1 querying) ──
 
 def _teacher_client(username):
