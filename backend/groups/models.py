@@ -82,6 +82,19 @@ class GroupDayOff(models.Model):
         return f'{self.group.name} — no lesson on {self.date} ({self.reason})'
 
 
+class GroupLessonReminder(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='lesson_reminders')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='lesson_reminders')
+    date = models.DateField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('group', 'student', 'date')
+
+    def __str__(self):
+        return f'{self.student.username} — {self.group.name} reminder on {self.date}'
+
+
 class Attendance(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='attendances')

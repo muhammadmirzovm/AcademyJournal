@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,19 @@ def _run_weekly(academy_id):
         run_weekly_report_for_academy(academy)
     except Exception as exc:
         logger.error('Weekly report failed for academy %s: %s', academy_id, exc)
+    finally:
+        close_old_connections()
+
+
+def _run_lesson_reminders():
+    close_old_connections()
+    from .management.commands.send_lesson_reminders import run_lesson_reminders
+    try:
+        sent = run_lesson_reminders()
+        if sent:
+            logger.info('Sent %d lesson reminder(s)', sent)
+    except Exception as exc:
+        logger.error('Lesson reminders failed: %s', exc)
     finally:
         close_old_connections()
 
@@ -83,5 +97,13 @@ def start():
     if _scheduler.running:
         return
     _scheduler.start()
+    _scheduler.add_job(
+        _run_lesson_reminders,
+        IntervalTrigger(minutes=1, timezone='UTC'),
+        id='lesson_reminders',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
     # Load academy schedules 2s after startup to avoid querying DB inside ready()
     _scheduler.add_job(_load_all, 'date', run_date=datetime.now() + timedelta(seconds=2), id='_startup_load')

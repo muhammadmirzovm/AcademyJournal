@@ -179,6 +179,115 @@ def test_teacher_cannot_update_student_name(admin_user):
     assert student.first_name == 'Old'
 
 
+@pytest.mark.django_db
+def test_lesson_reminder_sends_one_hour_before_class(admin_user, monkeypatch):
+    from datetime import datetime
+    from django.utils import timezone
+    from groups.models import Group, GroupMembership, GroupLessonReminder
+    from users.management.commands.send_lesson_reminders import run_lesson_reminders
+    from users.models import Notification
+
+    teacher = User.objects.create_user(
+        username='reminder_teacher', password='pass1234',
+        role='teacher', academy=admin_user.academy,
+    )
+    student = User.objects.create_user(
+        username='reminder_student', password='pass1234',
+        role='student', academy=admin_user.academy,
+        first_name='Ali', telegram_id=12345, telegram_lang='uz',
+    )
+    group = Group.objects.create(
+        name='IELTS', teacher=teacher,
+        class_days=[0], class_time='10:00-11:30',
+    )
+    GroupMembership.objects.create(group=group, student=student)
+    sent = []
+    async def fake_send(telegram_id, msg_key, lang='uz', **kwargs):
+        sent.append((telegram_id, msg_key, lang, kwargs))
+    monkeypatch.setattr('users.telegram_bot.send_notification', fake_send)
+
+    count = run_lesson_reminders(timezone.make_aware(datetime(2026, 9, 14, 9, 0)))
+
+    assert count == 1
+    assert sent == [(12345, 'lesson_reminder', 'uz', {'name': 'Ali', 'group': 'IELTS', 'time': '10:00'})]
+    assert GroupLessonReminder.objects.filter(group=group, student=student, date='2026-09-14').exists()
+    assert Notification.objects.filter(user=student, title='Dars eslatmasi').exists()
+
+
+@pytest.mark.django_db
+def test_lesson_reminder_is_not_sent_twice(admin_user, monkeypatch):
+    from datetime import datetime
+    from django.utils import timezone
+    from groups.models import Group, GroupMembership
+    from users.management.commands.send_lesson_reminders import run_lesson_reminders
+
+    teacher = User.objects.create_user(
+        username='reminder_teacher2', password='pass1234',
+        role='teacher', academy=admin_user.academy,
+    )
+    student = User.objects.create_user(
+        username='reminder_student2', password='pass1234',
+        role='student', academy=admin_user.academy,
+        telegram_id=222,
+    )
+    group = Group.objects.create(
+        name='Math', teacher=teacher,
+        class_days=[0], class_time='10:00-11:30',
+    )
+    GroupMembership.objects.create(group=group, student=student)
+    sent = []
+    async def fake_send(telegram_id, msg_key, lang='uz', **kwargs):
+        sent.append(telegram_id)
+    monkeypatch.setattr('users.telegram_bot.send_notification', fake_send)
+    now = timezone.make_aware(datetime(2026, 9, 14, 9, 0))
+
+    assert run_lesson_reminders(now) == 1
+    assert run_lesson_reminders(now) == 0
+    assert sent == [222]
+
+
+@pytest.mark.django_db
+def test_lesson_reminder_skips_day_off_and_inactive_students(admin_user, monkeypatch):
+    from datetime import datetime
+    from django.utils import timezone
+    from groups.models import Group, GroupDayOff, GroupMembership
+    from users.management.commands.send_lesson_reminders import run_lesson_reminders
+
+    teacher = User.objects.create_user(
+        username='reminder_teacher3', password='pass1234',
+        role='teacher', academy=admin_user.academy,
+    )
+    day_off_group = Group.objects.create(
+        name='Day off', teacher=teacher,
+        class_days=[0], class_time='10:00-11:30',
+    )
+    inactive_group = Group.objects.create(
+        name='Inactive', teacher=teacher,
+        class_days=[0], class_time='10:00-11:30',
+    )
+    active_student = User.objects.create_user(
+        username='reminder_student3', password='pass1234',
+        role='student', academy=admin_user.academy, telegram_id=333,
+    )
+    inactive_student = User.objects.create_user(
+        username='reminder_student4', password='pass1234',
+        role='student', academy=admin_user.academy, telegram_id=444,
+        is_active=False,
+    )
+    GroupMembership.objects.create(group=day_off_group, student=active_student)
+    GroupMembership.objects.create(group=inactive_group, student=inactive_student)
+    GroupDayOff.objects.create(group=day_off_group, date='2026-09-14', created_by=teacher)
+    sent = []
+    async def fake_send(telegram_id, msg_key, lang='uz', **kwargs):
+        sent.append(telegram_id)
+    monkeypatch.setattr('users.telegram_bot.send_notification', fake_send)
+
+    count = run_lesson_reminders(timezone.make_aware(datetime(2026, 9, 14, 9, 0)))
+
+    assert count == 0
+    assert sent == []
+
+
 # ── Teacher leaderboard (rewritten to bulk-fetch instead of N+1 querying) ──
 
 def _teacher_client(username):
