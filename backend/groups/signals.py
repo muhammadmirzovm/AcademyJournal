@@ -1,4 +1,4 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from asgiref.sync import async_to_sync
 
@@ -23,8 +23,16 @@ def on_lesson_created(sender, instance, created, **kwargs):
     if not created:
         return
     group    = instance.group
-    students = group.memberships.select_related('student').all()
+    from groups.access import current_memberships
+    students = current_memberships(group, instance.date).select_related('student')
     for m in students:
         _create(m.student, 'lesson',
                 instance.title,
                 group.name)
+
+
+@receiver(post_delete, sender='groups.GroupMembership')
+def on_membership_removed(sender, instance, **kwargs):
+    # Also runs for bulk removal through academy management and Django admin.
+    from quiz.roster import prune_unfinished_rosters
+    prune_unfinished_rosters(instance.group_id)

@@ -3,12 +3,14 @@ import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, Coins, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy, CheckCheck, XCircle, CheckCircle2 } from 'lucide-react'
-import { getGroup, getMembers, getLesson, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson } from '../api/groups'
+import { getGroup, getMembers, getLesson, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson, getLessonReportPreview } from '../api/groups'
 import { getLessonGame, startGame, cancelGame, closeGame } from '../api/games'
 import { useAuth } from '../context/auth'
 import { useToast } from '../context/toast'
 import Modal from '../components/ui/Modal'
+import LessonReportPreview from '../components/LessonReportPreview'
 import { weekdayName, formatDayMonthYear, formatDayMonthTime } from '../utils/date'
+import { rosterValues } from '../utils/roster'
 
 export default function LessonDetail() {
   const { groupId, lessonId } = useParams()
@@ -28,7 +30,9 @@ export default function LessonDetail() {
   const [ending, setEnding]         = useState(false)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
 
-  const isTeacher = user?.role === 'teacher' && group?.teacher === user?.id
+  const [reportPreview, setReportPreview] = useState(null)
+  const [reportTick, setReportTick] = useState(0)
+  const isTeacher = user?.role === 'admin' || (user?.role === 'teacher' && group?.teacher === user?.id)
 
   const hasHomework  = !!homework.assignment?.trim()
   const scoredIds    = new Set(scores.map(s => s.student))
@@ -38,23 +42,49 @@ export default function LessonDetail() {
     setShowEndConfirm(false)
     setEnding(true)
     try {
-      const { data } = await endLesson(groupId, lessonId)
+      const { data } = await endLesson(groupId, lessonId, reportPreview?.preview_token)
       setLesson(l => ({ ...l, ended_at: data.ended_at }))
-      show(t('lesson.toast_ended', { count: data.notified }), 'success')
-    } catch {
-      show(t('lesson.toast_fail_end'), 'error')
+      setReportPreview(null)
+      const refreshed = await getLessonReportPreview(groupId, lessonId)
+      setReportPreview(refreshed.data)
+      show(t(data.is_update ? 'lesson.toast_changes_confirmed' : 'lesson.toast_ended', { count: data.notified }), 'success')
+    } catch (error) {
+      if (error.response?.status === 409) {
+        setReportPreview(null)
+        setReportTick(tick => tick + 1)
+        show(t('lesson.report_changed'), 'error')
+      } else {
+        show(t('lesson.toast_fail_end'), 'error')
+      }
     } finally {
       setEnding(false)
     }
   }
 
-  const attemptEndLesson = () => {
-    if (!hasHomework || unscoredCount > 0) {
-      setShowEndConfirm(true)
-    } else {
-      handleEndLesson()
+  const attemptEndLesson = async () => {
+    setEnding(true)
+    try {
+      const { data } = await getLessonReportPreview(groupId, lessonId)
+      setReportPreview(data)
+      if (data.has_changes) setShowEndConfirm(true)
+    } catch {
+      show(t('lesson.toast_fail_load'), 'error')
+    } finally {
+      setEnding(false)
     }
   }
+
+  const loadedLessonId = lesson?.id
+  useEffect(() => {
+    if (!isTeacher || !loadedLessonId) return
+    let cancelled = false
+    getLessonReportPreview(groupId, lessonId).then(({ data }) => {
+      if (!cancelled) setReportPreview(data)
+    }).catch(() => {
+      if (!cancelled) show(t('lesson.toast_fail_load'), 'error')
+    })
+    return () => { cancelled = true }
+  }, [isTeacher, loadedLessonId, groupId, lessonId, attendance, scores, homework.assignment, reportTick, show, t])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
@@ -77,6 +107,8 @@ export default function LessonDetail() {
     }).catch(() => show(t('lesson.toast_fail_load'), 'error'))
     .finally(() => setLoading(false))
   }, [groupId, lessonId, show, t])
+
+  const reportDisabled = ending || !reportPreview || Boolean(lesson?.ended_at && !reportPreview.has_changes)
 
   if (loading) return <Spinner />
   if (!group) return <p style={{ color: 'var(--text-muted)' }}>{t('lesson.toast_fail_load')}</p>
@@ -113,20 +145,20 @@ export default function LessonDetail() {
             whileHover={{ translateY: -1 }}
             whileTap={{ scale: 0.97 }}
             onClick={attemptEndLesson}
-            disabled={ending}
+            disabled={reportDisabled}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '9px 18px', borderRadius: 8, border: 'none', flexShrink: 0,
-              background: ending ? 'var(--text-muted)' : '#7C3AED',
-              color: '#fff', fontWeight: 600, fontSize: 13, cursor: ending ? 'default' : 'pointer',
-              opacity: ending ? 0.7 : 1,
+              background: reportDisabled ? 'var(--text-muted)' : '#7C3AED',
+              color: '#fff', fontWeight: 600, fontSize: 13, cursor: reportDisabled ? 'default' : 'pointer',
+              opacity: reportDisabled ? 0.7 : 1,
             }}
           >
             {ending
               ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />
               : <BellRing size={14} />
             }
-            {ending ? t('lesson.ending') : t('lesson.end_lesson')}
+            {ending ? t('lesson.ending') : !reportPreview ? t('lesson.checking_changes') : lesson?.ended_at ? t(reportPreview.has_changes ? 'lesson.confirm_changes' : 'lesson.ended_badge') : t('lesson.end_lesson')}
           </motion.button>
         )}
       </div>
@@ -134,9 +166,12 @@ export default function LessonDetail() {
         {lesson ? formatDayMonthYear(lesson.date, i18n.language) : ''}
       </p>
 
+      {isTeacher && lesson?.ended_at && <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>{t('lesson.saved_changes_hint')}</p>}
+
       {isTeacher && lesson && (
         <div style={{ marginBottom: 24 }}>
-          <GameBlock groupId={groupId} lessonId={lessonId} lesson={lesson} members={members} attendance={attendance} />
+          <GameBlock groupId={groupId} lessonId={lessonId} lesson={lesson} members={members} attendance={attendance}
+            onChanged={() => { setReportPreview(null); setReportTick(tick => tick + 1) }} />
         </div>
       )}
 
@@ -157,11 +192,11 @@ export default function LessonDetail() {
         <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
           {tab === 'attendance' && (
             <AttendanceTab members={members} attendance={attendance} groupId={groupId} lessonId={lessonId}
-              isTeacher={isTeacher} onSaved={setAttendance} />
+              isTeacher={isTeacher} onSaved={data => { setReportPreview(null); setAttendance(data) }} />
           )}
           {tab === 'scores' && (
             <ScoresTab members={members} scores={scores} groupId={groupId} lessonId={lessonId}
-              isTeacher={isTeacher} onSaved={setScores} />
+              isTeacher={isTeacher} onSaved={data => { setReportPreview(null); setScores(data) }} />
           )}
           {tab === 'journal' && (
             <JournalTab journal={journal} groupId={groupId} lessonId={lessonId}
@@ -169,31 +204,32 @@ export default function LessonDetail() {
           )}
           {tab === 'homework' && (
             <HomeworkTab homework={homework} groupId={groupId} lessonId={lessonId}
-              isTeacher={isTeacher} onSaved={setHomework} />
+              isTeacher={isTeacher} onSaved={data => { setReportPreview(null); setHomework(data) }} />
           )}
         </motion.div>
       </AnimatePresence>
 
-      <Modal open={showEndConfirm} onClose={() => setShowEndConfirm(false)} title={t('lesson.end_confirm_title')}>
+      <Modal open={showEndConfirm} onClose={() => setShowEndConfirm(false)} title={t(lesson?.ended_at ? 'lesson.confirm_changes' : 'lesson.end_confirm_title')} maxWidth={600}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
-          {!hasHomework && (
+          {!lesson?.ended_at && !hasHomework && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', borderRadius: 9, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
               <AlertTriangle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
               <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('lesson.end_warn_no_homework')}</span>
             </div>
           )}
-          {unscoredCount > 0 && (
+          {!lesson?.ended_at && unscoredCount > 0 && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', borderRadius: 9, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
               <AlertTriangle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 1 }} />
               <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('lesson.end_warn_unscored', { count: unscoredCount })}</span>
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={() => setShowEndConfirm(false)} style={ghostBtn}>{t('lesson.cancel')}</button>
-          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleEndLesson}
+        <LessonReportPreview preview={reportPreview} />
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
+          <button disabled={ending} onClick={() => setShowEndConfirm(false)} style={ghostBtn}>{t('lesson.cancel')}</button>
+          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleEndLesson} disabled={ending || !reportPreview?.has_changes}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-            <BellRing size={14} /> {t('lesson.end_anyway')}
+            <BellRing size={14} /> {t(lesson?.ended_at ? 'lesson.confirm_changes' : 'lesson.end_anyway')}
           </motion.button>
         </div>
       </Modal>
@@ -212,10 +248,7 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
   const [previousAttendance, setPreviousAttendance] = useState(null)
   if (!previousAttendance || previousAttendance[0] !== attendance || previousAttendance[1] !== members) {
     setPreviousAttendance([attendance, members])
-    const map = {}
-    attendance.forEach(a => { map[a.student] = a.present })
-    members.forEach(m => { if (!(m.id in map)) map[m.id] = false })
-    setLocal(map)
+    setLocal(rosterValues(members, attendance, 'present', false))
   }
 
   const toggle = id => setLocal(l => ({ ...l, [id]: !l[id] }))
@@ -228,7 +261,7 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
   const save = async () => {
     setSaving(true)
     try {
-      const records = Object.entries(local).map(([student, present]) => ({ student: Number(student), present }))
+      const records = members.map(member => ({ student: member.id, present: local[member.id] ?? false }))
       const { data } = await saveAttendance(groupId, lessonId, records)
       onSaved(data)
       show(t('lesson.toast_attendance'), 'success')
@@ -313,10 +346,7 @@ function ScoresTab({ members, scores, groupId, lessonId, isTeacher, onSaved }) {
   const [previousScores, setPreviousScores] = useState(null)
   if (!previousScores || previousScores[0] !== scores || previousScores[1] !== members) {
     setPreviousScores([scores, members])
-    const map = {}
-    scores.forEach(s => { map[s.student] = s.value })
-    members.forEach(m => { if (!(m.id in map)) map[m.id] = '' })
-    setLocal(map)
+    setLocal(rosterValues(members, scores, 'value', ''))
   }
 
   const set = (id, val) => {
@@ -327,7 +357,7 @@ function ScoresTab({ members, scores, groupId, lessonId, isTeacher, onSaved }) {
   const save = async () => {
     setSaving(true)
     try {
-      const records = Object.entries(local)
+      const records = members.map(member => [member.id, local[member.id] ?? ''])
         .filter(([, v]) => v !== '')
         .map(([student, value]) => ({ student: Number(student), value: Number(value) }))
       const { data } = await saveScores(groupId, lessonId, records)
@@ -595,7 +625,7 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
 
 const selectStyle = { padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', minWidth: 150 }
 
-function GameBlock({ groupId, lessonId, lesson, members, attendance }) {
+function GameBlock({ groupId, lessonId, lesson, members, attendance, onChanged }) {
   const [game, setGame]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [closing, setClosing] = useState(false)
@@ -622,9 +652,9 @@ function GameBlock({ groupId, lessonId, lesson, members, attendance }) {
     if (closing) {
       return game.is_individual
         ? <IndividualCloseScreen groupId={groupId} lessonId={lessonId} presentMembers={presentMembers}
-            onClosed={g => { setGame(g); setClosing(false) }} onBack={() => setClosing(false)} />
+            onClosed={g => { setGame(g); setClosing(false); onChanged() }} onBack={() => setClosing(false)} />
         : <CloseScreen groupId={groupId} lessonId={lessonId} game={game} presentMembers={presentMembers}
-            onClosed={g => { setGame(g); setClosing(false) }} onBack={() => setClosing(false)} />
+            onClosed={g => { setGame(g); setClosing(false); onChanged() }} onBack={() => setClosing(false)} />
     }
     return <InProgressCard groupId={groupId} lessonId={lessonId}
       onCancelled={load} onFinishClick={() => setClosing(true)} startedAt={game.started_at} />

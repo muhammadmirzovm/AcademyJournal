@@ -1,4 +1,4 @@
-from groups.access import GroupAccessMixin, can_manage_group
+from groups.access import GroupAccessMixin, can_manage_group, current_memberships
 from backend.validation import integer
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from datetime import timedelta
@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from coins.models import CoinSetting, CoinTransaction
-from groups.models import Attendance, Lesson
+from groups.models import Attendance, Lesson, Group
 
 from .models import Game, GameResult
 from .rules import build_applied_rules, coins_for_effort, coins_for_place, is_big_day, preview_total
@@ -48,7 +48,10 @@ class LessonGameView(AcademyGameAccessMixin, APIView):
 
         big = is_big_day(lesson.date, setting)
         individual = lesson.group.is_individual
-        attended_count = Attendance.objects.filter(lesson=lesson, present=True).count()
+        attended_count = Attendance.objects.filter(
+            lesson=lesson, present=True,
+            student_id__in=current_memberships(lesson.group).values('student_id'),
+        ).count()
         rules = build_applied_rules(setting, big, individual)
 
         return Response({
@@ -127,6 +130,7 @@ class GameCloseView(AcademyGameAccessMixin, APIView):
             return Response({'detail': "Only the teacher or admin."}, status=403)
 
         with transaction.atomic():
+            Group.objects.select_for_update().get(pk=lesson.group_id)
             game = get_object_or_404(Game.objects.select_for_update(), lesson=lesson)
 
             if game.status == Game.Status.CLOSED:
@@ -136,7 +140,7 @@ class GameCloseView(AcademyGameAccessMixin, APIView):
                 return Response({'detail': "O'yin boshlanmagan."}, status=400)
 
             attended_ids = set(
-                Attendance.objects.filter(lesson=lesson, present=True, student__memberships__group=lesson.group, student__academy_id=lesson.group.academy_id, student__is_active=True).values_list('student_id', flat=True)
+                Attendance.objects.filter(lesson=lesson, present=True, student_id__in=current_memberships(lesson.group).values('student_id')).values_list('student_id', flat=True)
             )
             rules = game.applied_rules
 

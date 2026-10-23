@@ -240,7 +240,9 @@ class LessonDetailView(GroupAccessMixin, generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return Lesson.objects.filter(group_id=self.kwargs['group_pk'])
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
+        Group.objects.select_for_update().get(pk=kwargs['group_pk'])
         lesson = self.get_object()
         if lesson.group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher or admin can edit lessons.'}, status=403)
@@ -274,6 +276,7 @@ class AttendanceView(GroupAccessMixin, APIView):
 
     @transaction.atomic
     def post(self, request, group_pk, lesson_pk):
+        Group.objects.select_for_update().get(pk=group_pk)
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
         if lesson.group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher or admin can mark attendance.'}, status=403)
@@ -311,6 +314,7 @@ class ScoreView(GroupAccessMixin, APIView):
 
     @transaction.atomic
     def post(self, request, group_pk, lesson_pk):
+        Group.objects.select_for_update().get(pk=group_pk)
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
         if lesson.group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher or admin can enter scores.'}, status=403)
@@ -385,7 +389,9 @@ class HomeworkView(GroupAccessMixin, APIView):
             'submissions': HomeworkSubmissionSerializer(submissions, many=True).data,
         })
 
+    @transaction.atomic
     def post(self, request, group_pk, lesson_pk):
+        Group.objects.select_for_update().get(pk=group_pk)
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
 
         if can_manage_group(request.user, lesson.group):
@@ -490,10 +496,12 @@ class MembershipDetailView(GroupAccessMixin, APIView):
         data['attendance_rate'] = attendance_rate
         return Response(data)
 
+    @transaction.atomic
     def delete(self, request, pk, member_pk):
         group = get_object_or_404(Group, pk=pk)
         if group.teacher != request.user and request.user.role != 'admin':
             return Response({'detail': 'Only the teacher or admin can remove students.'}, status=403)
+        Group.objects.select_for_update().get(pk=group.pk)
         membership = get_object_or_404(GroupMembership, pk=member_pk, group=group)
         membership.delete()
         return Response(status=204)
@@ -504,184 +512,201 @@ class MembershipDetailView(GroupAccessMixin, APIView):
 class EndLessonView(GroupAccessMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
+    def get(self, request, group_pk, lesson_pk):
+        from .lesson_reports import prepare_preview
+        if not can_manage_group(request.user, self.access_group):
+            raise PermissionDenied('Only the teacher or admin can preview lesson reports.')
+        with transaction.atomic():
+            group = Group.objects.select_for_update().get(pk=group_pk)
+            if not can_manage_group(request.user, group):
+                raise PermissionDenied('Only current managing staff can preview lesson reports.')
+            lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
+            return Response(prepare_preview(lesson)[0])
+
     def post(self, request, group_pk, lesson_pk):
-        lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
-        if lesson.group.teacher != request.user and request.user.role != 'admin':
-            return Response({'detail': 'Only the teacher or admin can end a lesson.'}, status=403)
-
-        if not lesson.ended_at:
-            lesson.ended_at = timezone.now()
-            lesson.save(update_fields=['ended_at'])
-
-        from users.models import Notification
-        from users.telegram_bot import send_notification, render_coin_line
-        from coins.models import CoinTransaction
-
-        group      = lesson.group
-        attendances = {a.student_id: a.present for a in Attendance.objects.filter(lesson=lesson)}
-        scores      = {s.student_id: s.value   for s in Score.objects.filter(lesson=lesson)}
-
-        memberships = (
-            GroupMembership.objects
-            .filter(group=group, student__is_active=True)
-            .select_related('student')
-            .prefetch_related('student__parents__parent')
+        from .lesson_reports import confirm_report, send_updates
+        if not can_manage_group(request.user, self.access_group):
+            raise PermissionDenied('Only the teacher or admin can confirm lesson reports.')
+        result, lesson, report_state, changes = confirm_report(
+            group_pk, lesson_pk, request.data.get('preview_token'), request.user,
         )
-
-        # Coins this lesson's "winning game" awarded, if the teacher ran one
-        # and closed it — {student_id: coins}. Balances only fetched (one
-        # bulk query) for students who actually earned something.
-        coin_game = getattr(lesson, 'game', None)
-        coins_by_student = {}
-        if coin_game is not None:
-            coins_by_student = {r.student_id: r.coins for r in coin_game.results.filter(coins__gt=0)}
-        balances_by_student = (
-            CoinTransaction.balances_for(m.student for m in memberships if m.student_id in coins_by_student)
-            if coins_by_student else {}
-        )
-
-        for membership in memberships:
-            student = membership.student
-            present = attendances.get(student.id, False)
-            score   = scores.get(student.id)
-            name    = f'{student.first_name} {student.last_name}'.strip() or student.username
-            scored  = score is not None
-            ntype   = 'score' if scored else 'absent'
-            coins_earned = coins_by_student.get(student.id, 0)
-
-            # Pick message key variant
-            attendance_key = 'present' if present else 'absent'
-            score_key      = 'scored'  if scored  else 'unscored'
-            student_key    = f'student_{attendance_key}_{score_key}'
-            parent_key     = f'parent_{attendance_key}_{score_key}'
-
-            # Student in-app notification body
-            if present:
-                s_body = f'{"Qatnashdingiz" if not scored else f"Qatnashdingiz · Ball: {score}/5"} — {group.name}'
+        if result['has_changes']:
+            if result['is_update']:
+                send_updates(lesson, report_state, changes)
             else:
-                s_body = f'{"Kelmadingiz" if not scored else f"Kelmadingiz · Ball: {score}/5"} — {group.name}'
+                _send_initial_lesson_report(lesson, report_state, changes)
+        return Response(result)
+
+
+def _send_initial_lesson_report(lesson, report_state, changes):
+    from users.models import Notification
+    from users.telegram_bot import send_notification, render_coin_line
+    from coins.models import CoinTransaction
+
+    group      = lesson.group
+    attendances = {int(sid): values['attendance'] for sid, values in report_state['students'].items()}
+    scores = {int(sid): values['score'] for sid, values in report_state['students'].items()}
+
+    from groups.access import current_memberships
+    memberships = (
+        current_memberships(group).filter(student_id__in=[int(sid) for sid in report_state['students']])
+        .select_related('student')
+        .prefetch_related('student__parents__parent')
+    )
+
+    # Coins this lesson's "winning game" awarded, if the teacher ran one
+    # and closed it — {student_id: coins}. Balances only fetched (one
+    # bulk query) for students who actually earned something.
+    coins_by_student = {int(sid): values['coins'] for sid, values in report_state['students'].items() if values['coins']}
+    balances_by_student = (
+        CoinTransaction.balances_for(m.student for m in memberships if m.student_id in coins_by_student)
+        if coins_by_student else {}
+    )
+
+    for membership in memberships:
+        student = membership.student
+        present = attendances.get(student.id, False)
+        score   = scores.get(student.id)
+        name    = f'{student.first_name} {student.last_name}'.strip() or student.username
+        scored  = score is not None
+        ntype   = 'score' if scored else 'absent'
+        coins_earned = coins_by_student.get(student.id, 0)
+
+        # Pick message key variant
+        attendance_key = 'present' if present else 'absent'
+        score_key      = 'scored'  if scored  else 'unscored'
+        student_key    = f'student_{attendance_key}_{score_key}'
+        parent_key     = f'parent_{attendance_key}_{score_key}'
+
+        # Student in-app notification body
+        if present:
+            s_body = f'{"Qatnashdingiz" if not scored else f"Qatnashdingiz · Ball: {score}/5"} — {group.name}'
+        else:
+            s_body = f'{"Kelmadingiz" if not scored else f"Kelmadingiz · Ball: {score}/5"} — {group.name}'
+        if coins_earned:
+            s_body += f' · +{coins_earned} tangacha'
+
+        Notification.objects.create(
+            user=student, type=ntype,
+            title=lesson.title, body=s_body,
+        )
+
+        if student.telegram_id:
+            try:
+                lang = student.telegram_lang or 'uz'
+                kwargs = dict(lesson=lesson.title, group=group.name)
+                if scored:
+                    kwargs['score'] = score
+                kwargs['coin_line'] = render_coin_line(lang, coins_earned, balances_by_student.get(student.id, 0))
+                async_to_sync(send_notification)(
+                    student.telegram_id, student_key, lang, **kwargs,
+                )
+            except Exception:
+                pass
+
+        # Parent notifications
+        for ps in student.parents.select_related('parent').filter(
+            parent__is_active=True, parent__role='parent', parent__academy_id=group.academy_id,
+            parent_id__in=changes['audience'].get(str(student.pk), []),
+        ):
+            parent = ps.parent
+            if present:
+                p_body = f'{name} · {"Qatnashdi" if not scored else f"Qatnashdi · Ball: {score}/5"} — {group.name}'
+            else:
+                p_body = f'{name} · {"Kelmadi" if not scored else f"Kelmadi · Ball: {score}/5"} — {group.name}'
             if coins_earned:
-                s_body += f' · +{coins_earned} tangacha'
+                p_body += f' · +{coins_earned} tangacha'
 
             Notification.objects.create(
-                user=student, type=ntype,
-                title=lesson.title, body=s_body,
+                user=parent, type=ntype,
+                title=lesson.title, body=p_body,
             )
-
-            if student.telegram_id:
+            if parent.telegram_id:
                 try:
-                    lang = student.telegram_lang or 'uz'
-                    kwargs = dict(lesson=lesson.title, group=group.name)
+                    parent_lang = parent.telegram_lang or 'uz'
+                    kwargs = dict(name=name, lesson=lesson.title, group=group.name)
                     if scored:
                         kwargs['score'] = score
-                    kwargs['coin_line'] = render_coin_line(lang, coins_earned, balances_by_student.get(student.id, 0))
+                    kwargs['coin_line'] = render_coin_line(parent_lang, coins_earned, balances_by_student.get(student.id, 0))
                     async_to_sync(send_notification)(
-                        student.telegram_id, student_key, lang, **kwargs,
+                        parent.telegram_id, parent_key, parent_lang, **kwargs,
                     )
                 except Exception:
                     pass
 
-            # Parent notifications
-            for ps in student.parents.select_related('parent').all():
-                parent = ps.parent
-                if present:
-                    p_body = f'{name} · {"Qatnashdi" if not scored else f"Qatnashdi · Ball: {score}/5"} — {group.name}'
-                else:
-                    p_body = f'{name} · {"Kelmadi" if not scored else f"Kelmadi · Ball: {score}/5"} — {group.name}'
-                if coins_earned:
-                    p_body += f' · +{coins_earned} tangacha'
-
-                Notification.objects.create(
-                    user=parent, type=ntype,
-                    title=lesson.title, body=p_body,
-                )
-                if parent.telegram_id:
-                    try:
-                        parent_lang = parent.telegram_lang or 'uz'
-                        kwargs = dict(name=name, lesson=lesson.title, group=group.name)
-                        if scored:
-                            kwargs['score'] = score
-                        kwargs['coin_line'] = render_coin_line(parent_lang, coins_earned, balances_by_student.get(student.id, 0))
-                        async_to_sync(send_notification)(
-                            parent.telegram_id, parent_key, parent_lang, **kwargs,
-                        )
-                    except Exception:
-                        pass
-
-        # Send homework notification to individual students via DM
-        if lesson.homework.strip():
-            for membership in memberships:
-                student = membership.student
-                if student.telegram_id:
-                    try:
-                        async_to_sync(send_notification)(
-                            student.telegram_id, 'hw_notification',
-                            student.telegram_lang or 'uz',
-                            lesson=lesson.title,
-                            group=group.name,
-                            homework=lesson.homework,
-                        )
-                    except Exception:
-                        pass
-
-        # Send lesson summary to the linked student Telegram group chat
-        if group.telegram_chat_id:
-            try:
-                import os
-                import html as html_module
-                from telegram import Bot as TelegramBot
-
-                def e(text):
-                    return html_module.escape(str(text))
-
-                lang = group.language or 'uz'
-                all_members   = list(memberships)
-                total         = len(all_members)
-                present_count = sum(1 for m in all_members if attendances.get(m.student.id, False))
-                absent_names  = [
-                    (f'{m.student.first_name} {m.student.last_name}'.strip() or m.student.username)
-                    for m in all_members if not attendances.get(m.student.id, False)
-                ]
-
-                if lang == 'ru':
-                    all_present_text  = f"✅ Посещаемость: {present_count}/{total} — Все присутствовали!"
-                    partial_pres_text = f"✅ Посещаемость: {present_count}/{total} учеников"
-                    absent_header     = "❌ <b>Отсутствовали:</b>"
-                    homework_header   = "📝 <b>Домашнее задание:</b>"
-                else:
-                    all_present_text  = f"✅ Davomat: {present_count}/{total} — Hamma qatnashdi!"
-                    partial_pres_text = f"✅ Davomat: {present_count}/{total} o'quvchi qatnashdi"
-                    absent_header     = "❌ <b>Qatnashmaganlar:</b>"
-                    homework_header   = "📝 <b>Uyga vazifa:</b>"
-
-                lines = [f"📚 <b>{e(lesson.title)}</b> — {lesson.date.strftime('%d.%m.%Y')}", ""]
-                lines.append(all_present_text if present_count == total else partial_pres_text)
-
-                if absent_names:
-                    lines.append("")
-                    lines.append(absent_header)
-                    for name in absent_names:
-                        lines.append(f"• {e(name)}")
-
-                if lesson.homework.strip():
-                    lines.append("")
-                    lines.append(homework_header)
-                    lines.append(e(lesson.homework))
-
-                bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
-                if bot_token:
-                    bot = TelegramBot(token=bot_token)
-                    async_to_sync(bot.send_message)(
-                        chat_id=group.telegram_chat_id,
-                        text='\n'.join(lines),
-                        parse_mode='HTML',
+    # Send homework notification to individual students via DM
+    if lesson.homework.strip():
+        for membership in memberships:
+            student = membership.student
+            if student.telegram_id:
+                try:
+                    async_to_sync(send_notification)(
+                        student.telegram_id, 'hw_notification',
+                        student.telegram_lang or 'uz',
+                        lesson=lesson.title,
+                        group=group.name,
+                        homework=lesson.homework,
                     )
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).error(f'Group chat send failed: {e}', exc_info=True)
+                except Exception:
+                    pass
 
-        return Response({'ok': True, 'notified': len(memberships), 'ended_at': lesson.ended_at})
+    # Send lesson summary to the linked student Telegram group chat
+    if group.telegram_chat_id:
+        try:
+            import os
+            import html as html_module
+            from telegram import Bot as TelegramBot
 
+            def e(text):
+                return html_module.escape(str(text))
+
+            lang = group.language or 'uz'
+            all_members   = list(memberships)
+            total         = len(all_members)
+            present_count = sum(1 for m in all_members if attendances.get(m.student.id, False))
+            absent_names  = [
+                (f'{m.student.first_name} {m.student.last_name}'.strip() or m.student.username)
+                for m in all_members if not attendances.get(m.student.id, False)
+            ]
+
+            if lang == 'ru':
+                all_present_text  = f"✅ Посещаемость: {present_count}/{total} — Все присутствовали!"
+                partial_pres_text = f"✅ Посещаемость: {present_count}/{total} учеников"
+                absent_header     = "❌ <b>Отсутствовали:</b>"
+                homework_header   = "📝 <b>Домашнее задание:</b>"
+            else:
+                all_present_text  = f"✅ Davomat: {present_count}/{total} — Hamma qatnashdi!"
+                partial_pres_text = f"✅ Davomat: {present_count}/{total} o'quvchi qatnashdi"
+                absent_header     = "❌ <b>Qatnashmaganlar:</b>"
+                homework_header   = "📝 <b>Uyga vazifa:</b>"
+
+            lines = [f"📚 <b>{e(lesson.title)}</b> — {lesson.date.strftime('%d.%m.%Y')}", ""]
+            lines.append(all_present_text if present_count == total else partial_pres_text)
+
+            if absent_names:
+                lines.append("")
+                lines.append(absent_header)
+                for name in absent_names:
+                    lines.append(f"• {e(name)}")
+
+            if lesson.homework.strip():
+                lines.append("")
+                lines.append(homework_header)
+                lines.append(e(lesson.homework))
+
+            bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+            if bot_token:
+                bot = TelegramBot(token=bot_token)
+                async_to_sync(bot.send_message)(
+                    chat_id=group.telegram_chat_id,
+                    text='\n'.join(lines),
+                    parse_mode='HTML',
+                )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f'Group chat send failed: {e}', exc_info=True)
+
+    return len(memberships)
 
 def _notify_announcement(ann, recipients):
     from users.models import Notification
@@ -815,11 +840,12 @@ class GroupAnnouncementView(GroupAccessMixin, APIView):
         ser.is_valid(raise_exception=True)
         ann = ser.save(author=request.user, group=group, academy=group.academy)
         from users.models import ParentStudent
-        students = [m.student for m in group.memberships.select_related('student').all()]
+        from groups.access import current_memberships
+        students = [m.student for m in current_memberships(group).select_related('student')]
         parent_ids = ParentStudent.objects.filter(student__in=students).values_list('parent_id', flat=True)
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        parents = list(User.objects.filter(id__in=parent_ids))
+        parents = list(User.objects.filter(id__in=parent_ids, is_active=True, role='parent', academy_id=group.academy_id))
         recipients = list(set(students + parents) - {request.user})
         _notify_announcement(ann, recipients)
         return Response(ser.data, status=201)
@@ -1097,7 +1123,8 @@ def _notify_exam_finished(exam, changed_student_ids, send_group_summary=True):
 
     results = (
         exam.results
-        .filter(student_id__in=changed_student_ids)
+        .filter(student_id__in=changed_student_ids, student__memberships__group=group,
+                student__is_active=True, student__role='student', student__academy_id=group.academy_id)
         .select_related('student')
         .prefetch_related('student__parents__parent')
     )
@@ -1130,7 +1157,9 @@ def _notify_exam_finished(exam, changed_student_ids, send_group_summary=True):
             except Exception:
                 logging.getLogger(__name__).error('exam result DM to student failed', exc_info=True)
 
-        for ps in student.parents.all():
+        for ps in student.parents.filter(
+            parent__is_active=True, parent__role='parent', parent__academy_id=group.academy_id,
+        ):
             parent = ps.parent
             Notification.objects.create(user=parent, type=Notification.EXAM, title=exam.name, body=p_body[:500])
             if parent.telegram_id:
@@ -1153,7 +1182,10 @@ def _send_exam_group_summary(exam, group):
         return html_module.escape(str(text))
 
     lang    = group.language or 'uz'
-    results = list(exam.results.select_related('student').all())
+    from groups.access import current_memberships
+    results = list(exam.results.filter(
+        student_id__in=current_memberships(group).values('student_id'),
+    ).select_related('student'))
     present = sorted([r for r in results if not r.absent], key=lambda r: r.percentage, reverse=True)
     absent  = [r for r in results if r.absent]
 

@@ -32,6 +32,7 @@ def _student_name(student):
 
 def run_lesson_reminders(now=None):
     from groups.models import Group, GroupDayOff, GroupLessonReminder
+    from groups.access import current_memberships
     from users.models import Notification
     from users.telegram_bot import send_notification
 
@@ -62,10 +63,7 @@ def run_lesson_reminders(now=None):
         if GroupDayOff.objects.filter(group=group, date=target_date).exists():
             continue
 
-        memberships = group.memberships.filter(
-            student__is_active=True,
-            joined_at__date__lte=target_date,
-        ).select_related('student')
+        memberships = current_memberships(group, target_date).select_related('student')
 
         for membership in memberships:
             student = membership.student

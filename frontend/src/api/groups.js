@@ -31,7 +31,8 @@ export const getHomework        = (gid, lid)           => api.get(`/groups/${gid
 export const saveHomework       = (gid, lid, body)     => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { body })
 export const setHomeworkAssignment = (gid, lid, assignment) => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { assignment })
 
-export const endLesson              = (gid, lid)           => api.post(`/groups/${gid}/lessons/${lid}/end/`)
+export const getLessonReportPreview = (gid, lid) => api.get(`/groups/${gid}/lessons/${lid}/end/`)
+export const endLesson = (gid, lid, preview_token) => api.post(`/groups/${gid}/lessons/${lid}/end/`, { preview_token })
 
 export const getDayOff              = (gid, date)          => api.get(`/groups/${gid}/day-off/?date=${date}`)
 export const markDayOff             = (gid, date, reason)  => api.post(`/groups/${gid}/day-off/`, { date, reason })

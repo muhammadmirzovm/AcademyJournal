@@ -465,7 +465,7 @@ def _get_reply_keyboard(role, lang):
 def _get_user(telegram_id):
     from users.models import User
     try:
-        return User.objects.get(telegram_id=telegram_id)
+        return User.objects.get(telegram_id=telegram_id, is_active=True)
     except User.DoesNotExist:
         return None
 
@@ -473,7 +473,7 @@ def _get_user(telegram_id):
 def _student_stats(user):
     from groups.models import GroupMembership, Score, Attendance
     from django.db.models import Sum
-    memberships = list(GroupMembership.objects.filter(student=user).select_related('group'))
+    memberships = list(GroupMembership.objects.filter(student=user, student__is_active=True, group__academy_id=user.academy_id).select_related('group'))
     rows = []
     for m in memberships:
         join_date    = m.joined_at.date()
@@ -498,7 +498,7 @@ def _student_stats(user):
 def _student_rank(user):
     from groups.models import GroupMembership, Score
     from django.db.models import Sum
-    memberships = list(GroupMembership.objects.filter(student=user).select_related('group'))
+    memberships = list(GroupMembership.objects.filter(student=user, student__is_active=True, group__academy_id=user.academy_id).select_related('group'))
     rows = []
     for m in memberships:
         group    = m.group
@@ -518,7 +518,7 @@ def _student_rank(user):
 
 def _student_homework(user):
     from groups.models import GroupMembership
-    memberships = list(GroupMembership.objects.filter(student=user).select_related('group'))
+    memberships = list(GroupMembership.objects.filter(student=user, student__is_active=True, group__academy_id=user.academy_id).select_related('group'))
     items = []
     for m in memberships:
         last_lesson = m.group.lessons.order_by('-date', '-created_at').first()
@@ -536,7 +536,7 @@ def _student_homework(user):
 
 def _parent_stats(user):
     rows = []
-    for ps in user.children.select_related('student').all():
+    for ps in user.children.select_related('student').filter(student__is_active=True, student__role='student', student__academy_id=user.academy_id):
         child = ps.student
         name  = f'{child.first_name} {child.last_name}'.strip() or child.username
         rows.append({'name': name, 'stats': _student_stats(child)})
@@ -546,10 +546,10 @@ def _parent_stats(user):
 def _parent_recent_lessons(user, limit=5):
     from groups.models import GroupMembership, Score, Attendance
     children_data = []
-    for ps in user.children.select_related('student').all():
+    for ps in user.children.select_related('student').filter(student__is_active=True, student__role='student', student__academy_id=user.academy_id):
         child = ps.student
         name  = f'{child.first_name} {child.last_name}'.strip() or child.username
-        memberships = list(GroupMembership.objects.filter(student=child).select_related('group'))
+        memberships = list(GroupMembership.objects.filter(student=child, group__academy_id=user.academy_id).select_related('group'))
         for m in memberships:
             total_count  = m.group.lessons.count()
             recent       = list(m.group.lessons.order_by('-date')[:limit])
@@ -573,17 +573,19 @@ def _parent_recent_lessons(user, limit=5):
 def _teacher_groups(user):
     from groups.models import Group, GroupMembership, Score, Attendance
     from django.db.models import Sum
-    groups = list(Group.objects.filter(teacher=user))
+    groups = list(Group.objects.filter(teacher=user, academy_id=user.academy_id))
     rows = []
     for group in groups:
         lessons      = group.lessons.all()
         lesson_count = lessons.count()
-        student_count = GroupMembership.objects.filter(group=group).count()
+        from groups.access import current_memberships
+        student_ids = current_memberships(group).values('student_id')
+        student_count = student_ids.count()
         if lesson_count == 0 or student_count == 0:
             rows.append({'name': group.name, 'count': student_count, 'score': 0, 'att': 0})
             continue
-        total_score   = Score.objects.filter(lesson__in=lessons).aggregate(t=Sum('value'))['t'] or 0
-        total_present = Attendance.objects.filter(lesson__in=lessons, present=True).count()
+        total_score   = Score.objects.filter(lesson__in=lessons, student_id__in=student_ids).aggregate(t=Sum('value'))['t'] or 0
+        total_present = Attendance.objects.filter(lesson__in=lessons, student_id__in=student_ids, present=True).count()
         max_score     = lesson_count * student_count * 5
         max_att       = lesson_count * student_count
         rows.append({
@@ -598,7 +600,7 @@ def _teacher_groups(user):
 def _teacher_struggling(user):
     from groups.models import Group, GroupMembership, Score, Attendance
     from django.db.models import Sum
-    groups = list(Group.objects.filter(teacher=user))
+    groups = list(Group.objects.filter(teacher=user, academy_id=user.academy_id))
     struggling = []
     for group in groups:
         lessons      = group.lessons.all()
@@ -617,11 +619,12 @@ def _teacher_struggling(user):
     return struggling
 
 
-def _admin_stats():
+def _admin_stats(user):
     from users.models import User
+    members = User.objects.filter(academy_id=user.academy_id, is_active=True) if user.academy_id else User.objects.none()
     return {
-        'teachers': User.objects.filter(role='teacher').count(),
-        'students': User.objects.filter(role='student').count(),
+        'teachers': members.filter(role='teacher').count(),
+        'students': members.filter(role='student').count(),
     }
 
 
@@ -952,7 +955,7 @@ async def academy_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(m['no_data'])
         return
 
-    stats = await sync_to_async(_admin_stats)()
+    stats = await sync_to_async(_admin_stats)(user)
     await update.message.reply_text(m['academy_stats'].format(**stats), parse_mode='Markdown')
 
 
@@ -1058,6 +1061,7 @@ NOTIF_MSG = {
         'absent':                   "⚠️ *{lesson}* darsida qatnashmagansiz ({group})",
         'score_parent':             "📊 *{name}*: *{lesson}* darsida *{score}/5* ball oldi ({group})",
         'absent_parent':            "⚠️ *{name}*: *{lesson}* darsida qatnashmadi ({group})",
+        'lesson_update': "📝 Dars ma’lumotlari yangilandi\n{message}",
         'student_present_scored':   "✅ *{lesson}* darsida qatnashdingiz.\n⭐ Balingiz: *{score}/5* | {group}{coin_line}",
         'student_present_unscored': "✅ *{lesson}* darsida qatnashdingiz. | {group}{coin_line}",
         'student_absent_scored':    "⚠️ *{lesson}* darsiga kelmadingiz.\n⭐ Balingiz: *{score}/5* | {group}{coin_line}",
@@ -1085,6 +1089,7 @@ NOTIF_MSG = {
         'absent':                   "⚠️ Вы отсутствовали на уроке «{lesson}» ({group})",
         'score_parent':             "📊 *{name}*: получил(а) *{score}/5* в уроке «{lesson}» ({group})",
         'absent_parent':            "⚠️ *{name}*: отсутствовал(а) на уроке «{lesson}» ({group})",
+        'lesson_update': "📝 Данные урока обновлены\n{message}",
         'student_present_scored':   "✅ Вы посетили урок *{lesson}*.\n⭐ Ваша оценка: *{score}/5* | {group}{coin_line}",
         'student_present_unscored': "✅ Вы посетили урок *{lesson}*. | {group}{coin_line}",
         'student_absent_scored':    "⚠️ Вы пропустили урок *{lesson}*.\n⭐ Ваша оценка: *{score}/5* | {group}{coin_line}",
@@ -1120,7 +1125,7 @@ async def send_notification(telegram_id: int, msg_key: str, lang: str = 'uz', **
         return
     bot = Bot(token=bot_token)
     try:
-        await bot.send_message(chat_id=telegram_id, text=text, parse_mode='Markdown')
+        await bot.send_message(chat_id=telegram_id, text=text, parse_mode=None if msg_key == 'lesson_update' else 'Markdown')
     except Exception as e:
         logger.error('Telegram notification error: %s', e)
 

@@ -69,15 +69,26 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class TeamSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
     members = serializers.SerializerMethodField()
 
     class Meta:
         model  = Team
         fields = ['id', 'name', 'score', 'final_bet', 'members']
 
+    def get_name(self, obj):
+        if obj.game.status != Game.FINISHED and obj.game.group.is_individual:
+            from groups.access import current_memberships
+            if not obj.members.filter(pk__in=current_memberships(obj.game.group).values("student_id")).exists():
+                return "Student"
+        return obj.name
+
     def get_members(self, obj):
-        return [{'id': m.id, 'first_name': m.first_name, 'username': m.username}
-                for m in obj.members.all()]
+        members = obj.members.all()
+        if obj.game.status != Game.FINISHED:
+            from groups.access import current_memberships
+            members = members.filter(pk__in=current_memberships(obj.game.group).values('student_id'))
+        return [{'id': m.id, 'first_name': m.first_name, 'username': m.username} for m in members]
 
 
 class GameListSerializer(serializers.ModelSerializer):

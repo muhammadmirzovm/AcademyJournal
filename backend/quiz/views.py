@@ -325,10 +325,14 @@ class QuestionBankListView(APIView):
 
 # ── Game helpers ──────────────────────────────────────────────────────────────
 
-def get_group_and_check_teacher(group_pk, user):
+def get_group_and_check_teacher(group_pk, user, lock=False):
     from groups.models import Group
-    group = get_object_or_404(visible_groups(user), pk=group_pk)
+    groups = visible_groups(user)
+    group = get_object_or_404(groups.select_for_update() if lock else groups, pk=group_pk)
     is_teacher = can_manage_group(user, group)
+    if lock and is_teacher:
+        from .roster import prune_unfinished_rosters
+        prune_unfinished_rosters(group.pk)
     return group, is_teacher
 
 
@@ -426,8 +430,9 @@ class GameDetailView(APIView):
 class GameStartView(APIView):
     permission_classes = [IsTeacher]
 
+    @transaction.atomic
     def post(self, request, group_pk, game_pk):
-        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user, lock=True)
         if not is_teacher:
             return Response({'detail': 'Not allowed.'}, status=403)
         game = get_object_or_404(Game, pk=game_pk, group=group)
@@ -464,8 +469,9 @@ class GameStartView(APIView):
 class GamePickView(APIView):
     permission_classes = [IsTeacher]
 
+    @transaction.atomic
     def post(self, request, group_pk, game_pk):
-        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user, lock=True)
         if not is_teacher:
             return Response({'detail': 'Not allowed.'}, status=403)
         game = get_object_or_404(Game, pk=game_pk, group=group)
@@ -474,6 +480,10 @@ class GamePickView(APIView):
 
         question = get_object_or_404(game.questions, pk=integer(request.data.get('question_id'), 'question_id'))
         team     = get_object_or_404(Team, pk=request.data.get('team_id'), game=game)
+
+        from groups.access import current_memberships
+        if not team.members.filter(pk__in=current_memberships(group).values('student_id')).exists():
+            return Response({'detail': 'Team has no current group members.'}, status=400)
 
         if game.rounds.filter(question=question).exists():
             return Response({'detail': 'Already answered.'}, status=400)
@@ -489,7 +499,7 @@ class GameAnswerView(APIView):
 
     @transaction.atomic
     def post(self, request, group_pk, game_pk):
-        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user, lock=True)
         if not is_teacher:
             return Response({'detail': 'Not allowed.'}, status=403)
         game = get_object_or_404(Game.objects.select_for_update(), pk=game_pk, group=group)
@@ -540,8 +550,9 @@ class GameAnswerView(APIView):
 class GameFinishView(APIView):
     permission_classes = [IsTeacher]
 
+    @transaction.atomic
     def post(self, request, group_pk, game_pk):
-        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user, lock=True)
         if not is_teacher:
             return Response({'detail': 'Not allowed.'}, status=403)
         game = get_object_or_404(Game, pk=game_pk, group=group)
@@ -555,8 +566,9 @@ class GameFinishView(APIView):
 class GameResetView(APIView):
     permission_classes = [IsTeacher]
 
+    @transaction.atomic
     def post(self, request, group_pk, game_pk):
-        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user, lock=True)
         if not is_teacher:
             return Response({'detail': 'Not allowed.'}, status=403)
         game = get_object_or_404(Game, pk=game_pk, group=group)
@@ -569,14 +581,17 @@ class GameResetView(APIView):
         game.current_question = None
         game.current_team     = None
         game.save()
+        from .roster import prune_unfinished_rosters
+        prune_unfinished_rosters(group.pk)
         return Response(game_response(game, is_teacher))
 
 
 class GameSwapMembersView(APIView):
     permission_classes = [IsTeacher]
 
+    @transaction.atomic
     def post(self, request, group_pk, game_pk):
-        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user, lock=True)
         if not is_teacher:
             return Response({'detail': 'Not allowed.'}, status=403)
         game = get_object_or_404(Game, pk=game_pk, group=group)
@@ -605,8 +620,9 @@ class GameSwapMembersView(APIView):
 class GameReshuffleView(APIView):
     permission_classes = [IsTeacher]
 
+    @transaction.atomic
     def post(self, request, group_pk, game_pk):
-        group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
+        group, is_teacher = get_group_and_check_teacher(group_pk, request.user, lock=True)
         if not is_teacher:
             return Response({'detail': 'Not allowed.'}, status=403)
         game = get_object_or_404(Game, pk=game_pk, group=group)

@@ -76,6 +76,8 @@ class Lesson(models.Model):
     homework = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
+    report_snapshot = models.JSONField(null=True, blank=True, editable=False)
+    report_revision = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
         ordering = ['-created_at']

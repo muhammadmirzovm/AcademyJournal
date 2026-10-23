@@ -123,7 +123,7 @@ class AcademyMembersView(APIView):
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
-        member = get_object_or_404(User.objects.select_for_update(), pk=member_id, academy=user.academy)
+        member = get_object_or_404(User.objects.select_for_update(no_key=True), pk=member_id, academy=user.academy)
 
         # Teachers can only remove students and parents
         if user.role == 'teacher' and member.role not in ('student', 'parent'):

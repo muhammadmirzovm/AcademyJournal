@@ -74,3 +74,14 @@ def visible_users(user):
         return users.filter(own | Q(role='student', academy_id=user.academy_id,
                                    memberships__group__in=visible_groups(user))).distinct()
     return users.filter(own)
+
+
+def current_memberships(group, on_date=None):
+    """The current eligible roster, used for new activity and deliveries."""
+    memberships = group.memberships.filter(
+        student__is_active=True, student__role='student',
+        student__academy_id=group.academy_id,
+    )
+    if on_date is not None:
+        memberships = memberships.filter(joined_at__date__lte=on_date)
+    return memberships

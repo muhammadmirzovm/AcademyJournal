@@ -75,8 +75,16 @@ def _build_message(parent, week_start, week_end):
     fmt = lambda d: d.strftime('%d.%m')
     text = m['header'].format(from_date=fmt(week_start), to_date=fmt(week_end))
 
+    included = False
     for ps in parent.children.select_related('student').filter(student__is_active=True, student__academy_id=parent.academy_id):
         child = ps.student
+        memberships = list(GroupMembership.objects.filter(
+            student=child, group__academy_id=parent.academy_id,
+            group__status=Group.ACTIVE, joined_at__date__lte=week_end,
+        ).select_related('group'))
+        if not memberships:
+            continue
+        included = True
         name  = f'{child.first_name} {child.last_name}'.strip() or child.username
         text += m['child'].format(name=name)
 
@@ -88,11 +96,6 @@ def _build_message(parent, week_start, week_end):
         total_child_coins = sum(c for c in child_coins if c > 0)
         if total_child_coins:
             text += m['coins'].format(coins=total_child_coins)
-
-        memberships = list(GroupMembership.objects.filter(student=child, group__academy_id=parent.academy_id, group__status=Group.ACTIVE).select_related('group'))
-        if not memberships:
-            text += m['no_data'] + m['sep']
-            continue
 
         for mem in memberships:
             group   = mem.group
@@ -122,7 +125,7 @@ def _build_message(parent, week_start, week_end):
 
             text += m['sep']
 
-    return text
+    return text if included else None
 
 
 def run_weekly_report_for_academy(academy):
@@ -139,6 +142,7 @@ def run_weekly_report_for_academy(academy):
     parents = User.objects.filter(
         academy=academy,
         role='parent',
+        is_active=True,
         telegram_id__isnull=False,
     ).prefetch_related('children__student')
 
@@ -147,6 +151,8 @@ def run_weekly_report_for_academy(academy):
         if not parent.children.exists():
             continue
         text = _build_message(parent, week_start, week_end)
+        if not text:
+            continue
         _send(token, parent.telegram_id, text)
         sent += 1
 

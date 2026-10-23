@@ -983,10 +983,19 @@ class UserNotifyView(APIView):
     def _check_permission(self, request):
         return request.user.role in ('teacher', 'admin')
 
+    def _students(self, request, pk):
+        students = managed_students(request.user) if request.user.pk != pk else User.objects.filter(pk=pk)
+        if request.user.role == 'teacher':
+            students = students.filter(
+                memberships__group__teacher=request.user,
+                memberships__group__academy_id=request.user.academy_id,
+            ).distinct()
+        return students.filter(is_active=True)
+
     def get(self, request, pk):
         if not self._check_permission(request) and request.user.pk != pk:
             return Response(status=403)
-        student = get_object_or_404(managed_students(request.user) if request.user.pk != pk else User.objects.filter(pk=pk), pk=pk, role='student')
+        student = get_object_or_404(self._students(request, pk), pk=pk, role='student')
         parents = []
         for ps in student.parents.select_related('parent').all():
             p = ps.parent
@@ -1007,7 +1016,7 @@ class UserNotifyView(APIView):
     def post(self, request, pk):
         if not self._check_permission(request):
             return Response(status=403)
-        student = get_object_or_404(managed_students(request.user) if request.user.pk != pk else User.objects.filter(pk=pk), pk=pk, role='student')
+        student = get_object_or_404(self._students(request, pk), pk=pk, role='student')
 
         message    = request.data.get('message', '').strip()
         recipients = request.data.get('recipients', [])

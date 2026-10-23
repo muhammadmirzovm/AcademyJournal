@@ -17,6 +17,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 480 }
             style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 201, padding: 16, pointerEvents: 'none' }}
           >
           <motion.div
+            role="dialog" aria-modal="true" aria-label={title}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 320, damping: 28 } }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}

@@ -81,3 +81,45 @@ This command only reports counts of missing academy ownership and invalid group,
 The production ASGI server is Uvicorn. Updated Docker and startup scripts use it in place of Daphne/Twisted, removing the unused IMAP server dependency from this HTTP application. Reinstall `backend/requirements.txt` when updating an existing environment; obsolete Daphne/Twisted installations can be removed if no other application uses that environment.
 
 CI runs both npm and Python dependency vulnerability audits before deployment. These checks depend on the advisory databases available at the time of each run.
+
+## Withdrawing a student from a group
+
+Deleting a membership removes that student's entries from unfinished quiz teams,
+including bulk removal through academy management. Completed quiz teams, earned
+coins, exam results, attendance and grades remain historical records. Resetting a
+finished quiz reconciles its roster against current eligible memberships before
+it becomes active again. Quiz roster writes and withdrawal share the group lock.
+
+Group deliveries, exam summaries, lesson reminders and weekly parent reports use
+current eligible memberships. A parent with another enrolled child continues to
+receive that child's reports; a child without active groups is omitted. Prior
+invitations alone do not authorize a former teacher to send direct messages.
+Lesson attendance and score forms submit only current roster IDs while the server
+continues to retain historical records. Telegram chat membership itself is not
+changed by application withdrawal.
+
+A valid shared join key currently allows rejoining after removal; a permanent
+rejoin restriction remains a separate policy decision. Repeated lesson reports
+are now handled by the confirmation flow below.
+
+## Confirming lesson report changes
+
+First publication ends the lesson and records a snapshot. Later saved changes to
+attendance, grades, homework or game coins enable **Confirm changes**. Staff review
+old/new values and the intended students/parents before publishing. Personal
+corrections go only to the affected family. Homework changes go to current students;
+only shared changes are sent to the group chat. Students and parents cannot access
+the staff preview endpoint.
+
+`GET /groups/<group>/lessons/<lesson>/end/` returns a preview token. Confirmation
+uses the existing POST endpoint with `preview_token`. A changed preview returns
+409 and requires another review. Repeated unchanged confirmations are no-ops;
+group locks serialize report-content writes and concurrent confirmations. The
+confirmed baseline is committed before external delivery to prevent duplicate
+HTTP retries. Telegram transport errors are logged; this change does not introduce
+a background delivery retry service.
+
+Migration 0026 baselines already-ended lessons from their current database values
+without sending messages. Subsequent edits are tracked; historical differences
+from old Telegram messages cannot be reconstructed. No migration step sends
+notifications.
