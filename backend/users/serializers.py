@@ -40,6 +40,18 @@ class UserSerializer(serializers.ModelSerializer):
             'date_joined',
         )
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        viewer = request.user if request else None
+        trusted = viewer and viewer.is_authenticated and (viewer.pk == instance.pk or (
+            viewer.academy_id and viewer.academy_id == instance.academy_id and viewer.role in ('admin', 'teacher', 'parent')
+        ))
+        if not trusted:
+            for field in ('email', 'telegram_id', 'has_password', 'last_seen'):
+                data.pop(field, None)
+        return data
+
     def get_has_password(self, obj):
         return obj.has_usable_password()
 

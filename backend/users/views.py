@@ -1,3 +1,6 @@
+from groups.access import visible_users, managed_students, visible_groups
+from django.db import transaction
+from backend.validation import page_params, integer
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -35,6 +38,7 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
+        request.user = user
         return Response({
             'user': UserSerializer(user, context={'request': request}).data,
             'tokens': {
@@ -58,7 +62,9 @@ class MeView(APIView):
 
 
 class ProfileView(generics.RetrieveAPIView):
-    queryset = User.objects.all()
+    def get_queryset(self):
+        return visible_users(self.request.user)
+
     serializer_class = UserSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -106,7 +112,7 @@ class UserStatsView(APIView):
 
     def get(self, request, pk):
         try:
-            user = User.objects.get(pk=pk)
+            user = visible_users(request.user).get(pk=pk)
         except User.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=404)
 
@@ -119,8 +125,8 @@ class UserStatsView(APIView):
                 return Response({'role': 'admin', 'total_students': 0, 'total_teachers': 0, 'total_groups': 0, 'total_lessons': 0})
             total_students = User.objects.filter(academy=academy, role='student', is_active=True).count()
             total_teachers = User.objects.filter(academy=academy, role='teacher', is_active=True).count()
-            total_groups   = Group.objects.filter(teacher__academy=academy).count()
-            total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
+            total_groups   = Group.objects.filter(academy=academy).count()
+            total_lessons  = Lesson.objects.filter(group__academy=academy).count()
             return Response({
                 'role': 'admin',
                 'total_students': total_students,
@@ -181,7 +187,7 @@ class UserStatsView(APIView):
 
         # ── Student stats ─────────────────────────────────────────────────────
         scores = (
-            Score.objects.filter(student=user)
+            Score.objects.filter(student=user, lesson__group__academy_id=user.academy_id)
             .select_related('lesson')
             .order_by('lesson__date')
         )
@@ -189,11 +195,11 @@ class UserStatsView(APIView):
             {'lesson': s.lesson.title, 'date': str(s.lesson.date), 'score': s.value}
             for s in scores
         ]
-        total   = Attendance.objects.filter(student=user).count()
-        present = Attendance.objects.filter(student=user, present=True).count()
+        total   = Attendance.objects.filter(lesson__group__academy_id=user.academy_id, student=user).count()
+        present = Attendance.objects.filter(lesson__group__academy_id=user.academy_id, student=user, present=True).count()
 
         from coins.models import CoinTransaction as GlobalCoinTransaction
-        coin_txns = GlobalCoinTransaction.objects.filter(student=user).order_by('created_at')
+        coin_txns = GlobalCoinTransaction.objects.filter(student=user, academy_id=user.academy_id).order_by('created_at')
         # Running balance over time, aggregated per day (earning from games
         # raises it, redeeming a reward lowers it — this is the real balance,
         # not a lifetime-earned counter).
@@ -210,12 +216,12 @@ class UserStatsView(APIView):
                 daily[day] = {'date': day, 'amount': txn.amount, 'total': balance}
         coin_trend = list(daily.values())
 
-        student_groups = Group.objects.filter(memberships__student=user).distinct()
+        student_groups = Group.objects.filter(memberships__student=user, academy_id=user.academy_id).distinct()
         schedule = _build_schedule(student_groups)
 
         from groups.models import ExamResult
         exam_results = (
-            ExamResult.objects.filter(student=user)
+            ExamResult.objects.filter(student=user, exam__group__academy_id=user.academy_id)
             .select_related('exam', 'exam__group')
             .order_by('exam__created_at')
         )
@@ -233,7 +239,7 @@ class UserStatsView(APIView):
 
         # ── Attendance calendar + streaks ─────────────────────────────────────
         att_records = list(
-            Attendance.objects.filter(student=user)
+            Attendance.objects.filter(lesson__group__academy_id=user.academy_id, student=user)
             .select_related('lesson')
             .order_by('lesson__date', 'lesson__id')
         )
@@ -274,16 +280,14 @@ class UserGroupsView(APIView):
 
     def get(self, request, pk):
         viewer = request.user
-        if viewer.pk != pk and viewer.role not in ('admin', 'teacher'):
-            return Response({'detail': 'No permission.'}, status=403)
         try:
-            target = User.objects.get(pk=pk)
+            target = visible_users(request.user).get(pk=pk)
         except User.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=404)
 
         from groups.models import Group, GroupMembership
         if target.role == 'student':
-            memberships = GroupMembership.objects.filter(student=target).select_related('group', 'group__teacher')
+            memberships = GroupMembership.objects.filter(student=target, group__in=visible_groups(viewer)).select_related('group', 'group__teacher')
             groups = []
             for m in memberships:
                 g = m.group
@@ -295,7 +299,7 @@ class UserGroupsView(APIView):
                     'member_count': g.memberships.filter(student__is_active=True).count(),
                 })
         elif target.role == 'teacher':
-            gs = Group.objects.filter(teacher=target)
+            gs = visible_groups(viewer).filter(teacher=target)
             groups = [{'id': g.id, 'name': g.name, 'member_count': g.memberships.filter(student__is_active=True).count()} for g in gs]
         else:
             groups = []
@@ -316,12 +320,12 @@ class AdminStatsView(APIView):
 
         total_students = User.objects.filter(academy=academy, role='student', is_active=True).count()
         total_teachers = User.objects.filter(academy=academy, role='teacher', is_active=True).count()
-        total_groups   = Group.objects.filter(teacher__academy=academy).count()
-        total_lessons  = Lesson.objects.filter(group__teacher__academy=academy).count()
+        total_groups   = Group.objects.filter(academy=academy).count()
+        total_lessons  = Lesson.objects.filter(group__academy=academy).count()
 
         # Top groups by avg score (converted to 0-100%) — active, non-individual
         # groups only; a 1-student individual group isn't a "group" to rank.
-        groups = Group.objects.filter(teacher__academy=academy, status=Group.ACTIVE, is_individual=False)
+        groups = Group.objects.filter(academy=academy, status=Group.ACTIVE, is_individual=False)
         group_data = []
         for g in groups:
             avg = Score.objects.filter(lesson__group=g).aggregate(avg=Avg('value'))['avg']
@@ -336,7 +340,7 @@ class AdminStatsView(APIView):
 
         # Top students by comprehension % — active groups only
         memberships = GroupMembership.objects.filter(
-            group__teacher__academy=academy, group__status=Group.ACTIVE, student__is_active=True
+            group__academy=academy, group__status=Group.ACTIVE, student__is_active=True
         ).select_related('student', 'group')
 
         student_map = {}
@@ -408,7 +412,7 @@ class AdminStatsView(APIView):
         ]
 
         absence_qs = (
-            Attendance.objects.filter(lesson__group__teacher__academy=academy, present=False, lesson__group__status=Group.ACTIVE)
+            Attendance.objects.filter(lesson__group__academy=academy, present=False, lesson__group__status=Group.ACTIVE)
             .annotate(m=TruncMonth('lesson__date'))
             .values('m').annotate(c=Count('id')).order_by('m')
         )
@@ -436,10 +440,9 @@ class UserChildrenView(APIView):
 
     def get(self, request, pk):
         viewer = request.user
-        if viewer.pk != pk and viewer.role not in ('admin', 'teacher'):
-            return Response({'detail': 'No permission.'}, status=403)
         from .models import ParentStudent
-        links = ParentStudent.objects.filter(parent_id=pk).select_related('student')
+        get_object_or_404(visible_users(viewer), pk=pk)
+        links = ParentStudent.objects.filter(parent_id=pk, parent__in=visible_users(viewer), student__academy_id=viewer.academy_id, student__in=visible_users(viewer)).select_related('student')
         children = []
         for link in links:
             s = link.student
@@ -463,7 +466,7 @@ class ParentChildrenView(APIView):
         if request.user.role != 'parent':
             return Response({'detail': 'Only parents can access this.'}, status=403)
         from .models import ParentStudent
-        links = ParentStudent.objects.filter(parent=request.user).select_related('student')
+        links = ParentStudent.objects.filter(parent=request.user, student__academy_id=request.user.academy_id).select_related('student')
         children = []
         for link in links:
             s = link.student
@@ -493,7 +496,7 @@ class ParentChildrenView(APIView):
         from django.contrib.auth import get_user_model
         U = get_user_model()
         parent  = get_object_or_404(U, pk=parent_id,  academy=user.academy, role='parent')
-        student = get_object_or_404(U, pk=student_id, academy=user.academy, role='student')
+        student = get_object_or_404(managed_students(user), pk=integer(student_id, 'student'))
         _, created = ParentStudent.objects.get_or_create(parent=parent, student=student)
         return Response({'detail': 'Linked.' if created else 'Already linked.'}, status=201 if created else 200)
 
@@ -510,6 +513,7 @@ class ParentChildrenView(APIView):
             return Response({'detail': 'parent and student are required.'}, status=400)
 
         from .models import ParentStudent
+        get_object_or_404(managed_students(user), pk=integer(student_id, 'student'))
         deleted, _ = ParentStudent.objects.filter(
             parent_id=parent_id, student_id=student_id,
             parent__academy=user.academy,
@@ -579,8 +583,7 @@ class AdminStudentsView(APIView):
         # 'all' → no filter
 
         # Pagination
-        page_size = int(request.query_params.get('page_size', 20))
-        page      = int(request.query_params.get('page', 1))
+        page, page_size = page_params(request, 20, 100)
         total     = qs.count()
         students  = qs[(page - 1) * page_size : page * page_size]
 
@@ -672,7 +675,8 @@ class StudentActiveView(APIView):
             from groups.models import GroupMembership
             if not GroupMembership.objects.filter(student=student, group__teacher=actor).exists():
                 return Response({'detail': 'You can only manage your own students.'}, status=403)
-        student.is_active = bool(request.data.get('is_active', True))
+        from rest_framework import serializers
+        student.is_active = serializers.BooleanField().run_validation(request.data.get('is_active', True))
         student.save(update_fields=['is_active'])
         return Response({'id': student.id, 'is_active': student.is_active})
 
@@ -691,7 +695,8 @@ class TeacherActiveView(APIView):
             teacher = User.objects.get(pk=pk, role='teacher', academy=actor.academy)
         except User.DoesNotExist:
             return Response({'detail': 'Teacher not found.'}, status=404)
-        teacher.is_active = bool(request.data.get('is_active', True))
+        from rest_framework import serializers
+        teacher.is_active = serializers.BooleanField().run_validation(request.data.get('is_active', True))
         teacher.save(update_fields=['is_active'])
         return Response({'id': teacher.id, 'is_active': teacher.is_active})
 
@@ -769,7 +774,7 @@ class PasswordResetRequestView(APIView):
                 status=400,
             )
 
-        code = f'{random.randint(0, 999999):06d}'
+        code = f'{secrets.randbelow(1000000):06d}'
         expires_at = timezone.now() + timedelta(minutes=5)
 
         # Invalidate any previous unused OTPs
@@ -790,9 +795,11 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
+    throttle_classes = [PasswordResetRateThrottle]
     """Step 2 — user submits username + OTP + new password."""
     permission_classes = (permissions.AllowAny,)
 
+    @transaction.atomic
     def post(self, request):
         from .models import TelegramOTP
 
@@ -811,7 +818,7 @@ class PasswordResetConfirmView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'Invalid code or username.'}, status=400)
 
-        otp = TelegramOTP.objects.filter(user=user, code=code, used=False).order_by('-expires_at').first()
+        otp = TelegramOTP.objects.select_for_update().filter(user=user, code=code, used=False).order_by('-expires_at').first()
 
         if not otp or not otp.is_valid():
             return Response({'detail': 'Invalid or expired code.'}, status=400)
@@ -979,7 +986,7 @@ class UserNotifyView(APIView):
     def get(self, request, pk):
         if not self._check_permission(request) and request.user.pk != pk:
             return Response(status=403)
-        student = get_object_or_404(User, pk=pk, role='student')
+        student = get_object_or_404(managed_students(request.user) if request.user.pk != pk else User.objects.filter(pk=pk), pk=pk, role='student')
         parents = []
         for ps in student.parents.select_related('parent').all():
             p = ps.parent
@@ -1000,7 +1007,7 @@ class UserNotifyView(APIView):
     def post(self, request, pk):
         if not self._check_permission(request):
             return Response(status=403)
-        student = get_object_or_404(User, pk=pk, role='student')
+        student = get_object_or_404(managed_students(request.user) if request.user.pk != pk else User.objects.filter(pk=pk), pk=pk, role='student')
 
         message    = request.data.get('message', '').strip()
         recipients = request.data.get('recipients', [])
@@ -1009,8 +1016,12 @@ class UserNotifyView(APIView):
             return Response({'detail': 'Message is required.'}, status=400)
         if len(message) > 300:
             return Response({'detail': 'Message too long (max 300 chars).'}, status=400)
-        if not recipients:
-            return Response({'detail': 'Select at least one recipient.'}, status=400)
+        if not isinstance(recipients, list) or not recipients or any(r != 'student' and type(r) is not int for r in recipients):
+            return Response({'detail': 'Select valid recipients.'}, status=400)
+        parent_ids = {r for r in recipients if type(r) is int}
+        allowed = set(student.parents.filter(parent__academy_id=student.academy_id).values_list('parent_id', flat=True))
+        if not parent_ids.issubset(allowed):
+            return Response({'detail': 'Recipients must be linked parents of this student.'}, status=400)
 
         from .models import Notification
         from users.telegram_bot import send_notification
@@ -1039,7 +1050,7 @@ class UserNotifyView(APIView):
         parent_ids = [r for r in recipients if isinstance(r, int)]
         for parent_id in parent_ids:
             try:
-                parent = User.objects.get(pk=parent_id, role='parent')
+                parent = User.objects.get(pk=parent_id, role='parent', academy_id=student.academy_id, children__student=student)
             except User.DoesNotExist:
                 continue
             Notification.objects.create(

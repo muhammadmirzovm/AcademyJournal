@@ -9,6 +9,7 @@ primary_region = 'iad'
 [env]
   PORT = "8000"
   DEBUG = "false"
+  NUM_PROXIES = "1"
 
 [http_service]
   internal_port = 8000

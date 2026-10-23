@@ -1,3 +1,7 @@
+from django.db import transaction
+from rest_framework.exceptions import ValidationError
+from groups.access import visible_groups, can_manage_group, managed_students, visible_users
+from backend.validation import page_params, integer
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,7 +18,10 @@ class AcademyCreateView(generics.CreateAPIView):
     serializer_class   = AcademySerializer
     permission_classes = (permissions.IsAuthenticated,)
 
+    @transaction.atomic
     def perform_create(self, serializer):
+        if self.request.user.academy_id:
+            raise ValidationError({'detail': 'Leave your current academy before creating another.'})
         name = serializer.validated_data['name']
         slug = serializer.validated_data.get('slug') or slugify(name)
         academy = serializer.save(created_by=self.request.user, slug=slug)
@@ -52,7 +59,7 @@ class AcademyMembersView(APIView):
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
-        qs = User.objects.filter(academy=user.academy).exclude(pk=user.pk).select_related('academy')
+        qs = visible_users(user).filter(academy=user.academy).exclude(pk=user.pk).select_related('academy')
 
         search = request.query_params.get('search', '').strip()
         if search:
@@ -85,8 +92,7 @@ class AcademyMembersView(APIView):
                      'last_name': m.last_name, 'role': m.role} for m in qs]
             return Response(data)
 
-        page      = max(1, int(request.query_params.get('page', 1)))
-        page_size = max(1, min(100, int(request.query_params.get('page_size', 20))))
+        page, page_size = page_params(request, 20, 100)
         total     = qs.count()
         pages     = max(1, (total + page_size - 1) // page_size)
         page      = min(page, pages)
@@ -108,6 +114,7 @@ class AcademyMembersView(APIView):
 
         return Response({'results': data, 'total': total, 'pages': pages, 'page': page})
 
+    @transaction.atomic
     def delete(self, request, member_id):
         user = request.user
         if user.role not in ('admin', 'teacher') or not user.academy:
@@ -116,7 +123,7 @@ class AcademyMembersView(APIView):
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
-        member = get_object_or_404(User, pk=member_id, academy=user.academy)
+        member = get_object_or_404(User.objects.select_for_update(), pk=member_id, academy=user.academy)
 
         # Teachers can only remove students and parents
         if user.role == 'teacher' and member.role not in ('student', 'parent'):
@@ -128,6 +135,15 @@ class AcademyMembersView(APIView):
         # those students. Never another teacher's students.
         if user.role == 'teacher':
             from groups.models import GroupMembership
+            # Account removal revokes academy-wide access, not just one
+            # enrollment. Shared students/parents require an academy admin.
+            from users.models import ParentStudent
+            students = User.objects.filter(pk=member.pk) if member.role == 'student' else User.objects.filter(parents__parent=member)
+            owned_ids = managed_students(user).values_list('pk', flat=True)
+            if students.exclude(pk__in=owned_ids).exists() or GroupMembership.objects.filter(
+                student__in=students, group__academy=user.academy,
+            ).exclude(group__teacher=user).exists():
+                return Response({'detail': 'An academy admin must remove shared students or parents.'}, status=403)
             if member.role == 'student':
                 is_own = (
                     GroupMembership.objects.filter(student=member, group__teacher=user).exists()
@@ -149,6 +165,16 @@ class AcademyMembersView(APIView):
         if member.role == 'admin' and user.role != 'admin':
             return Response({'detail': 'Only admins can remove other admins.'}, status=403)
 
+        if member.pk == user.pk:
+            return Response({'detail': 'You cannot remove yourself.'}, status=400)
+        from groups.models import Group, GroupMembership
+        from users.models import ParentStudent
+        if Group.objects.filter(teacher=member, academy=user.academy).exists():
+            return Response({'detail': "Reassign this member's groups before removal."}, status=409)
+        GroupMembership.objects.filter(student=member, group__academy=user.academy).delete()
+        ParentStudent.objects.filter(Q(parent=member) | Q(student=member)).delete()
+        # Revoke unused enrollment links so removal cannot be undone by an old invite.
+        InviteToken.objects.filter(student=member).delete()
         member.academy = None
         member.save(update_fields=['academy'])
         return Response(status=204)
@@ -169,8 +195,8 @@ class InviteCreateView(APIView):
         role       = request.data.get('role', 'student')
         group_id   = request.data.get('group')
         student_id = request.data.get('student')
-        max_uses   = int(request.data.get('max_uses', 1))
-        days_valid = int(request.data.get('days_valid', 7))
+        max_uses   = integer(request.data.get('max_uses', 1), 'max_uses', maximum=10000)
+        days_valid = integer(request.data.get('days_valid', 7), 'days_valid', maximum=365)
         note       = request.data.get('note', '').strip()
 
         # Role hierarchy enforcement
@@ -184,13 +210,17 @@ class InviteCreateView(APIView):
         group = None
         if group_id:
             from groups.models import Group
-            group = get_object_or_404(Group, pk=group_id)
+            group = get_object_or_404(visible_groups(user), pk=integer(group_id, 'group'))
+            if not can_manage_group(user, group):
+                return Response({'detail': 'You can only invite to groups you manage.'}, status=403)
+            if group.status != Group.ACTIVE:
+                raise ValidationError({'group': 'Group must be active.'})
 
         student = None
         if student_id and role == 'parent':
             from django.contrib.auth import get_user_model
             User_model = get_user_model()
-            student = get_object_or_404(User_model, pk=student_id, academy=academy, role='student')
+            student = get_object_or_404(managed_students(user), pk=integer(student_id, 'student'))
 
         invite = InviteToken.objects.create(
             academy    = academy,
@@ -214,6 +244,8 @@ class InviteListView(generics.ListAPIView):
         if user.role not in ('admin', 'teacher') or not user.academy:
             return InviteToken.objects.none()
         qs = InviteToken.objects.filter(academy=user.academy).order_by('-created_at')
+        if user.role == 'teacher':
+            qs = qs.filter(created_by=user)
 
         role = self.request.query_params.get('role')
         if role:
@@ -231,8 +263,7 @@ class InviteListView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         qs        = self.get_queryset()
-        page      = max(1, int(request.query_params.get('page', 1)))
-        page_size = max(1, min(100, int(request.query_params.get('page_size', 10))))
+        page, page_size = page_params(request, 10, 100)
         total     = qs.count()
         pages     = max(1, (total + page_size - 1) // page_size)
         page      = min(page, pages)
@@ -281,12 +312,27 @@ class InviteAcceptView(APIView):
     """Called after a user registers/logs in via an invite link."""
     permission_classes = (permissions.IsAuthenticated,)
 
+    @transaction.atomic
     def post(self, request, token):
-        invite = get_object_or_404(InviteToken, token=token)
+        invite = get_object_or_404(InviteToken.objects.select_for_update(), token=token)
         if not invite.is_valid:
             return Response({'detail': 'This invite link has expired or reached its use limit.'}, status=400)
 
-        user = request.user
+        from django.contrib.auth import get_user_model
+        user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        if invite.created_by.academy_id != invite.academy_id:
+            raise ValidationError({'detail': 'The inviter no longer belongs to this academy.'})
+        if invite.group:
+            from groups.models import Group
+            group = Group.objects.select_for_update().get(pk=invite.group_id)
+            if group.academy_id != invite.academy_id or group.status != Group.ACTIVE:
+                raise ValidationError({'detail': 'This group is no longer available for enrollment.'})
+            if not can_manage_group(invite.created_by, group):
+                raise ValidationError({'detail': 'The inviter no longer manages this group.'})
+            if group.is_individual and group.memberships.exclude(student=user).exists():
+                raise ValidationError({'detail': 'Individual group already has a student.'})
+        if invite.student and (invite.student.academy_id != invite.academy_id or invite.student.role != 'student'):
+            raise ValidationError({'detail': 'Student no longer belongs to this academy.'})
         if invite.used_by.filter(pk=user.pk).exists():
             return Response({'detail': 'You have already used this invite.'}, status=400)
 
@@ -334,6 +380,8 @@ class TelegramGroupListCreateView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request):
+        if request.user.role not in ('admin', 'teacher'):
+            return Response({'detail': 'Staff only.'}, status=403)
         academy = request.user.academy
         if not academy:
             return Response([], status=200)

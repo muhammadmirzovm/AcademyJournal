@@ -5,6 +5,18 @@ from django.conf.urls.static import static
 from django.http import FileResponse, Http404
 import os
 
+
+def health(request):
+    from django.db import connection, DatabaseError
+    from django.http import JsonResponse
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+            cursor.fetchone()
+    except DatabaseError:
+        return JsonResponse({'status': 'unavailable'}, status=503)
+    return JsonResponse({'status': 'ok'})
+
 def serve_spa(request, path=''):
     whitenoise_root = getattr(settings, 'WHITENOISE_ROOT', None)
     if whitenoise_root:
@@ -14,6 +26,7 @@ def serve_spa(request, path=''):
     raise Http404('Frontend is served separately.')
 
 urlpatterns = [
+    path('api/health/', health, name='health'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
     path('api/', include('groups.urls')),

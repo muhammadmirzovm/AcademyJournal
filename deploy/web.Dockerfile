@@ -11,9 +11,7 @@ COPY frontend/ ./
 # Production frontend calls the backend on its dedicated subdomain.
 # Overridable at build time: --build-arg VITE_API_URL=...
 ARG VITE_API_URL=https://api.journal.crmneo.com/api
-RUN sed -i "s#^VITE_API_URL=.*#VITE_API_URL=${VITE_API_URL}#" .env.production \
-    || echo "VITE_API_URL=${VITE_API_URL}" >> .env.production
-RUN npm run build
+RUN VITE_API_URL="${VITE_API_URL}" npm run build
 
 # ---- stage 2: serve ----
 FROM nginx:1.27-alpine

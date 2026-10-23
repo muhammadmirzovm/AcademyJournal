@@ -8,6 +8,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy main after all checks pass (causes brief maintenance downtime)'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
   frontend:
@@ -24,8 +33,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=low
       - run: npm run lint -- --max-warnings=0
       - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
       - run: npm run build
 
   test:
@@ -57,22 +69,43 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+        working-directory: backend
+
+      - name: Audit backend dependencies
+        run: |
+          python -m pip install pip-audit==2.10.1
+          python -m pip_audit -r requirements.txt
         working-directory: backend
 
       - name: Run tests
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
           SECRET_KEY: ci-secret-key
           DEBUG: 'true'
-        run: pytest users/tests.py groups/tests.py rewards/tests.py coins/tests.py games/tests.py purchases/tests.py quiz/tests.py academies/tests.py -v
+        run: pytest -v
         working-directory: backend
+
+  containers:
+    name: Build deployment images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [deploy/backend.Dockerfile, deploy/web.Dockerfile]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --file '${{ matrix.dockerfile }}' .
 
   deploy:
     name: Deploy to server
     runs-on: ubuntu-latest
-    needs: [test, frontend]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [test, frontend, containers]
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main'
+    concurrency:
+      group: academyjournal-production
+      cancel-in-progress: false
 
     steps:
       - name: Deploy over SSH
@@ -85,5 +118,10 @@ jobs:
           script_stop: true
           command_timeout: 20m
           script: |
+            set -eu
             cd /home/academy/AcademyJournal
-            bash deploy/deploy.sh
+            git fetch --prune origin
+            runner="$(mktemp deploy/.deploy-runner.XXXXXX)"
+            trap 'rm -f "$runner"' EXIT
+            git show '${{ github.sha }}:deploy/deploy.sh' > "$runner"
+            bash "$runner" '${{ github.sha }}'

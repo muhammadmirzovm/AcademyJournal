@@ -1,3 +1,4 @@
+from backend.validation import page_params, integer
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import F, Sum
@@ -29,11 +30,11 @@ class RewardPurchaseView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, reward_id):
-        if request.user.role != 'student':
+        if request.user.role != 'student' or not request.user.academy_id:
             return Response({'detail': "Faqat o'quvchi xarid qila oladi."}, status=403)
 
         try:
-            quantity = int(request.data.get('quantity', 1))
+            quantity = integer(request.data.get('quantity', 1), 'quantity', maximum=32767)
         except (TypeError, ValueError):
             return Response({'detail': "Miqdor noto'g'ri."}, status=400)
         if quantity < 1:
@@ -53,7 +54,7 @@ class RewardPurchaseView(APIView):
 
             if reward.category == Reward.Category.COUPON:
                 already = Purchase.objects.filter(
-                    student=request.user, reward__category=Reward.Category.COUPON,
+                    student=request.user, reward__academy=request.user.academy, reward__category=Reward.Category.COUPON,
                 ).exclude(status=Purchase.Status.EXPIRED).aggregate(total=Sum('quantity'))['total'] or 0
                 if already + quantity > COUPON_MAX_PER_STUDENT:
                     return Response({
@@ -61,6 +62,8 @@ class RewardPurchaseView(APIView):
                     }, status=400)
 
             total = reward.price * quantity
+            if total > 2147483647:
+                return Response({'detail': 'Order total exceeds the supported limit.'}, status=400)
             balance = CoinTransaction.balance_for(request.user)
             if balance < total:
                 return Response({'detail': f"Yana {total - balance} tangacha kerak."}, status=400)
@@ -87,7 +90,7 @@ class MyPurchasesView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request):
-        purchases = Purchase.objects.filter(student=request.user).select_related('reward')
+        purchases = Purchase.objects.filter(student=request.user, reward__academy=request.user.academy).select_related('reward')
         return Response(PurchaseSerializer(purchases, many=True, context={'request': request}).data)
 
 
@@ -99,12 +102,11 @@ class AdminPurchaseListView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': "Faqat admin ko'ra oladi."}, status=403)
 
-        qs = Purchase.objects.filter(student__academy=request.user.academy).select_related('student', 'reward').order_by('-created_at')
-        page      = max(1, int(request.query_params.get('page', 1)))
-        page_size = max(1, min(50, int(request.query_params.get('page_size', 20))))
+        qs = Purchase.objects.filter(reward__academy=request.user.academy).select_related('student', 'reward').order_by('-created_at')
+        page, page_size = page_params(request, 20, 50)
         total     = qs.count()
         pages     = max(1, (total + page_size - 1) // page_size)
         page      = min(page, pages)
@@ -127,11 +129,11 @@ class PurchaseLookupView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, code):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': "Faqat admin tekshira oladi."}, status=403)
 
         code = code.strip().upper()
-        purchase = Purchase.objects.filter(code=code, student__academy=request.user.academy).select_related('student', 'reward').first()
+        purchase = Purchase.objects.filter(code=code, reward__academy=request.user.academy).select_related('student', 'reward').first()
         if not purchase:
             return Response({'detail': "Bunday kod topilmadi."}, status=404)
 
@@ -144,13 +146,13 @@ class PurchaseIssueView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, pk):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': "Faqat admin belgilay oladi."}, status=403)
 
         with transaction.atomic():
             purchase = get_object_or_404(
                 Purchase.objects.select_for_update().select_related('student', 'reward'),
-                pk=pk, student__academy=request.user.academy,
+                pk=pk, reward__academy=request.user.academy,
             )
 
             if purchase.status == Purchase.Status.ISSUED:
@@ -175,13 +177,13 @@ class PurchaseUndoIssueView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, pk):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': "Faqat admin bekor qila oladi."}, status=403)
 
         with transaction.atomic():
             purchase = get_object_or_404(
                 Purchase.objects.select_for_update().select_related('student', 'reward'),
-                pk=pk, student__academy=request.user.academy,
+                pk=pk, reward__academy=request.user.academy,
             )
 
             if purchase.status != Purchase.Status.ISSUED:

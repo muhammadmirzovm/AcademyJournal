@@ -14,7 +14,7 @@ class RewardListCreateView(APIView):
         return Response(RewardSerializer(rewards, many=True, context={'request': request}).data)
 
     def post(self, request):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': 'Only an admin can add rewards.'}, status=403)
         serializer = RewardSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -26,7 +26,7 @@ class RewardDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def patch(self, request, pk):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': 'Only an admin can edit rewards.'}, status=403)
         reward = get_object_or_404(Reward, pk=pk, academy=request.user.academy)
         serializer = RewardSerializer(reward, data=request.data, partial=True, context={'request': request})
@@ -35,7 +35,7 @@ class RewardDetailView(APIView):
         return Response(serializer.data)
 
     def delete(self, request, pk):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': 'Only an admin can delete rewards.'}, status=403)
         reward = get_object_or_404(Reward, pk=pk, academy=request.user.academy)
         reward.delete()

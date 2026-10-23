@@ -75,7 +75,7 @@ def _build_message(parent, week_start, week_end):
     fmt = lambda d: d.strftime('%d.%m')
     text = m['header'].format(from_date=fmt(week_start), to_date=fmt(week_end))
 
-    for ps in parent.children.select_related('student').filter(student__is_active=True):
+    for ps in parent.children.select_related('student').filter(student__is_active=True, student__academy_id=parent.academy_id):
         child = ps.student
         name  = f'{child.first_name} {child.last_name}'.strip() or child.username
         text += m['child'].format(name=name)
@@ -83,20 +83,20 @@ def _build_message(parent, week_start, week_end):
         # Coins are a global (app-wide) balance now, not per-group, so this is
         # reported once per child rather than inside each group's block below.
         child_coins = CoinTransaction.objects.filter(
-            student=child, created_at__date__gte=week_start, created_at__date__lte=week_end,
+            student=child, academy_id=parent.academy_id, created_at__date__gte=week_start, created_at__date__lte=week_end,
         ).values_list('amount', flat=True)
         total_child_coins = sum(c for c in child_coins if c > 0)
         if total_child_coins:
             text += m['coins'].format(coins=total_child_coins)
 
-        memberships = list(GroupMembership.objects.filter(student=child, group__status=Group.ACTIVE).select_related('group'))
+        memberships = list(GroupMembership.objects.filter(student=child, group__academy_id=parent.academy_id, group__status=Group.ACTIVE).select_related('group'))
         if not memberships:
             text += m['no_data'] + m['sep']
             continue
 
         for mem in memberships:
             group   = mem.group
-            lessons = list(group.lessons.filter(date__gte=week_start, date__lte=week_end))
+            lessons = list(group.lessons.filter(date__gte=max(week_start, mem.joined_at.date()), date__lte=week_end))
 
             text += m['group'].format(group=group.name)
 
@@ -119,15 +119,6 @@ def _build_message(parent, week_start, week_end):
                 text += m['score'].format(score=avg)
             else:
                 text += m['no_score']
-
-            coins = CoinTransaction.objects.filter(
-                group=group, student=child,
-                created_at__date__gte=week_start,
-                created_at__date__lte=week_end,
-            ).values_list('amount', flat=True)
-            total_coins = sum(c for c in coins if c > 0)
-            if total_coins:
-                text += m['coins'].format(coins=total_coins)
 
             text += m['sep']
 

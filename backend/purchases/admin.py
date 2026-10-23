@@ -19,7 +19,7 @@ class PurchaseAdmin(admin.ModelAdmin):
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
-        return qs.filter(student__academy=request.user.academy)
+        return qs.filter(reward__academy=request.user.academy)
 
     @admin.action(description='Berildi deb belgilash')
     def mark_issued(self, request, queryset):
@@ -34,7 +34,7 @@ class PurchaseAdmin(admin.ModelAdmin):
         with transaction.atomic():
             for purchase in queryset.select_for_update().filter(status=Purchase.Status.ACTIVE):
                 CoinTransaction.objects.create(
-                    student=purchase.student, amount=purchase.total_price, type=CoinTransaction.Type.REFUND,
+                    student=purchase.student, academy=purchase.reward.academy, amount=purchase.total_price, type=CoinTransaction.Type.REFUND,
                     reason=f"Muddati o'tdi: {purchase.reward.name} × {purchase.quantity}", created_by=request.user,
                 )
                 Reward.objects.filter(pk=purchase.reward_id).update(stock=F('stock') + purchase.quantity)

@@ -3,7 +3,7 @@ from .models import Topic, Question, Game, Team, GameRound
 
 
 class TopicSerializer(serializers.ModelSerializer):
-    question_count  = serializers.IntegerField(source='questions.count', read_only=True)
+    question_count  = serializers.SerializerMethodField()
     easy_count      = serializers.SerializerMethodField()
     medium_count    = serializers.SerializerMethodField()
     hard_count      = serializers.SerializerMethodField()
@@ -20,13 +20,22 @@ class TopicSerializer(serializers.ModelSerializer):
         u = obj.created_by
         return u.get_full_name() or u.username
 
+    def get_question_count(self, obj):
+        return obj.total_question_count if hasattr(obj, 'total_question_count') else obj.questions.count()
+
     def get_easy_count(self, obj):
+        if hasattr(obj, 'easy_question_count'):
+            return obj.easy_question_count
         return obj.questions.filter(difficulty='easy').count()
 
     def get_medium_count(self, obj):
+        if hasattr(obj, 'medium_question_count'):
+            return obj.medium_question_count
         return obj.questions.filter(difficulty='medium').count()
 
     def get_hard_count(self, obj):
+        if hasattr(obj, 'hard_question_count'):
+            return obj.hard_question_count
         return obj.questions.filter(difficulty='hard').count()
 
 
@@ -40,6 +49,13 @@ class QuestionSerializer(serializers.ModelSerializer):
         fields = ['id', 'topic', 'topic_name', 'text', 'hint', 'answer_type', 'points',
                   'difficulty', 'options', 'correct_answer', 'created_by_id', 'created_by_name', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def validate_topic(self, topic):
+        from .views import academy_content
+        request = self.context.get('request')
+        if not request or not academy_content(Topic.objects.all(), request.user).filter(pk=topic.pk).exists():
+            raise serializers.ValidationError('Topic is outside your academy.')
+        return topic
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -65,6 +81,9 @@ class TeamSerializer(serializers.ModelSerializer):
 
 
 class GameListSerializer(serializers.ModelSerializer):
+    team_count = serializers.IntegerField(min_value=1, max_value=16, required=False)
+    timer_seconds = serializers.IntegerField(min_value=1, max_value=3600, required=False)
+    students_per_team = serializers.IntegerField(min_value=1, max_value=100, required=False)
     question_count = serializers.IntegerField(source='questions.count', read_only=True)
 
     class Meta:

@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 
 
 class Game(models.Model):
@@ -37,6 +37,7 @@ class Game(models.Model):
     def __str__(self):
         return f'{self.group.name} — {self.date} ({self.status})'
 
+    @transaction.atomic
     def reverse_awarded_coins(self, actor=None):
         """Offsets coins this game handed out with a reversing ledger entry —
         called when the underlying lesson is deleted. Capped at the
@@ -49,7 +50,16 @@ class Game(models.Model):
         if not results:
             return
 
-        balances = CoinTransaction.balances_for(r.student for r in results)
+        # Purchase and reversal must read the wallet under the same lock.
+        from django.contrib.auth import get_user_model
+        list(get_user_model().objects.select_for_update(no_key=True).filter(
+            pk__in=[r.student_id for r in results],
+        ).order_by('pk'))
+
+        from django.db.models import Sum
+        balances = dict(CoinTransaction.objects.filter(
+            student_id__in=[r.student_id for r in results], academy_id=self.group.academy_id,
+        ).values('student_id').annotate(balance=Sum('amount')).values_list('student_id', 'balance'))
 
         txns = []
         for result in results:
@@ -58,7 +68,7 @@ class Game(models.Model):
             if reversal <= 0:
                 continue
             txns.append(CoinTransaction(
-                student=result.student, amount=-reversal, type=CoinTransaction.Type.ADJUSTMENT,
+                student=result.student, academy_id=self.group.academy_id, amount=-reversal, type=CoinTransaction.Type.ADJUSTMENT,
                 reason=f"Dars o'chirildi: {self.group.name} — {self.date}", created_by=actor,
             ))
         CoinTransaction.objects.bulk_create(txns)

@@ -1,43 +1,60 @@
 #!/usr/bin/env bash
-# Server-side deploy script, invoked by CI (GitHub Actions) over SSH.
-# Pulls the latest main, rebuilds and restarts the stack. Secrets live in
-# the untracked .env on the server and are preserved (git never touches it).
+# Production deployment. CI supplies the exact revision that passed its checks.
 set -euo pipefail
+umask 077
+cd "$(dirname "$0")/.."
 
-APP_DIR="/home/academy/AcademyJournal"
-cd "$APP_DIR"
-
-echo "==> Fetch & hard-checkout origin/main"
+# Prevent overlapping manual/CI migrations and backups on the same host.
+exec 9>.deploy.lock
+flock -n 9 || { echo "ERROR: another deployment is running" >&2; exit 1; }
+revision="${1:?Pass the full commit SHA that passed CI}"
+[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: full commit SHA required" >&2; exit 1; }
+previous_revision="$(git rev-parse HEAD)"
 git fetch --prune origin
-git checkout -f -B main origin/main
+git merge-base --is-ancestor "$revision" origin/main || { echo "ERROR: revision is not on origin/main" >&2; exit 1; }
+git checkout -f -B main "$revision"
 
-echo "==> Build & (re)start containers"
-docker compose up -d --build --remove-orphans
+echo "==> Validate configuration and build before maintenance"
+docker compose config --quiet
+docker compose build
+docker compose run --rm --no-deps -T --entrypoint python backend manage.py check --deploy --fail-level WARNING
 
-echo "==> Wait for backend to become healthy"
-cid="$(docker compose ps -q backend || true)"
-if [ -n "$cid" ]; then
-  for i in $(seq 1 40); do
-    h="$(docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo starting)"
-    if [ "$h" = "healthy" ]; then echo "backend: healthy"; break; fi
-    if [ "$i" = "40" ]; then echo "WARNING: backend not healthy after wait (status=$h)"; fi
-    sleep 3
-  done
-fi
+maintenance=false
+trap 'if [ "$maintenance" = true ]; then echo "ERROR: deployment stopped during maintenance. Backup is in backups/ (or BACKUP_DIR). Review logs before restarting; do not blindly roll back migrations." >&2; fi' ERR
 
-echo "==> One-time Telegram menu refresh (if pending)"
-TG_MARKER=".telegram_menu_refreshed_nolesson"
-if [ ! -f "$TG_MARKER" ]; then
-  if docker compose exec -T backend python manage.py refresh_telegram_menu; then
-    touch "$TG_MARKER"
-  else
-    echo "WARNING: telegram menu refresh failed, will retry next deploy"
-  fi
-fi
+echo "==> Stop application writers and back up database, media and settings"
+maintenance=true
+docker compose stop web scheduler backend
+PREVIOUS_REVISION="$previous_revision" bash deploy/backup.sh
 
-echo "==> Prune dangling images"
-docker image prune -f >/dev/null 2>&1 || true
+echo "==> Migrate and audit ownership before accepting traffic"
+docker compose run --rm --no-deps -T --entrypoint python backend manage.py migrate --noinput
+docker compose run --rm --no-deps -T --entrypoint python backend manage.py audit_tenant_data --strict
 
-echo "==> Current state"
+echo "==> Start backend and verify database readiness"
+docker compose up -d --no-build backend
+cid="$(docker compose ps -q backend)"
+test -n "$cid"
+healthy=false
+for i in $(seq 1 40); do
+  status="$(docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || true)"
+  if [ "$status" = healthy ]; then healthy=true; break; fi
+  sleep 3
+done
+[ "$healthy" = true ] || { echo "ERROR: backend readiness timed out" >&2; false; }
+
+echo "==> Start scheduler and web"
+docker compose up -d --no-build --force-recreate scheduler web
+sleep 10
+for service in scheduler web; do
+  cid="$(docker compose ps -q "$service")"
+  test -n "$cid"
+  state="$(docker inspect -f '{{.State.Status}} {{.RestartCount}}' "$cid")"
+  [ "$state" = 'running 0' ] || { echo "ERROR: $service is unstable ($state)" >&2; false; }
+done
+docker compose exec -T web wget -q -O /dev/null http://127.0.0.1/
+docker compose exec -T web wget -q -O /dev/null --header='Host: api.journal.crmneo.com' http://127.0.0.1/api/health/
+maintenance=false
+trap - ERR
 docker compose ps
-echo "==> Deploy complete"
+echo "==> Deploy complete: $revision"

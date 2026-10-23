@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist']),
   { files: ['public/sw.js'], languageOptions: { globals: globals.serviceworker } },
-  { files: ['tests/**/*.js'], languageOptions: { globals: globals.node } },
+  { files: ['tests/**/*.{js,jsx}', 'e2e/**/*.js', 'playwright.config.js'], languageOptions: { globals: globals.node } },
   {
     files: ['**/*.{js,jsx}'],
     extends: [

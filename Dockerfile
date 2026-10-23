@@ -6,12 +6,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir --upgrade pip && python -m pip install --no-cache-dir -r requirements.txt
 
 COPY backend .
 
-RUN python manage.py collectstatic --noinput
+RUN DEBUG=true python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "backend.asgi:application"]
+CMD ["uvicorn", "backend.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--lifespan", "off"]

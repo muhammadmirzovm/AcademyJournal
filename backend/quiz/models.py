@@ -4,6 +4,8 @@ from django.conf import settings
 
 
 class Topic(models.Model):
+    academy = models.ForeignKey('academies.Academy', on_delete=models.CASCADE,
+                                null=True, blank=True, related_name='topics')
     name       = models.CharField(max_length=100)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='topics')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -13,6 +15,11 @@ class Topic(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and self.academy_id is None and self.created_by_id:
+            self.academy_id = self.created_by.academy_id
+        super().save(*args, **kwargs)
 
 
 class Question(models.Model):

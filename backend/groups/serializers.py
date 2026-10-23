@@ -38,6 +38,17 @@ class MemberSerializer(serializers.ModelSerializer):
 
 
 class GroupSerializer(serializers.ModelSerializer):
+    def to_internal_value(self, data):
+        # Older form clients submit repeated weekday values instead of JSON.
+        if hasattr(data, 'getlist') and 'class_days' in data:
+            import json
+            values = data.getlist('class_days')
+            if values and not str(values[0]).lstrip().startswith('['):
+                from backend.validation import integer
+                data = data.copy()
+                data['class_days'] = json.dumps([integer(v, 'class_days', minimum=0, maximum=6) for v in values])
+        return super().to_internal_value(data)
+
     teacher_name = serializers.SerializerMethodField()
     member_count = serializers.SerializerMethodField()
     is_member    = serializers.SerializerMethodField()
@@ -50,13 +61,31 @@ class GroupSerializer(serializers.ModelSerializer):
                   'exam_ready_at', 'exam_ready_note', 'created_at')
         read_only_fields = ('join_key', 'teacher')
 
+    def to_representation(self, instance):
+        from .access import can_manage_group
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if not request or not can_manage_group(request.user, instance):
+            data.pop('join_key', None)
+            data.pop('telegram_chat_id', None)
+        return data
+
+    def validate_class_days(self, value):
+        if not isinstance(value, list) or any(type(d) is not int or d not in range(7) for d in value):
+            raise serializers.ValidationError('Use weekday integers from 0 to 6.')
+        return sorted(set(value))
+
     def get_teacher_name(self, obj):
         return f'{obj.teacher.first_name} {obj.teacher.last_name}'.strip() or obj.teacher.username
 
     def get_member_count(self, obj):
+        if hasattr(obj, 'active_member_count'):
+            return obj.active_member_count
         return obj.memberships.filter(student__is_active=True).count()
 
     def get_is_member(self, obj):
+        if hasattr(obj, 'viewer_is_member'):
+            return obj.viewer_is_member
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.memberships.filter(student=request.user).exists()
@@ -89,8 +118,13 @@ class AttendanceSerializer(serializers.ModelSerializer):
         return f'{obj.student.first_name} {obj.student.last_name}'.strip() or obj.student.username
 
 
+class AttendanceRecordSerializer(serializers.Serializer):
+    student = serializers.IntegerField(min_value=1)
+    present = serializers.BooleanField()
+
+
 class BulkAttendanceSerializer(serializers.Serializer):
-    records = serializers.ListField(child=serializers.DictField())
+    records = AttendanceRecordSerializer(many=True)
 
     def validate_records(self, value):
         for r in value:
@@ -111,8 +145,13 @@ class ScoreSerializer(serializers.ModelSerializer):
         return f'{obj.student.first_name} {obj.student.last_name}'.strip() or obj.student.username
 
 
+class ScoreRecordSerializer(serializers.Serializer):
+    student = serializers.IntegerField(min_value=1)
+    value = serializers.IntegerField(min_value=0, max_value=5)
+
+
 class BulkScoreSerializer(serializers.Serializer):
-    records = serializers.ListField(child=serializers.DictField())
+    records = ScoreRecordSerializer(many=True)
 
     def validate_records(self, value):
         for r in value:
@@ -174,7 +213,21 @@ class ExamResultSerializer(serializers.ModelSerializer):
 
 
 class ExamSerializer(serializers.ModelSerializer):
-    results         = ExamResultSerializer(many=True, read_only=True)
+    def get_results(self, obj):
+        from .access import can_manage_group
+        request = self.context.get('request')
+        if not request:
+            return []
+        rows = obj.results.all()
+        user = request.user
+        if not can_manage_group(user, obj.group):
+            if user.role == 'parent':
+                rows = rows.filter(student__parents__parent=user, student__academy_id=user.academy_id)
+            else:
+                rows = rows.filter(student=user)
+        return ExamResultSerializer(rows, many=True).data
+
+    results         = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     group_id        = serializers.IntegerField(source='group.id', read_only=True)
     group_name      = serializers.CharField(source='group.name', read_only=True)
@@ -189,3 +242,20 @@ class ExamSerializer(serializers.ModelSerializer):
         if not obj.created_by:
             return ''
         return f'{obj.created_by.first_name} {obj.created_by.last_name}'.strip() or obj.created_by.username
+
+
+class ExamSubmissionEntrySerializer(serializers.Serializer):
+    student = serializers.IntegerField(min_value=1)
+    absent = serializers.BooleanField(default=False)
+    scores = serializers.ListField(child=serializers.IntegerField(min_value=0, max_value=5), default=list, max_length=500)
+    comments = serializers.ListField(child=serializers.CharField(allow_blank=True, max_length=2000), default=list, max_length=500)
+
+    def validate(self, data):
+        if not data['absent'] and not data['scores']:
+            raise serializers.ValidationError('Each present student needs at least one question.')
+        return data
+
+
+class ExamSubmissionSerializer(serializers.Serializer):
+    results = ExamSubmissionEntrySerializer(many=True)
+    finish = serializers.BooleanField(default=True)

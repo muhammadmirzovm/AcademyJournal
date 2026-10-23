@@ -11,6 +11,8 @@ def generate_join_key():
 
 
 class Group(models.Model):
+    academy = models.ForeignKey('academies.Academy', on_delete=models.CASCADE,
+                                null=True, blank=True, related_name='groups')
     ACTIVE = 'active'
     PAUSED = 'paused'
     CLOSED = 'closed'
@@ -46,6 +48,8 @@ class Group(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
+        if self._state.adding and self.academy_id is None and self.teacher_id:
+            self.academy_id = self.teacher.academy_id
         self.is_graduated = self.status != self.ACTIVE
         update_fields = kwargs.get('update_fields')
         if update_fields is not None and ('status' in update_fields or 'is_graduated' in update_fields):
@@ -166,6 +170,8 @@ class HomeworkSubmission(models.Model):
 
 
 class Announcement(models.Model):
+    academy = models.ForeignKey('academies.Academy', on_delete=models.CASCADE,
+                                null=True, blank=True, related_name='announcements')
     author     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='announcements')
     group      = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True, related_name='announcements')
     title      = models.CharField(max_length=200)

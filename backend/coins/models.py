@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Sum
+from django.db.models import Sum, F, Q
 
 
 class CoinSetting(models.Model):
@@ -59,6 +59,8 @@ class CoinTransaction(models.Model):
         REFUND      = 'refund',      'Qaytarish'
         ADJUSTMENT  = 'adjustment',  'Tuzatish'
 
+    academy = models.ForeignKey('academies.Academy', on_delete=models.CASCADE,
+                                null=True, blank=True, related_name='coin_transactions')
     student    = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coin_ledger')
     amount     = models.IntegerField()
     type       = models.CharField(max_length=20, choices=Type.choices)
@@ -76,6 +78,8 @@ class CoinTransaction(models.Model):
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError('CoinTransaction yozuvlari tahrirlanmaydi — teskari yozuv qo\'shing.')
+        if self.academy_id is None:
+            self.academy_id = self.student.academy_id
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -83,7 +87,7 @@ class CoinTransaction(models.Model):
 
     @staticmethod
     def balance_for(student):
-        return CoinTransaction.objects.filter(student=student).aggregate(s=Sum('amount'))['s'] or 0
+        return CoinTransaction.objects.filter(student=student, academy_id=student.academy_id).aggregate(s=Sum('amount'))['s'] or 0
 
     @staticmethod
     def balances_for(students):
@@ -93,7 +97,9 @@ class CoinTransaction(models.Model):
         students = list(students)
         by_id = {
             row['student']: row['balance']
-            for row in CoinTransaction.objects.filter(student__in=students)
+            for row in CoinTransaction.objects.filter(student__in=students).filter(
+                Q(academy_id=F('student__academy_id'))
+                | Q(academy_id__isnull=True, student__academy_id__isnull=True))
                 .values('student').annotate(balance=Sum('amount'))
         }
         return {s.id: by_id.get(s.id, 0) for s in students}

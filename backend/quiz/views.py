@@ -1,15 +1,19 @@
+from groups.access import visible_groups, can_manage_group
+from backend.validation import integer
+from rest_framework.exceptions import ValidationError
+from django.db import transaction
 import io
 import random
 import openpyxl
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, Q
 from .models import Topic, Question, Game, Team, GameRound
 from .serializers import TopicSerializer, QuestionSerializer, GameSerializer, GameListSerializer
 
@@ -26,6 +30,12 @@ class IsTeacher(permissions.BasePermission):
         return request.user.is_authenticated and request.user.role in ('teacher', 'admin')
 
 
+def academy_content(queryset, user):
+    lookup = 'academy_id' if queryset.model is Topic else 'topic__academy_id'
+    queryset = queryset.filter(**{lookup: user.academy_id})
+    return queryset if user.academy_id else queryset.filter(created_by=user)
+
+
 # ── Topics ────────────────────────────────────────────────────────────────────
 
 class TopicListCreateView(generics.ListCreateAPIView):
@@ -33,14 +43,15 @@ class TopicListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsTeacher]
 
     def get_queryset(self):
-        qs = Topic.objects.all().select_related('created_by')
+        qs = academy_content(Topic.objects.select_related('created_by'), self.request.user)
         if owner := self.request.query_params.get('owner'):
             qs = qs.filter(created_by_id=owner)
-        elif self.request.user.academy_id:
-            qs = qs.filter(created_by__academy=self.request.user.academy_id)
-        else:
-            qs = qs.filter(created_by=self.request.user)
-        return qs
+        return qs.annotate(
+            total_question_count=Count('questions'),
+            easy_question_count=Count('questions', filter=Q(questions__difficulty='easy')),
+            medium_question_count=Count('questions', filter=Q(questions__difficulty='medium')),
+            hard_question_count=Count('questions', filter=Q(questions__difficulty='hard')),
+        )
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -52,8 +63,8 @@ class TopicDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         if self.request.user.role == 'admin':
-            return Topic.objects.all()
-        return Topic.objects.filter(created_by=self.request.user)
+            return academy_content(Topic.objects.all(), self.request.user)
+        return academy_content(Topic.objects.filter(created_by=self.request.user), self.request.user)
 
 
 # ── Questions ─────────────────────────────────────────────────────────────────
@@ -63,7 +74,7 @@ class QuestionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsTeacher]
 
     def get_queryset(self):
-        qs = Question.objects.all().select_related('topic', 'created_by')
+        qs = academy_content(Question.objects.select_related('topic', 'created_by'), self.request.user)
         if owner := self.request.query_params.get('owner'):
             qs = qs.filter(created_by_id=owner)
         if t := self.request.query_params.get('topic'):
@@ -82,8 +93,8 @@ class QuestionDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         if self.request.user.role == 'admin':
-            return Question.objects.all()
-        return Question.objects.filter(created_by=self.request.user)
+            return academy_content(Question.objects.all(), self.request.user)
+        return academy_content(Question.objects.filter(created_by=self.request.user), self.request.user)
 
 
 # ── Bulk import ───────────────────────────────────────────────────────────────
@@ -267,7 +278,7 @@ class QuestionImportView(APIView):
             cache_key = topic_name.lower()
             topic = topic_cache.get(cache_key)
             if topic is None:
-                topic = Topic.objects.filter(name__iexact=topic_name, created_by=request.user).first()
+                topic = Topic.objects.filter(name__iexact=topic_name, created_by=request.user, academy_id=request.user.academy_id).first()
                 if topic is None:
                     topic = Topic.objects.create(name=topic_name, created_by=request.user)
                 topic_cache[cache_key] = topic
@@ -293,10 +304,10 @@ class QuestionBankListView(APIView):
     permission_classes = [IsTeacher]
 
     def get(self, request):
-        teacher_ids = Question.objects.values_list('created_by_id', flat=True).distinct()
+        teacher_ids = academy_content(Question.objects.all(), request.user).values_list('created_by_id', flat=True).distinct()
         teachers = User.objects.filter(id__in=teacher_ids).annotate(
-            question_count=Count('questions', distinct=True),
-            topic_count=Count('topics', distinct=True),
+            question_count=Count('questions', distinct=True, filter=Q(questions__topic__academy_id=request.user.academy_id)),
+            topic_count=Count('topics', distinct=True, filter=Q(topics__academy_id=request.user.academy_id)),
         )
         result = []
         for t in teachers:
@@ -316,8 +327,8 @@ class QuestionBankListView(APIView):
 
 def get_group_and_check_teacher(group_pk, user):
     from groups.models import Group
-    group = get_object_or_404(Group, pk=group_pk)
-    is_teacher = group.teacher == user or user.role == 'admin'
+    group = get_object_or_404(visible_groups(user), pk=group_pk)
+    is_teacher = can_manage_group(user, group)
     return group, is_teacher
 
 
@@ -332,18 +343,19 @@ def game_response(game, is_teacher=False):
     return GameSerializer(game, context=context).data
 
 
-def pick_questions_by_difficulty(topic_id, diff_counts):
+def pick_questions_by_difficulty(topic_id, diff_counts, user):
     """
     Pick exactly diff_counts['easy'/'medium'/'hard'] questions per difficulty
     from all teachers in the academy.
     Raises ValueError if not enough questions are available.
     """
+    topic = get_object_or_404(academy_content(Topic.objects.all(), user), pk=integer(topic_id, 'topic'))
     chosen = []
     for diff in ('easy', 'medium', 'hard'):
-        count = max(0, int(diff_counts.get(diff) or 0))
+        count = integer(diff_counts.get(diff) or 0, diff, minimum=0, maximum=200)
         if count == 0:
             continue
-        pool = list(Question.objects.filter(topic_id=topic_id, difficulty=diff))
+        pool = list(academy_content(Question.objects.filter(topic=topic, difficulty=diff), user))
         if len(pool) < count:
             raise ValueError(f'{diff}:{topic_id}:{count}:{len(pool)}')
         random.shuffle(pool)
@@ -362,6 +374,7 @@ class GameListCreateView(APIView):
         games = Game.objects.filter(group=group).order_by('-created_at')
         return Response(GameListSerializer(games, many=True).data)
 
+    @transaction.atomic
     def post(self, request, group_pk):
         group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
         if not is_teacher:
@@ -371,11 +384,13 @@ class GameListCreateView(APIView):
         game = serializer.save(group=group, created_by=request.user)
 
         topic_difficulty_counts = request.data.get('topic_difficulty_counts', {})
+        if not isinstance(topic_difficulty_counts, dict) or any(not isinstance(v, dict) for v in topic_difficulty_counts.values()):
+            raise ValidationError({'topic_difficulty_counts': 'Expected a mapping of topics to difficulty counts.'})
         chosen = []
         try:
             for topic_id, diff_counts in topic_difficulty_counts.items():
                 if isinstance(diff_counts, dict):
-                    chosen.extend(pick_questions_by_difficulty(topic_id, diff_counts))
+                    chosen.extend(pick_questions_by_difficulty(topic_id, diff_counts, request.user))
         except ValueError as e:
             game.delete()
             parts = str(e).split(':')
@@ -419,7 +434,7 @@ class GameStartView(APIView):
         if game.status != Game.WAITING:
             return Response({'detail': 'Game already started.'}, status=400)
 
-        students = list(User.objects.filter(memberships__group=group))
+        students = list(User.objects.filter(memberships__group=group, academy_id=group.academy_id, is_active=True, role='student'))
         random.shuffle(students)
 
         game.teams.all().delete()
@@ -457,7 +472,7 @@ class GamePickView(APIView):
         if game.status != Game.ACTIVE:
             return Response({'detail': 'Game not active.'}, status=400)
 
-        question = get_object_or_404(Question, pk=request.data.get('question_id'))
+        question = get_object_or_404(game.questions, pk=integer(request.data.get('question_id'), 'question_id'))
         team     = get_object_or_404(Team, pk=request.data.get('team_id'), game=game)
 
         if game.rounds.filter(question=question).exists():
@@ -472,18 +487,21 @@ class GamePickView(APIView):
 class GameAnswerView(APIView):
     permission_classes = [IsTeacher]
 
+    @transaction.atomic
     def post(self, request, group_pk, game_pk):
         group, is_teacher = get_group_and_check_teacher(group_pk, request.user)
         if not is_teacher:
             return Response({'detail': 'Not allowed.'}, status=403)
-        game = get_object_or_404(Game, pk=game_pk, group=group)
+        game = get_object_or_404(Game.objects.select_for_update(), pk=game_pk, group=group)
 
+        if game.status != Game.ACTIVE:
+            raise ValidationError({'detail': 'Game is not active.'})
         question = game.current_question
         team     = game.current_team
         if not question or not team:
             return Response({'detail': 'No active question.'}, status=400)
 
-        correct       = request.data.get('correct', False)
+        correct       = serializers.BooleanField().run_validation(request.data.get('correct', False))
         steal_team_id = request.data.get('steal_team_id')
         partial_pct   = request.data.get('partial_pct')   # 25 | 50 | 75 | 100 | None
         is_double     = game.double_question_id == question.id
@@ -498,7 +516,7 @@ class GameAnswerView(APIView):
                 stolen_by=steal_team, is_correct=True, is_stolen=True,
                 points_awarded=pts, is_double=is_double)
         elif partial_pct is not None:
-            pct = max(0, min(100, int(partial_pct)))
+            pct = integer(partial_pct, 'partial_pct', minimum=0, maximum=100)
             pts = int(base_points * pct / 100)
             team.score += pts
             team.save()
@@ -597,7 +615,7 @@ class GameReshuffleView(APIView):
         if game.rounds.exists():
             return Response({'detail': 'Cannot reshuffle after game has started.'}, status=400)
 
-        students = list(User.objects.filter(memberships__group=group))
+        students = list(User.objects.filter(memberships__group=group, academy_id=group.academy_id, is_active=True, role='student'))
         random.shuffle(students)
         game.teams.all().delete()
         shuffled_names = random.sample(TEAM_NAMES, min(game.team_count, len(TEAM_NAMES)))

@@ -103,7 +103,7 @@ def test_exam_autosave_persists_without_finishing_or_notifying(teacher_client, g
 
 
 @pytest.mark.django_db
-def test_exam_finish_marks_finished_and_notifies(teacher_client, group, student, monkeypatch):
+def test_exam_finish_marks_finished_and_notifies(teacher_client, group, student, monkeypatch, django_capture_on_commit_callbacks):
     from groups.models import GroupMembership, Exam
 
     GroupMembership.objects.create(group=group, student=student)
@@ -112,10 +112,11 @@ def test_exam_finish_marks_finished_and_notifies(teacher_client, group, student,
     notified = []
     monkeypatch.setattr('groups.views._notify_exam_finished', lambda *a, **k: notified.append(a))
 
-    res = teacher_client.post(f'/api/groups/{group.id}/exams/{exam.id}/submit/', {
-        'results': [{'student': student.id, 'scores': [4, 5, 3], 'comments': ['', '', '']}],
-        'finish': True,
-    }, format='json')
+    with django_capture_on_commit_callbacks(execute=True):
+        res = teacher_client.post(f'/api/groups/{group.id}/exams/{exam.id}/submit/', {
+            'results': [{'student': student.id, 'scores': [4, 5, 3], 'comments': ['', '', '']}],
+            'finish': True,
+        }, format='json')
     assert res.status_code == 200
 
     exam.refresh_from_db()
@@ -192,7 +193,7 @@ def test_mark_day_off_rejects_other_teacher(academy, group, student):
     res = client.post('/api/auth/login/', {'username': 'teacher2', 'password': 'pass1234'})
     client.credentials(HTTP_AUTHORIZATION=f'Bearer {res.data["access"]}')
     res = client.post(f'/api/groups/{group.id}/day-off/', {'date': '2026-05-25', 'reason': 'sick'})
-    assert res.status_code == 403
+    assert res.status_code == 404
     assert not GroupDayOff.objects.filter(group=group).exists()
 
 

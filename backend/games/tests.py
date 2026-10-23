@@ -216,7 +216,7 @@ def test_start_response_includes_can_pick_third(teacher_client, lesson, group, s
     assert res.status_code == 201
     assert res.data['can_pick_third'] is False
 
-    sixth = User.objects.create_user(username='g_student5', password='pass1234', role='student', academy=group.teacher.academy)
+    sixth = User.objects.create_user(username='g_student5', password='pass1234', role='student', academy=group.academy)
     GroupMembership.objects.create(group=group, student=sixth)
     lesson2 = Lesson.objects.create(group=group, title='Second Lesson', date='2026-08-04')
     res2 = teacher_client.post(f'/api/groups/{group.id}/lessons/{lesson2.id}/game/start/')
@@ -309,7 +309,7 @@ def test_admin_from_other_academy_cannot_start_game(lesson, group, students):
 
     _mark_present(lesson, students)
     res = client.post(f'/api/groups/{group.id}/lessons/{lesson.id}/game/start/')
-    assert res.status_code == 403
+    assert res.status_code == 404
     assert not Game.objects.filter(lesson=lesson).exists()
 
 

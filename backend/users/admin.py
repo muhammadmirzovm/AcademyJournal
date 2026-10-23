@@ -21,7 +21,7 @@ def reset_coin_balance(modeladmin, request, queryset):
             balance = balances[student.id]
             if balance != 0:
                 txns.append(CoinTransaction(
-                    student=student, amount=-balance,
+                    student=student, academy_id=student.academy_id, amount=-balance,
                     type=CoinTransaction.Type.ADJUSTMENT,
                     reason="Balans 0 ga tushirildi (admin, ommaviy)",
                     created_by=request.user,

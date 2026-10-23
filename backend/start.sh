@@ -1,2 +1,2 @@
 #!/bin/sh
-exec daphne -b 0.0.0.0 -p 8000 backend.asgi:application
+exec uvicorn backend.asgi:application --host 0.0.0.0 --port 8000 --lifespan off

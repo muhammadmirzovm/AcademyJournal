@@ -200,7 +200,7 @@ def test_lesson_reminder_sends_one_hour_before_class(admin_user, monkeypatch):
         name='IELTS', teacher=teacher,
         class_days=[0], class_time='10:00-11:30',
     )
-    GroupMembership.objects.create(group=group, student=student)
+    GroupMembership.objects.create(group=group, student=student, joined_at=timezone.make_aware(datetime(2026, 9, 1, 0, 0)))
     sent = []
     async def fake_send(telegram_id, msg_key, lang='uz', **kwargs):
         sent.append((telegram_id, msg_key, lang, kwargs))
@@ -234,7 +234,7 @@ def test_lesson_reminder_is_not_sent_twice(admin_user, monkeypatch):
         name='Math', teacher=teacher,
         class_days=[0], class_time='10:00-11:30',
     )
-    GroupMembership.objects.create(group=group, student=student)
+    GroupMembership.objects.create(group=group, student=student, joined_at=timezone.make_aware(datetime(2026, 9, 1, 0, 0)))
     sent = []
     async def fake_send(telegram_id, msg_key, lang='uz', **kwargs):
         sent.append(telegram_id)

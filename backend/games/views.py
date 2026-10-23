@@ -1,3 +1,6 @@
+from groups.access import GroupAccessMixin, can_manage_group
+from backend.validation import integer
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
@@ -16,21 +19,25 @@ from .serializers import GameSerializer
 
 
 def _is_teacher_or_admin(request, group):
-    if group.teacher == request.user:
-        return True
-    return request.user.role == 'admin' and request.user.academy_id == group.teacher.academy_id
-
+    return can_manage_group(request.user, group)
 
 def _can_pick_third(lesson, setting):
     return lesson.group.memberships.count() >= setting.min_group_for_3rd
 
 
-class LessonGameView(APIView):
+class AcademyGameAccessMixin(GroupAccessMixin):
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if not self.access_group.academy_id:
+            raise PermissionDenied('Coin games require academy membership.')
+
+
+class LessonGameView(AcademyGameAccessMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, group_pk, lesson_pk):
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
-        setting = CoinSetting.get(lesson.group.teacher.academy)
+        setting = CoinSetting.get(lesson.group.academy)
         can_pick_third = _can_pick_third(lesson, setting)
 
         game = Game.objects.filter(lesson=lesson).first()
@@ -55,18 +62,21 @@ class LessonGameView(APIView):
         })
 
 
-class GameStartView(APIView):
+class GameStartView(AcademyGameAccessMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
+    @transaction.atomic
     def post(self, request, group_pk, lesson_pk):
         lesson = get_object_or_404(Lesson, pk=lesson_pk, group_id=group_pk)
         if not _is_teacher_or_admin(request, lesson.group):
             return Response({'detail': "Only the teacher or admin can start a game."}, status=403)
 
+        from groups.models import Group
+        Group.objects.select_for_update().get(pk=lesson.group_id)
         if Game.objects.filter(lesson=lesson).exists():
             return Response({'detail': "Bu dars uchun o'yin allaqachon mavjud."}, status=400)
 
-        setting = CoinSetting.get(lesson.group.teacher.academy)
+        setting = CoinSetting.get(lesson.group.academy)
         week_start = lesson.date - timedelta(days=lesson.date.weekday())
         week_end = week_start + timedelta(days=6)
         started_this_week = Game.objects.filter(group=lesson.group, date__gte=week_start, date__lte=week_end).count()
@@ -94,7 +104,7 @@ class GameStartView(APIView):
         return Response(data, status=201)
 
 
-class GameCancelView(APIView):
+class GameCancelView(AcademyGameAccessMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, group_pk, lesson_pk):
@@ -108,7 +118,7 @@ class GameCancelView(APIView):
         return Response(status=204)
 
 
-class GameCloseView(APIView):
+class GameCloseView(AcademyGameAccessMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, group_pk, lesson_pk):
@@ -126,7 +136,7 @@ class GameCloseView(APIView):
                 return Response({'detail': "O'yin boshlanmagan."}, status=400)
 
             attended_ids = set(
-                Attendance.objects.filter(lesson=lesson, present=True).values_list('student_id', flat=True)
+                Attendance.objects.filter(lesson=lesson, present=True, student__memberships__group=lesson.group, student__academy_id=lesson.group.academy_id, student__is_active=True).values_list('student_id', flat=True)
             )
             rules = game.applied_rules
 
@@ -147,7 +157,8 @@ class GameCloseView(APIView):
         student_id = next(iter(attended_ids), None)
         if student_id is None:
             return
-        completed = bool(request.data.get('completed'))
+        from rest_framework import serializers
+        completed = serializers.BooleanField().run_validation(request.data.get('completed', False))
         coins = rules['individual'] if completed else 0
         effort = GameResult.Effort.GOOD if completed else GameResult.Effort.NONE
         GameResult.objects.create(game=game, student_id=student_id, effort=effort, coins=coins)
@@ -161,7 +172,14 @@ class GameCloseView(APIView):
         first, second, third = request.data.get('first'), request.data.get('second'), request.data.get('third')
         efforts = request.data.get('efforts', {})
 
-        placed_ids = {int(x) for x in (first, second, third) if x}
+        places = [integer(x, 'place') for x in (first, second, third) if x is not None]
+        if len(places) != len(set(places)):
+            raise ValidationError({'places': 'A student can occupy only one place.'})
+        if not isinstance(efforts, dict):
+            raise ValidationError({'efforts': 'Expected a mapping of student IDs to effort.'})
+        for value in efforts.values():
+            integer(value, 'effort', minimum=0, maximum=2)
+        placed_ids = set(places)
         if not placed_ids.issubset(attended_ids):
             return Response({'detail': "Faqat darsga kelgan o'quvchi tanlanishi mumkin."}, status=400)
 
@@ -193,7 +211,7 @@ class GameCloseView(APIView):
         return None
 
 
-class GroupGameHistoryView(APIView):
+class GroupGameHistoryView(AcademyGameAccessMixin, APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, group_pk):

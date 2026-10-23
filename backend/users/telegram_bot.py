@@ -1388,7 +1388,7 @@ def _create_academy_holiday(telegram_id, target_date):
     user = _get_user(telegram_id)
     if not user or not user.academy_id:
         return 0
-    groups = Group.objects.filter(teacher__academy_id=user.academy_id, status=Group.ACTIVE)
+    groups = Group.objects.filter(academy_id=user.academy_id, status=Group.ACTIVE)
     count = 0
     for g in groups:
         _, created = GroupDayOff.objects.get_or_create(

@@ -1,4 +1,4 @@
-# AcademyJournal backend (Django + Daphne ASGI).
+# AcademyJournal backend (Django + Uvicorn ASGI).
 # Build context = repo root.
 FROM python:3.13-slim
 
@@ -13,12 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir --upgrade pip && python -m pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
 
 # Collect static at build time (whitenoise manifest storage). No DB needed here.
-RUN python manage.py collectstatic --noinput
+RUN DEBUG=true python manage.py collectstatic --noinput
 
 COPY deploy/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

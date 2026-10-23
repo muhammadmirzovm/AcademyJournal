@@ -4,14 +4,25 @@ from datetime import timedelta
 import dj_database_url
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).resolve().parent.parent / '.env')
+if os.environ.get('SKIP_DOTENV') != 'true':
+    load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ── Security ──────────────────────────────────────────────────────────────────
-SECRET_KEY               = os.environ.get('SECRET_KEY', 'django-insecure-eagy6i18qj6t37kgub_r=g+&i3s_fx$rywr@fk%oup_$s#ql_!')
-DEBUG                    = os.environ.get('DEBUG', 'true').lower() == 'true'
-ALLOWED_HOSTS            = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+from django.core.exceptions import ImproperlyConfigured
+
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('SECRET_KEY must be configured when DEBUG is false.')
+    # Development keys are process-local rather than a source-known signing key.
+    import secrets
+    SECRET_KEY = secrets.token_urlsafe(48)
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
+if not DEBUG and (not ALLOWED_HOSTS or '*' in ALLOWED_HOSTS):
+    raise ImproperlyConfigured('Configure explicit ALLOWED_HOSTS for production.')
 TELEGRAM_BOT_TOKEN       = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_WEBHOOK_SECRET  = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')
 VAPID_PRIVATE_KEY        = os.environ.get('VAPID_PRIVATE_KEY', '')
@@ -25,6 +36,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE          = not DEBUG
 CSRF_COOKIE_SECURE             = not DEBUG
 SECURE_SSL_REDIRECT            = not DEBUG
+SECURE_REDIRECT_EXEMPT         = [r'^api/health/$']
 # HSTS is emitted by the TLS-terminating nginx so it covers both subdomains
 # uniformly (the SPA host is served by nginx, not Django).
 SECURE_HSTS_SECONDS            = 0
@@ -32,7 +44,7 @@ SILENCED_SYSTEM_CHECKS = ['security.W004']  # HSTS handled at the reverse proxy
 
 # ── Apps ──────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'backend.admin.PlatformAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -111,6 +123,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # ── REST Framework & JWT ──────────────────────────────────────────────────────
 REST_FRAMEWORK = {
+    # Compose uses host nginx -> container nginx; Fly has one proxy. Ignore
+    # forwarded identities in local development. Count from the trusted end.
+    'NUM_PROXIES': int(os.environ.get('NUM_PROXIES', '0' if DEBUG else '2')),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -134,6 +149,8 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
+    'CHECK_REVOKE_TOKEN': True,
+    'TOKEN_REFRESH_SERIALIZER': 'users.authentication.SessionTokenRefreshSerializer',
 }
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
@@ -154,7 +171,10 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()
 # ── Static & Media ────────────────────────────────────────────────────────────
 STATIC_URL  = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

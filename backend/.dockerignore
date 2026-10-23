@@ -3,6 +3,10 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+.env.*
+staticfiles/
 db.sqlite3
 media/
 .DS_Store
+# Local development environment
+.venv/

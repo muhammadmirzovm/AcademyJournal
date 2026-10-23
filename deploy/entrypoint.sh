@@ -1,5 +1,5 @@
 #!/bin/sh
-# Backend container entrypoint: wait for DB, apply migrations, then run Daphne.
+# Backend container entrypoint: wait for DB, apply migrations, then run Uvicorn.
 set -e
 
 echo "[entrypoint] waiting for database ..."
@@ -28,5 +28,5 @@ PY
 echo "[entrypoint] applying migrations ..."
 python manage.py migrate --noinput
 
-echo "[entrypoint] starting daphne on :8000 ..."
-exec daphne -b 0.0.0.0 -p 8000 backend.asgi:application
+echo "[entrypoint] starting uvicorn on :8000 ..."
+exec uvicorn backend.asgi:application --host 0.0.0.0 --port 8000 --lifespan off

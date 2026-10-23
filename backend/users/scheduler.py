@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -55,48 +54,46 @@ def _run_lesson_reminders():
 def _load_all():
     close_old_connections()
     from academies.models import Academy
-    for academy in Academy.objects.all():
+    academies = list(Academy.objects.all())
+    valid_ids = {f'{kind}_report_{academy.id}' for academy in academies for kind in ('daily', 'weekly')}
+    for job in _scheduler.get_jobs():
+        if job.id.startswith(('daily_report_', 'weekly_report_')) and job.id not in valid_ids:
+            _scheduler.remove_job(job.id)
+    for academy in academies:
         reschedule(academy)
     logger.info('Loaded %d academy report schedules', len(_scheduler.get_jobs()))
 
 
-def reschedule(academy):
-    # Daily report
-    daily_id = f'daily_report_{academy.id}'
-    if _scheduler.get_job(daily_id):
-        _scheduler.remove_job(daily_id)
-    if academy.report_time:
-        _scheduler.add_job(
-            _run_daily,
-            CronTrigger(hour=academy.report_time.hour, minute=academy.report_time.minute, timezone='UTC'),
-            id=daily_id,
-            args=[academy.id],
-        )
-        logger.info('Scheduled daily report for academy %s at %s UTC', academy.name, academy.report_time)
+def _sync_report(job_id, callback, academy_id, trigger):
+    existing = _scheduler.get_job(job_id)
+    if trigger is None:
+        if existing:
+            _scheduler.remove_job(job_id)
+        return
+    # Refreshing unchanged settings must preserve the next scheduled firing.
+    if existing and str(existing.trigger) == str(trigger):
+        return
+    _scheduler.add_job(callback, trigger, id=job_id, args=[academy_id],
+                       replace_existing=True, max_instances=1, coalesce=True)
 
-    # Weekly parent report — runs every Sunday
-    weekly_id = f'weekly_report_{academy.id}'
-    if _scheduler.get_job(weekly_id):
-        _scheduler.remove_job(weekly_id)
-    if academy.weekly_report_time:
-        _scheduler.add_job(
-            _run_weekly,
-            CronTrigger(
-                day_of_week='sun',
-                hour=academy.weekly_report_time.hour,
-                minute=academy.weekly_report_time.minute,
-                timezone='UTC',
-            ),
-            id=weekly_id,
-            args=[academy.id],
-        )
-        logger.info('Scheduled weekly report for academy %s at Sun %s UTC', academy.name, academy.weekly_report_time)
+
+def reschedule(academy):
+    daily = CronTrigger(hour=academy.report_time.hour, minute=academy.report_time.minute,
+                        timezone='UTC') if academy.report_time else None
+    weekly = CronTrigger(day_of_week='sun', hour=academy.weekly_report_time.hour,
+                         minute=academy.weekly_report_time.minute,
+                         timezone='UTC') if academy.weekly_report_time else None
+    _sync_report(f'daily_report_{academy.id}', _run_daily, academy.id, daily)
+    _sync_report(f'weekly_report_{academy.id}', _run_weekly, academy.id, weekly)
 
 
 def start():
     if _scheduler.running:
         return
     _scheduler.start()
+    _load_all()
+    _scheduler.add_job(_load_all, 'interval', minutes=1, id='refresh_schedules',
+                       max_instances=1, coalesce=True)
     _scheduler.add_job(
         _run_lesson_reminders,
         IntervalTrigger(minutes=1, timezone='UTC'),
@@ -105,5 +102,3 @@ def start():
         max_instances=1,
         coalesce=True,
     )
-    # Load academy schedules 2s after startup to avoid querying DB inside ready()
-    _scheduler.add_job(_load_all, 'date', run_date=datetime.now() + timedelta(seconds=2), id='_startup_load')

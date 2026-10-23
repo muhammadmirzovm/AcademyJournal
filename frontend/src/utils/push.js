@@ -1,6 +1,6 @@
 import api from '../api/axios'
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
+const VAPID_PUBLIC_KEY = import.meta.env?.VITE_VAPID_PUBLIC_KEY
 
 function urlBase64ToUint8Array(base64) {
   const pad = '='.repeat((4 - base64.length % 4) % 4)

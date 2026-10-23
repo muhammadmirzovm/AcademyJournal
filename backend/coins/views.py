@@ -1,9 +1,10 @@
 from datetime import timedelta
+from backend.validation import integer
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum
 from django.utils import timezone
-from rest_framework import permissions
+from rest_framework import permissions, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -31,11 +32,11 @@ class CoinReportView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': 'Only an admin can view this report.'}, status=403)
 
         cutoff = timezone.now() - timedelta(days=30)
-        student_txns = CoinTransaction.objects.filter(student__role='student', student__academy=request.user.academy)
+        student_txns = CoinTransaction.objects.filter(student__role='student', academy=request.user.academy)
 
         outstanding = student_txns.aggregate(s=Sum('amount'))['s'] or 0
         issued_30d = student_txns.filter(amount__gt=0, created_at__gte=cutoff).aggregate(s=Sum('amount'))['s'] or 0
@@ -44,7 +45,7 @@ class CoinReportView(APIView):
         ).aggregate(s=Sum('amount'))['s'] or 0)
 
         spend_by_category = list(
-            Purchase.objects.filter(student__academy=request.user.academy)
+            Purchase.objects.filter(reward__academy=request.user.academy)
             .exclude(status=Purchase.Status.EXPIRED)
             .values('reward__category')
             .annotate(coins=Sum('total_price'), purchase_count=Count('id'))
@@ -72,11 +73,11 @@ class CoinAdjustView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request):
-        if request.user.role != 'admin':
+        if request.user.role != 'admin' or not request.user.academy_id:
             return Response({'detail': "Faqat admin tangacha qo'sha yoki ayira oladi."}, status=403)
 
         try:
-            amount = int(request.data.get('amount'))
+            amount = integer(request.data.get('amount'), 'amount', minimum=-2147483647, maximum=2147483647)
         except (TypeError, ValueError):
             return Response({'detail': "Miqdor noto'g'ri."}, status=400)
         if amount == 0:
@@ -85,10 +86,13 @@ class CoinAdjustView(APIView):
         reason = (request.data.get('reason') or '').strip()
         if not reason:
             return Response({'detail': "Sabab kiritilishi shart."}, status=400)
+        if len(reason) > 200:
+            return Response({'detail': 'Reason must be at most 200 characters.'}, status=400)
 
         student_ids = request.data.get('student_ids')
         if not isinstance(student_ids, list) or not student_ids:
             return Response({'detail': "Kamida bitta o'quvchi tanlanishi kerak."}, status=400)
+        student_ids = serializers.ListField(child=serializers.IntegerField(min_value=1)).run_validation(student_ids)
 
         students = list(User.objects.filter(
             id__in=student_ids, role='student', academy=request.user.academy,
@@ -98,7 +102,7 @@ class CoinAdjustView(APIView):
 
         CoinTransaction.objects.bulk_create([
             CoinTransaction(
-                student=s, amount=amount, type=CoinTransaction.Type.ADJUSTMENT,
+                student=s, academy=request.user.academy, amount=amount, type=CoinTransaction.Type.ADJUSTMENT,
                 reason=reason, created_by=request.user,
             ) for s in students
         ])
@@ -152,7 +156,7 @@ class CoinLeaderboardView(APIView):
 
         rows = (
             CoinTransaction.objects
-            .filter(student__academy=request.user.academy, student__role='student', student__is_active=True)
+            .filter(academy=request.user.academy, student__academy=request.user.academy, student__role='student', student__is_active=True)
             .exclude(type__in=[CoinTransaction.Type.PURCHASE, CoinTransaction.Type.REFUND])
             .values('student')
             .annotate(earned=Sum('amount'))

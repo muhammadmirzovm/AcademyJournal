@@ -7,11 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node --test tests/*.test.js",
-    "preview": "vite preview"
+    "test": "node --import tsx --test tests/*.test.js tests/*.test.jsx",
+    "preview": "vite preview",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "axios": "^1.15.2",
+    "axios": "^1.20.0",
     "framer-motion": "^12.38.0",
     "i18next": "^26.0.7",
     "i18next-browser-languagedetector": "^8.2.1",
@@ -24,7 +25,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.2.4",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
@@ -32,7 +35,9 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "jsdom": "^29.1.1",
     "tailwindcss": "^4.2.4",
+    "tsx": "^4.23.15",
     "vite": "^8.0.10"
   }
 }
