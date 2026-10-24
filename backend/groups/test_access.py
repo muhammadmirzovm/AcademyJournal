@@ -113,7 +113,7 @@ def test_bulk_writes_reject_unenrolled_student_without_partial_changes(world, ki
     assert not Score.objects.filter(lesson=world.lesson).exists()
 
 
-@pytest.mark.parametrize('bad', ['bad', None, {}, 3.5])
+@pytest.mark.parametrize('bad', ['bad', {}, 3.5, -1, 6])
 def test_invalid_grade_returns_400(world, bad):
     res = client(world.teacher).post(path(world,'groups/{group}/lessons/{lesson}/scores/'),
         {'records':[{'student':world.student.pk,'value':bad}]},format='json')

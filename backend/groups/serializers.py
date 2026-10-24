@@ -161,7 +161,7 @@ class ScoreSerializer(serializers.ModelSerializer):
 
 class ScoreRecordSerializer(serializers.Serializer):
     student = serializers.IntegerField(min_value=1)
-    value = serializers.IntegerField(min_value=0, max_value=5)
+    value = serializers.IntegerField(min_value=0, max_value=5, allow_null=True)
 
 
 class BulkScoreSerializer(serializers.Serializer):
@@ -171,7 +171,7 @@ class BulkScoreSerializer(serializers.Serializer):
         for r in value:
             if 'student' not in r or 'value' not in r:
                 raise serializers.ValidationError('Each record needs student and value fields.')
-            if not (0 <= int(r['value']) <= 5):
+            if r['value'] is not None and not (0 <= int(r['value']) <= 5):
                 raise serializers.ValidationError('Score value must be 0–5.')
         return value
 

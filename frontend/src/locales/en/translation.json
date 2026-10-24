@@ -516,7 +516,7 @@
     "cancel": "Cancel",
     "confirm_changes": "Confirm changes",
     "checking_changes": "Checking…",
-    "saved_changes_hint": "Save attendance, grades or homework first. Then review and confirm the changes to notify recipients.",
+    "saved_changes_hint": "Changes save automatically. Confirm changes to send notifications.",
     "toast_changes_confirmed": "Changes confirmed. Updates prepared for {{count}} students.",
     "report_changed": "The lesson has changed. Review the latest preview and confirm again.",
     "report_audience": "Students: {{students}} · Parents: {{parents}}",
@@ -1208,5 +1208,12 @@
     "undo": "Undo",
     "redo": "Redo",
     "hint": "Select text and choose a format. Press Enter for a new list item."
+  },
+  "autosave": {
+    "idle": "Changes save automatically.",
+    "saving": "Saving…",
+    "saved": "All changes saved.",
+    "error": "Not saved. Your edits are kept in this tab. Check your connection and retry.",
+    "retry": "Retry"
   }
 }

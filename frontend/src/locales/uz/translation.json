@@ -516,7 +516,7 @@
     "cancel": "Bekor qilish",
     "confirm_changes": "O‘zgarishlarni tasdiqlash",
     "checking_changes": "Tekshirilmoqda…",
-    "saved_changes_hint": "Avval davomat, baho yoki vazifani saqlang. So‘ng xabar yuboriladigan o‘zgarishlarni tasdiqlang.",
+    "saved_changes_hint": "O‘zgarishlar avtomatik saqlanadi. Xabar yuborish uchun o‘zgarishlarni tasdiqlang.",
     "toast_changes_confirmed": "O‘zgarishlar tasdiqlandi. {{count}} ta o‘quvchiga xabar tayyorlandi.",
     "report_changed": "Ma’lumotlar o‘zgargan. Yangilangan holatni qayta ko‘rib tasdiqlang.",
     "report_audience": "O‘quvchilar: {{students}} · Ota-onalar: {{parents}}",
@@ -1208,5 +1208,12 @@
     "undo": "Ortga qaytarish",
     "redo": "Qayta bajarish",
     "hint": "Matnni belgilang va formatni tanlang. Ro‘yxatga yangi band qo‘shish uchun Enter bosing."
+  },
+  "autosave": {
+    "idle": "O‘zgarishlar avtomatik saqlanadi.",
+    "saving": "Saqlanmoqda…",
+    "saved": "Barcha o‘zgarishlar saqlandi.",
+    "error": "Saqlanmadi. O‘zgarishlar shu oynada saqlanib turibdi. Ulanishni tekshiring va qayta urinib ko‘ring.",
+    "retry": "Qayta urinish"
   }
 }

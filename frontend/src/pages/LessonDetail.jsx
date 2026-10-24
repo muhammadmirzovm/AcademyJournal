@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, Save, Loader2, CheckSquare, Square, Star, Coins, BookOpen, Users, ClipboardList, BellRing, AlertTriangle, Trophy, CheckCheck, XCircle, CheckCircle2 } from 'lucide-react'
-import { getGroup, getMembers, getLesson, getAttendance, saveAttendance, getScores, saveScores, getJournal, saveJournal, getHomework, saveHomework, setHomeworkAssignment, endLesson, getLessonReportPreview } from '../api/groups'
+import { getGroup, getMembers, getLesson, getAttendance, getScores, getJournal, saveJournal, getHomework, saveHomework, endLesson, getLessonReportPreview } from '../api/groups'
 import { getLessonGame, startGame, cancelGame, closeGame } from '../api/games'
 import { useAuth } from '../context/auth'
 import { useToast } from '../context/toast'
@@ -13,6 +13,8 @@ import HomeworkEditor from '../components/HomeworkEditor'
 import HomeworkContent from '../components/HomeworkContent'
 import { weekdayName, formatDayMonthYear, formatDayMonthTime } from '../utils/date'
 import { rosterValues } from '../utils/roster'
+import { mergeRecords } from '../utils/lessonAutosave'
+import { useLessonAutosave } from '../hooks/useLessonAutosave'
 
 export default function LessonDetail() {
   const { groupId, lessonId } = useParams()
@@ -36,11 +38,34 @@ export default function LessonDetail() {
   const [reportTick, setReportTick] = useState(0)
   const isTeacher = user?.role === 'admin' || (user?.role === 'teacher' && group?.teacher === user?.id)
 
+  const { queue, state: autosave } = useLessonAutosave(user?.id, groupId, lessonId)
+  const editAttendance = records => {
+    setAttendance(current => mergeRecords(current, records, 'present'))
+    setReportPreview(null)
+    setShowEndConfirm(false)
+    queue.enqueue('attendance', records)
+  }
+  const editScores = records => {
+    setScores(current => mergeRecords(current, records, 'value'))
+    setReportPreview(null)
+    setShowEndConfirm(false)
+    queue.enqueue('scores', records)
+  }
+  const editHomework = assignment => {
+    if (assignment === homework.assignment && homework.assignment_format === 'html') return
+    const value = { assignment, assignment_format: 'html' }
+    setHomework(current => ({ ...current, ...value }))
+    setReportPreview(null)
+    setShowEndConfirm(false)
+    queue.enqueue('homework', value, 600)
+  }
+
   const hasHomework  = !!homework.assignment?.trim()
   const scoredIds    = new Set(scores.map(s => s.student))
   const unscoredCount = members.filter(m => !scoredIds.has(m.id)).length
 
   const handleEndLesson = async () => {
+    if (queue.getSnapshot().pending) return
     setShowEndConfirm(false)
     setEnding(true)
     try {
@@ -64,9 +89,12 @@ export default function LessonDetail() {
   }
 
   const attemptEndLesson = async () => {
+    if (queue.getSnapshot().pending) return
     setEnding(true)
+    const revision = queue.getSnapshot().revision
     try {
       const { data } = await getLessonReportPreview(groupId, lessonId)
+      if (queue.getSnapshot().pending || queue.getSnapshot().revision !== revision) return
       setReportPreview(data)
       if (data.has_changes) setShowEndConfirm(true)
     } catch {
@@ -78,7 +106,7 @@ export default function LessonDetail() {
 
   const loadedLessonId = lesson?.id
   useEffect(() => {
-    if (!isTeacher || !loadedLessonId) return
+    if (!isTeacher || !loadedLessonId || autosave.pending) return
     let cancelled = false
     getLessonReportPreview(groupId, lessonId).then(({ data }) => {
       if (!cancelled) setReportPreview(data)
@@ -86,11 +114,12 @@ export default function LessonDetail() {
       if (!cancelled) show(t('lesson.toast_fail_load'), 'error')
     })
     return () => { cancelled = true }
-  }, [isTeacher, loadedLessonId, groupId, lessonId, attendance, scores, homework.assignment, homework.assignment_format, reportTick, show, t])
+  }, [isTeacher, loadedLessonId, groupId, lessonId, attendance, scores, homework.assignment, homework.assignment_format, reportTick, autosave.pending, autosave.revision, show, t])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
     setLoading(true)
+    let cancelled = false
     Promise.all([
       getGroup(groupId),
       getMembers(groupId),
@@ -99,18 +128,22 @@ export default function LessonDetail() {
       getJournal(groupId, lessonId),
       getHomework(groupId, lessonId),
     ]).then(([g, m, a, s, j, hw]) => {
+      if (cancelled) return
+      const managing = user?.role === 'admin' || (user?.role === 'teacher' && g.data.teacher === user.id)
+      const draft = managing ? queue.restore(m.data.map(member => member.id)) : {}
       setGroup(g.data)
       setMembers(m.data)
-      setAttendance(a.data)
-      setScores(s.data)
+      setAttendance(mergeRecords(a.data, draft.attendance, 'present'))
+      setScores(mergeRecords(s.data, draft.scores, 'value'))
       setJournal(j.data)
-      setHomework(hw.data)
-      getLesson(groupId, lessonId).then(r => setLesson(r.data))
+      setHomework({ ...hw.data, ...draft.homework })
+      getLesson(groupId, lessonId).then(r => { if (!cancelled) setLesson(r.data) })
     }).catch(() => show(t('lesson.toast_fail_load'), 'error'))
-    .finally(() => setLoading(false))
-  }, [groupId, lessonId, show, t])
+    .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [groupId, lessonId, queue, user?.id, user?.role, show, t])
 
-  const reportDisabled = ending || !reportPreview || Boolean(lesson?.ended_at && !reportPreview.has_changes)
+  const reportDisabled = autosave.pending || ending || !reportPreview || Boolean(lesson?.ended_at && !reportPreview.has_changes)
 
   if (loading) return <Spinner />
   if (!group) return <p style={{ color: 'var(--text-muted)' }}>{t('lesson.toast_fail_load')}</p>
@@ -168,10 +201,16 @@ export default function LessonDetail() {
         {lesson ? formatDayMonthYear(lesson.date, i18n.language) : ''}
       </p>
 
+      {isTeacher && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+        <span role={autosave.status === 'error' ? 'alert' : 'status'} style={{ fontSize: 13, color: autosave.status === 'error' ? 'var(--danger)' : 'var(--text-muted)' }}>
+          {t(`autosave.${autosave.status}`)}
+        </span>
+        {autosave.status === 'error' && <button onClick={() => queue.retry().catch(() => {})} style={ghostBtn}>{t('autosave.retry')}</button>}
+      </div>}
       {isTeacher && lesson?.ended_at && <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>{t('lesson.saved_changes_hint')}</p>}
 
       {isTeacher && lesson && (
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 24, pointerEvents: autosave.pending ? 'none' : 'auto', opacity: autosave.pending ? 0.6 : 1 }} inert={autosave.pending || ending || showEndConfirm}>
           <GameBlock groupId={groupId} lessonId={lessonId} lesson={lesson} members={members} attendance={attendance}
             onChanged={() => { setReportPreview(null); setReportTick(tick => tick + 1) }} />
         </div>
@@ -191,14 +230,14 @@ export default function LessonDetail() {
       </div>
 
       <AnimatePresence mode="wait">
-        <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+        <motion.div key={tab} inert={isTeacher && (ending || showEndConfirm)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
           {tab === 'attendance' && (
             <AttendanceTab members={members} attendance={attendance} groupId={groupId} lessonId={lessonId}
-              isTeacher={isTeacher} onSaved={data => { setReportPreview(null); setAttendance(data) }} />
+              isTeacher={isTeacher} onChange={editAttendance} />
           )}
           {tab === 'scores' && (
             <ScoresTab members={members} scores={scores} groupId={groupId} lessonId={lessonId}
-              isTeacher={isTeacher} onSaved={data => { setReportPreview(null); setScores(data) }} />
+              isTeacher={isTeacher} onChange={editScores} />
           )}
           {tab === 'journal' && (
             <JournalTab journal={journal} groupId={groupId} lessonId={lessonId}
@@ -206,7 +245,7 @@ export default function LessonDetail() {
           )}
           {tab === 'homework' && (
             <HomeworkTab homework={homework} groupId={groupId} lessonId={lessonId}
-              isTeacher={isTeacher} onSaved={data => { setReportPreview(null); setHomework(data) }} />
+              isTeacher={isTeacher} onChange={editHomework} onSaved={setHomework} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -229,7 +268,7 @@ export default function LessonDetail() {
         <LessonReportPreview preview={reportPreview} />
         <div className="lesson-confirm-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
           <button disabled={ending} onClick={() => setShowEndConfirm(false)} style={ghostBtn}>{t('lesson.cancel')}</button>
-          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleEndLesson} disabled={ending || !reportPreview?.has_changes}
+          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleEndLesson} disabled={autosave.pending || ending || !reportPreview?.has_changes}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
             <BellRing size={14} /> {t(lesson?.ended_at ? 'lesson.confirm_changes' : 'lesson.end_anyway')}
           </motion.button>
@@ -241,35 +280,11 @@ export default function LessonDetail() {
 
 // ── Attendance ────────────────────────────────────────────────────────────────
 
-function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSaved }) {
-  const { show } = useToast()
+function AttendanceTab({ members, attendance, isTeacher, onChange }) {
   const { t } = useTranslation()
-  const [local, setLocal]   = useState({})
-  const [saving, setSaving] = useState(false)
-
-  const [previousAttendance, setPreviousAttendance] = useState(null)
-  if (!previousAttendance || previousAttendance[0] !== attendance || previousAttendance[1] !== members) {
-    setPreviousAttendance([attendance, members])
-    setLocal(rosterValues(members, attendance, 'present', false))
-  }
-
-  const toggle = id => setLocal(l => ({ ...l, [id]: !l[id] }))
-  const markAll = present => setLocal(l => {
-    const next = { ...l }
-    members.forEach(m => { next[m.id] = present })
-    return next
-  })
-
-  const save = async () => {
-    setSaving(true)
-    try {
-      const records = members.map(member => ({ student: member.id, present: local[member.id] ?? false }))
-      const { data } = await saveAttendance(groupId, lessonId, records)
-      onSaved(data)
-      show(t('lesson.toast_attendance'), 'success')
-    } catch { show(t('lesson.toast_fail_attendance'), 'error') }
-    finally { setSaving(false) }
-  }
+  const local = rosterValues(members, attendance, 'present', false)
+  const toggle = id => onChange([{ student: id, present: !local[id] }])
+  const markAll = present => onChange(members.map(member => ({ student: member.id, present })))
 
   const presentCount = Object.values(local).filter(Boolean).length
   const total        = members.length
@@ -294,11 +309,7 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
               style={{ ...ghostBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, padding: 0, color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.35)' }}>
               <XCircle size={16} />
             </motion.button>
-            <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
-              style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
-              {saving ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
-              {saving ? t('lesson.saving') : t('lesson.save')}
-            </motion.button>
+
           </div>
         )}
       </div>
@@ -308,7 +319,7 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
           {members.map((m, i) => {
             const present = local[m.id] ?? false
             return (
-              <motion.div key={m.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+              <motion.div key={m.id} data-student-id={m.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
                 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14, background: 'var(--surface)', border: `1.5px solid ${present ? 'var(--success)' : 'var(--border)'}`, borderRadius: 10, padding: '12px 16px', transition: 'border-color 0.2s' }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: present ? 'rgba(5,150,105,0.12)' : 'var(--bg)', border: `1.5px solid ${present ? 'var(--success)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: present ? 'var(--success)' : 'var(--text-muted)', flexShrink: 0, transition: 'all 0.2s' }}>
                   {(m.first_name?.[0] || m.username?.[0] || '?').toUpperCase()}
@@ -322,7 +333,7 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
                     {present ? t('lesson.present') : t('lesson.absent')}
                   </span>
                   {isTeacher && (
-                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => toggle(m.id)}
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => toggle(m.id)} aria-label={t('lesson.tab_attendance')} aria-pressed={present}
                       style={{ width: 32, height: 32, borderRadius: 7, border: `1.5px solid ${present ? 'var(--success)' : 'var(--border)'}`, background: present ? 'rgba(5,150,105,0.12)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.17s' }}>
                       <CheckSquare size={16} color={present ? 'var(--success)' : 'var(--text-muted)'} />
                     </motion.button>
@@ -339,35 +350,10 @@ function AttendanceTab({ members, attendance, groupId, lessonId, isTeacher, onSa
 
 // ── Scores ────────────────────────────────────────────────────────────────────
 
-function ScoresTab({ members, scores, groupId, lessonId, isTeacher, onSaved }) {
-  const { show } = useToast()
+function ScoresTab({ members, scores, isTeacher, onChange }) {
   const { t } = useTranslation()
-  const [local, setLocal]   = useState({})
-  const [saving, setSaving] = useState(false)
-
-  const [previousScores, setPreviousScores] = useState(null)
-  if (!previousScores || previousScores[0] !== scores || previousScores[1] !== members) {
-    setPreviousScores([scores, members])
-    setLocal(rosterValues(members, scores, 'value', ''))
-  }
-
-  const set = (id, val) => {
-    const n = Number(val)
-    if (val === '' || (n >= 0 && n <= 5)) setLocal(l => ({ ...l, [id]: val === '' ? '' : n }))
-  }
-
-  const save = async () => {
-    setSaving(true)
-    try {
-      const records = members.map(member => [member.id, local[member.id] ?? ''])
-        .filter(([, v]) => v !== '')
-        .map(([student, value]) => ({ student: Number(student), value: Number(value) }))
-      const { data } = await saveScores(groupId, lessonId, records)
-      onSaved(data)
-      show(t('lesson.toast_scores'), 'success')
-    } catch { show(t('lesson.toast_fail_scores'), 'error') }
-    finally { setSaving(false) }
-  }
+  const local = rosterValues(members, scores, 'value', '')
+  const set = (id, value) => onChange([{ student: id, value: value === '' ? null : Number(value) }])
 
   const filled = Object.values(local).filter(v => v !== '').length
   const avg    = filled ? (Object.values(local).filter(v => v !== '').reduce((a, b) => a + Number(b), 0) / filled).toFixed(1) : '—'
@@ -379,13 +365,7 @@ function ScoresTab({ members, scores, groupId, lessonId, isTeacher, onSaved }) {
           <Stat label={t('lesson.scored')}  value={filled} color="var(--accent)" />
           <Stat label={t('lesson.average')} value={avg}    color="var(--warning)" />
         </div>
-        {isTeacher && (
-          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={save} disabled={saving}
-            style={{ ...primaryBtn, opacity: saving ? 0.7 : 1 }}>
-            {saving ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
-            {saving ? t('lesson.saving') : t('lesson.save_scores')}
-          </motion.button>
-        )}
+
       </div>
 
       {members.length === 0 ? <EmptyTab icon={Users} text={t('lesson.no_students')} /> : (
@@ -393,7 +373,7 @@ function ScoresTab({ members, scores, groupId, lessonId, isTeacher, onSaved }) {
           {members.map((m, i) => {
             const score = local[m.id] ?? ''
             return (
-              <motion.div key={m.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+              <motion.div key={m.id} data-student-id={m.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', flexWrap: 'wrap' }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-bg)', border: '1.5px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: 'var(--accent)', flexShrink: 0 }}>
                   {(m.first_name?.[0] || m.username?.[0] || '?').toUpperCase()}
@@ -406,7 +386,7 @@ function ScoresTab({ members, scores, groupId, lessonId, isTeacher, onSaved }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {[0,1,2,3,4,5].map(n => (
                       <motion.button key={n} whileTap={{ scale: 0.85 }} onClick={() => set(m.id, score === n ? '' : n)}
-                        className="score-btn"
+                        className="score-btn" aria-pressed={score === n}
                         style={{ width: 36, height: 36, borderRadius: 7, border: `1.5px solid ${score === n ? 'var(--accent)' : 'var(--border)'}`, background: score === n ? 'var(--accent-bg)' : 'transparent', cursor: 'pointer', fontWeight: 700, fontSize: 14, color: score === n ? 'var(--accent)' : 'var(--text-muted)', transition: 'all 0.15s', flexShrink: 0 }}>
                         {n}
                       </motion.button>
@@ -508,31 +488,18 @@ function JournalTab({ journal, groupId, lessonId, isTeacher, onSaved }) {
 
 // ── Homework ──────────────────────────────────────────────────────────────────
 
-function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
+function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved, onChange }) {
   const { show } = useToast()
   const { t } = useTranslation()
-  const [assignment, setAssignment] = useState(homework.assignment || '')
-  const [assignmentFormat, setAssignmentFormat] = useState(homework.assignment_format || 'plain')
+  const assignment = homework.assignment || ''
+  const assignmentFormat = homework.assignment_format || 'plain'
   const [body, setBody]             = useState('')
-  const [savingAssignment, setSavingAssignment] = useState(false)
   const [savingSubmission, setSavingSubmission] = useState(false)
 
   const [previousHomework, setPreviousHomework] = useState(null)
   if (!previousHomework || previousHomework[0] !== homework || previousHomework[1] !== isTeacher) {
     setPreviousHomework([homework, isTeacher])
-    setAssignment(homework.assignment || '')
-    setAssignmentFormat(homework.assignment_format || 'plain')
     if (!isTeacher) setBody(homework.submissions[0]?.body || '')
-  }
-
-  const saveAssignment = async () => {
-    setSavingAssignment(true)
-    try {
-      const { data } = await setHomeworkAssignment(groupId, lessonId, assignment, assignmentFormat)
-      onSaved(hw => ({ ...hw, assignment: data.assignment, assignment_format: data.assignment_format || 'plain' }))
-      show(t('lesson.toast_homework_saved'), 'success')
-    } catch { show(t('lesson.toast_fail_homework'), 'error') }
-    finally { setSavingAssignment(false) }
   }
 
   const submitHomework = async () => {
@@ -550,14 +517,8 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
     return (
       <div style={{ maxWidth: 720 }}>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>{t('lesson.homework_assignment_hint')}</p>
-        <HomeworkEditor value={assignment} format={assignmentFormat}
-          onChange={html => { setAssignment(html); setAssignmentFormat('html') }} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, marginBottom: 32 }}>
-          <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={saveAssignment} disabled={savingAssignment}
-            style={{ ...primaryBtn, opacity: savingAssignment ? 0.7 : 1 }}>
-            {savingAssignment ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> : <Save size={14} />}
-            {savingAssignment ? t('lesson.saving') : t('lesson.save_assignment')}
-          </motion.button>
+        <div style={{ marginBottom: 32 }}>
+          <HomeworkEditor value={assignment} format={assignmentFormat} onChange={onChange} />
         </div>
 
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>
@@ -890,7 +851,7 @@ function CloseScreen({ groupId, lessonId, game, presentMembers, onClosed, onBack
                 const meta = MEDAL_META[medalPlace]
                 const coins = meta.coins(rules)
                 return (
-                  <motion.div key={m.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
+                  <motion.div key={m.id} data-student-id={m.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
                     style={{ display: 'flex', alignItems: 'center', gap: 12, background: meta.bg, border: `1.5px solid ${meta.color}`, borderRadius: 10, padding: '10px 14px' }}>
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface)', border: `1.5px solid ${meta.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>
                       {meta.emoji}

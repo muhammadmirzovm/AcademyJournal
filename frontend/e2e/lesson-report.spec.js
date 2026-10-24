@@ -83,13 +83,12 @@ test('first publication still offers End lesson', async ({ page }) => {
   expect(posts()).toBe(0)
 })
 
-test('saving an edited grade activates confirmation without sending a report', async ({ page }) => {
+test('an edited grade autosaves and activates confirmation without sending a report', async ({ page }) => {
   const posts = await lessonPage(page)
   await expect(page.getByRole('button', { name: 'Tugagan', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: /^ballar$/i }).click()
   await page.getByRole('button', { name: '4', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Tugagan', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: 'Ballarni saqlash', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Ballarni saqlash', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'O‘zgarishlarni tasdiqlash', exact: true })).toBeEnabled()
   expect(posts()).toBe(0)
   await page.getByRole('button', { name: 'O‘zgarishlarni tasdiqlash', exact: true }).click()

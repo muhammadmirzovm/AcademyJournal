@@ -327,10 +327,13 @@ class ScoreView(GroupAccessMixin, APIView):
         if any(r['student'] not in allowed for r in records_data):
             raise ValidationError({'records': 'Every student must be an active group member.'})
         for record in records_data:
-            Score.objects.update_or_create(
-                lesson=lesson, student_id=record['student'],
-                defaults={'value': int(record['value'])}
-            )
+            if record['value'] is None:
+                Score.objects.filter(lesson=lesson, student_id=record['student']).delete()
+            else:
+                Score.objects.update_or_create(
+                    lesson=lesson, student_id=record['student'],
+                    defaults={'value': record['value']}
+                )
 
         records = Score.objects.filter(lesson=lesson).select_related('student')
         if request.user.role == 'parent':

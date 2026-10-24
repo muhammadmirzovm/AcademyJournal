@@ -19,17 +19,17 @@ export const updateLesson       = (gid, lid, data)     => api.patch(`/groups/${g
 export const deleteLesson       = (gid, lid)           => api.delete(`/groups/${gid}/lessons/${lid}/`)
 
 export const getAttendance      = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/attendance/`)
-export const saveAttendance     = (gid, lid, records)  => api.post(`/groups/${gid}/lessons/${lid}/attendance/`, { records })
+export const saveAttendance     = (gid, lid, records, config) => api.post(`/groups/${gid}/lessons/${lid}/attendance/`, { records }, config)
 
 export const getScores          = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/scores/`)
-export const saveScores         = (gid, lid, records)  => api.post(`/groups/${gid}/lessons/${lid}/scores/`, { records })
+export const saveScores         = (gid, lid, records, config) => api.post(`/groups/${gid}/lessons/${lid}/scores/`, { records }, config)
 
 export const getJournal         = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/journal/`)
 export const saveJournal        = (gid, lid, body)     => api.post(`/groups/${gid}/lessons/${lid}/journal/`, { body })
 
 export const getHomework        = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/homework/`)
 export const saveHomework       = (gid, lid, body)     => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { body })
-export const setHomeworkAssignment = (gid, lid, assignment, assignment_format = 'plain') => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { assignment, assignment_format })
+export const setHomeworkAssignment = (gid, lid, assignment, assignment_format = 'plain', config) => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { assignment, assignment_format }, config)
 
 export const getLessonReportPreview = (gid, lid) => api.get(`/groups/${gid}/lessons/${lid}/end/`)
 export const endLesson = (gid, lid, preview_token) => api.post(`/groups/${gid}/lessons/${lid}/end/`, { preview_token })
