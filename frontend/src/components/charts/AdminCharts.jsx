@@ -20,7 +20,7 @@ export default function AdminCharts({ stats }) {
   if (spt.length === 0 && growth.length === 0 && absences.length === 0) return null
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 20, marginTop: 20 }}>
 
       {spt.length > 0 && (
         <div style={card}>

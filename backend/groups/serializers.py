@@ -95,8 +95,22 @@ class GroupSerializer(serializers.ModelSerializer):
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Lesson
-        fields = ('id', 'group', 'title', 'date', 'homework', 'created_at', 'ended_at')
+        fields = ('id', 'group', 'title', 'date', 'homework', 'homework_format', 'created_at', 'ended_at')
         read_only_fields = ('group', 'ended_at')
+
+    def validate(self, attrs):
+        from .homework_formatting import sanitize_homework
+        if 'homework_format' in attrs and 'homework' not in attrs:
+            raise serializers.ValidationError({'homework': 'Provide homework text when changing its format.'})
+        if 'homework' in attrs:
+            if len(attrs['homework']) > 100000:
+                raise serializers.ValidationError({'homework': 'Homework is too long (maximum 100000 characters).'})
+            format = attrs.get('homework_format', 'plain')
+            attrs['homework_format'] = format
+            if format == 'html':
+                attrs['homework'] = sanitize_homework(attrs['homework'])
+        return attrs
+
 
 
 class GroupDayOffSerializer(serializers.ModelSerializer):

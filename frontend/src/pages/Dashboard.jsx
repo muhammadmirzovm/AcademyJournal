@@ -194,7 +194,7 @@ export default function Dashboard() {
               border: '1px solid rgba(20,184,168,0.25)',
             }}>
               <MessageCircle size={20} color="#0D9488" style={{ flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="nudge-banner-text" style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#0D9488' }}>
                   {t('tg_nudge.title')}
                 </span>
@@ -203,8 +203,8 @@ export default function Dashboard() {
                   {t('tg_nudge.desc')}
                 </span>
               </div>
-              <button onClick={handleNudgeConnect} disabled={tgConnecting} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
+              <button className="nudge-banner-btn" onClick={handleNudgeConnect} disabled={tgConnecting} style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 fontSize: 13, fontWeight: 700, color: '#fff', border: 'none',
                 background: 'linear-gradient(135deg, #14B8A8, #0D9488)',
                 padding: '6px 14px', borderRadius: 8, flexShrink: 0,
@@ -401,7 +401,7 @@ export default function Dashboard() {
               <CardSkeleton /><CardSkeleton />
             </div>
           ) : (
-            <div className="mobile-single" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+            <div className="mobile-single" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 20 }}>
 
               {/* Top Groups */}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, boxShadow: 'var(--shadow-sm)' }}>
@@ -729,7 +729,7 @@ export default function Dashboard() {
               style={{ background: 'var(--surface)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 400, boxShadow: 'var(--shadow-lg)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                 <h3 style={{ fontWeight: 700, fontSize: 17 }}>{t('groups.join_modal_title')}</h3>
-                <button onClick={() => setShowJoin(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+                <button onClick={() => setShowJoin(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <X size={18} />
                 </button>
               </div>

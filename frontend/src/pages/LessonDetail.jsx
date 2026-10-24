@@ -9,6 +9,8 @@ import { useAuth } from '../context/auth'
 import { useToast } from '../context/toast'
 import Modal from '../components/ui/Modal'
 import LessonReportPreview from '../components/LessonReportPreview'
+import HomeworkEditor from '../components/HomeworkEditor'
+import HomeworkContent from '../components/HomeworkContent'
 import { weekdayName, formatDayMonthYear, formatDayMonthTime } from '../utils/date'
 import { rosterValues } from '../utils/roster'
 
@@ -84,7 +86,7 @@ export default function LessonDetail() {
       if (!cancelled) show(t('lesson.toast_fail_load'), 'error')
     })
     return () => { cancelled = true }
-  }, [isTeacher, loadedLessonId, groupId, lessonId, attendance, scores, homework.assignment, reportTick, show, t])
+  }, [isTeacher, loadedLessonId, groupId, lessonId, attendance, scores, homework.assignment, homework.assignment_format, reportTick, show, t])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Show loading immediately while this effect reloads external API data.
@@ -123,7 +125,7 @@ export default function LessonDetail() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
+      <div className="breadcrumbs" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
         <Link to="/groups" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{t('common.groups')}</Link>
         <ChevronRight size={14} />
         <Link to={`/groups/${groupId}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{group.name}</Link>
@@ -176,7 +178,7 @@ export default function LessonDetail() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none' }}>
+      <div className="scroll-fade" style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24, overflowX: 'auto', scrollbarWidth: 'none' }}>
         {tabs.map(item => (
           <button key={item.key} className="tab-btn" onClick={() => setTab(item.key)} style={{
             padding: '8px 18px', border: 'none', background: 'none', cursor: 'pointer',
@@ -225,7 +227,7 @@ export default function LessonDetail() {
           )}
         </div>
         <LessonReportPreview preview={reportPreview} />
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
+        <div className="lesson-confirm-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
           <button disabled={ending} onClick={() => setShowEndConfirm(false)} style={ghostBtn}>{t('lesson.cancel')}</button>
           <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={handleEndLesson} disabled={ending || !reportPreview?.has_changes}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
@@ -510,6 +512,7 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
   const { show } = useToast()
   const { t } = useTranslation()
   const [assignment, setAssignment] = useState(homework.assignment || '')
+  const [assignmentFormat, setAssignmentFormat] = useState(homework.assignment_format || 'plain')
   const [body, setBody]             = useState('')
   const [savingAssignment, setSavingAssignment] = useState(false)
   const [savingSubmission, setSavingSubmission] = useState(false)
@@ -518,14 +521,15 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
   if (!previousHomework || previousHomework[0] !== homework || previousHomework[1] !== isTeacher) {
     setPreviousHomework([homework, isTeacher])
     setAssignment(homework.assignment || '')
+    setAssignmentFormat(homework.assignment_format || 'plain')
     if (!isTeacher) setBody(homework.submissions[0]?.body || '')
   }
 
   const saveAssignment = async () => {
     setSavingAssignment(true)
     try {
-      const { data } = await setHomeworkAssignment(groupId, lessonId, assignment)
-      onSaved(hw => ({ ...hw, assignment: data.assignment }))
+      const { data } = await setHomeworkAssignment(groupId, lessonId, assignment, assignmentFormat)
+      onSaved(hw => ({ ...hw, assignment: data.assignment, assignment_format: data.assignment_format || 'plain' }))
       show(t('lesson.toast_homework_saved'), 'success')
     } catch { show(t('lesson.toast_fail_homework'), 'error') }
     finally { setSavingAssignment(false) }
@@ -546,13 +550,8 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
     return (
       <div style={{ maxWidth: 720 }}>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>{t('lesson.homework_assignment_hint')}</p>
-        <textarea
-          value={assignment}
-          onChange={e => setAssignment(e.target.value)}
-          placeholder={t('lesson.homework_assignment_placeholder')}
-          rows={5}
-          style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, lineHeight: 1.7, resize: 'vertical', outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box' }}
-        />
+        <HomeworkEditor value={assignment} format={assignmentFormat}
+          onChange={html => { setAssignment(html); setAssignmentFormat('html') }} />
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, marginBottom: 32 }}>
           <motion.button whileHover={{ translateY: -1 }} whileTap={{ scale: 0.97 }} onClick={saveAssignment} disabled={savingAssignment}
             style={{ ...primaryBtn, opacity: savingAssignment ? 0.7 : 1 }}>
@@ -594,7 +593,7 @@ function HomeworkTab({ homework, groupId, lessonId, isTeacher, onSaved }) {
       {assignment ? (
         <div style={{ background: 'var(--surface)', border: '1.5px solid var(--accent)', borderRadius: 10, padding: '16px 20px', marginBottom: 24 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{t('lesson.assignment')}</p>
-          <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{assignment}</p>
+          <HomeworkContent value={assignment} format={assignmentFormat} />
         </div>
       ) : (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px', marginBottom: 24 }}>

@@ -21,8 +21,8 @@ export default function Layout({ children }) {
         className={isFullWidth ? '' : 'page-main'}
         style={
           isFullWidth
-            ? { flex: 1, width: '100%' }
-            : { flex: 1, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '28px 20px' }
+            ? { flex: 1, minWidth: 0, width: '100%' }
+            : { flex: 1, minWidth: 0, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '28px 20px' }
         }
       >
         {children}

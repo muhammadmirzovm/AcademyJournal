@@ -386,6 +386,7 @@ class HomeworkView(GroupAccessMixin, APIView):
             submissions = HomeworkSubmission.objects.filter(lesson=lesson, student=request.user)
         return Response({
             'assignment': lesson.homework,
+            'assignment_format': lesson.homework_format,
             'submissions': HomeworkSubmissionSerializer(submissions, many=True).data,
         })
 
@@ -397,10 +398,17 @@ class HomeworkView(GroupAccessMixin, APIView):
         if can_manage_group(request.user, lesson.group):
             if not can_manage_group(request.user, lesson.group):
                 return Response({'detail': 'Only the lesson teacher can set homework.'}, status=403)
-            assignment = request.data.get('assignment', '').strip()
-            lesson.homework = assignment
-            lesson.save(update_fields=['homework'])
-            return Response({'assignment': lesson.homework})
+            from .homework_formatting import sanitize_homework
+            assignment = request.data.get('assignment', '')
+            format = request.data.get('assignment_format', 'plain')
+            if not isinstance(assignment, str) or format not in ('plain', 'html'):
+                return Response({'detail': 'Invalid homework text or format.'}, status=400)
+            if len(assignment) > 100000:
+                return Response({'detail': 'Homework is too long (maximum 100000 characters).'}, status=400)
+            lesson.homework = sanitize_homework(assignment) if format == 'html' else assignment.strip()
+            lesson.homework_format = format
+            lesson.save(update_fields=['homework', 'homework_format'])
+            return Response({'assignment': lesson.homework, 'assignment_format': lesson.homework_format})
 
         if request.user.role != 'student':
             raise PermissionDenied('Only enrolled students submit homework.')
@@ -646,6 +654,7 @@ def _send_initial_lesson_report(lesson, report_state, changes):
                         lesson=lesson.title,
                         group=group.name,
                         homework=lesson.homework,
+                        homework_format=lesson.homework_format,
                     )
                 except Exception:
                     pass
@@ -692,16 +701,14 @@ def _send_initial_lesson_report(lesson, report_state, changes):
             if lesson.homework.strip():
                 lines.append("")
                 lines.append(homework_header)
-                lines.append(e(lesson.homework))
+                from .homework_formatting import homework_telegram
+                lines.append(homework_telegram(lesson.homework, lesson.homework_format))
 
             bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
             if bot_token:
                 bot = TelegramBot(token=bot_token)
-                async_to_sync(bot.send_message)(
-                    chat_id=group.telegram_chat_id,
-                    text='\n'.join(lines),
-                    parse_mode='HTML',
-                )
+                from .homework_formatting import send_html_message
+                async_to_sync(send_html_message)(bot, group.telegram_chat_id, '\n'.join(lines))
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f'Group chat send failed: {e}', exc_info=True)

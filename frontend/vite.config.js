@@ -8,6 +8,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (/@tiptap|prosemirror-|orderedmap|rope-sequence|w3c-keyname|crelt/.test(id)) return 'homework-editor'
           if (id.includes('recharts'))      return 'charts'
           if (id.includes('framer-motion')) return 'motion'
           if (id.includes('node_modules'))  return 'vendor'

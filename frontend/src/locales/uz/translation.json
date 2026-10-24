@@ -1194,5 +1194,19 @@
     "toast_undone": "Bekor qilindi — qayta kutish holatiga qaytdi.",
     "toast_undo_fail": "Bekor qilishda xatolik.",
     "scan_another": "Boshqa kodni tekshirish"
+  },
+  "rich_text": {
+    "toolbar": "Matnni formatlash",
+    "bold": "Qalin",
+    "italic": "Kursiv",
+    "underline": "Tagiga chizish",
+    "strike": "Ustiga chizish",
+    "code": "Kod",
+    "bullet_list": "Punktli ro‘yxat",
+    "ordered_list": "Raqamli ro‘yxat",
+    "clear": "Formatni tozalash",
+    "undo": "Ortga qaytarish",
+    "redo": "Qayta bajarish",
+    "hint": "Matnni belgilang va formatni tanlang. Ro‘yxatga yangi band qo‘shish uchun Enter bosing."
   }
 }

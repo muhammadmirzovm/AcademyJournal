@@ -74,6 +74,7 @@ class Lesson(models.Model):
     title = models.CharField(max_length=200)
     date = models.DateField()
     homework = models.TextField(blank=True)
+    homework_format = models.CharField(max_length=5, choices=[('plain', 'Plain text'), ('html', 'Rich text')], default='plain')
     created_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     report_snapshot = models.JSONField(null=True, blank=True, editable=False)

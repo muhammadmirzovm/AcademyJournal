@@ -529,6 +529,7 @@ def _student_homework(user):
                 'group':    m.group.name,
                 'lesson':   last_lesson.title,
                 'homework': last_lesson.homework or None,
+                'homework_format': last_lesson.homework_format,
             })
     return items
 
@@ -833,17 +834,20 @@ async def homework_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(m['homework_none'])
         return
 
-    text = m['homework_header']
+    from html import escape
+    from groups.homework_formatting import homework_telegram, telegram_html_chunks
+    text = _homework_template(m['homework_header'])
     for item in items:
+        values = {'group': escape(item['group']), 'lesson': escape(item['lesson'] or '')}
         if item['lesson'] is None:
-            text += m['homework_no_lesson'].format(group=item['group'])
+            text += _homework_template(m['homework_no_lesson']).format(**values)
         elif item['homework'] is None:
-            text += m['homework_not_set'].format(group=item['group'], lesson=item['lesson'])
+            text += _homework_template(m['homework_not_set']).format(**values)
         else:
-            text += m['homework_item'].format(
-                group=item['group'], lesson=item['lesson'], homework=item['homework']
-            )
-    await update.message.reply_text(text, parse_mode='Markdown')
+            values['homework'] = homework_telegram(item['homework'], item.get('homework_format', 'plain'))
+            text += _homework_template(m['homework_item']).format(**values)
+    for chunk in telegram_html_chunks(text):
+        await update.message.reply_text(chunk, parse_mode='HTML')
 
 
 # ── /mygroups (teacher) ────────────────────────────────────────────────────────
@@ -1115,17 +1119,36 @@ NOTIF_MSG = {
 }
 
 
+def _homework_template(template):
+    # Only static, trusted bot templates use Markdown markers; values are escaped separately.
+    import re
+    return re.sub(r'\*([^*]+)\*', r'<b>\1</b>', template)
+
+
 async def send_notification(telegram_id: int, msg_key: str, lang: str = 'uz', **kwargs):
     bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
     if not bot_token:
         return
     msgs = NOTIF_MSG.get(lang, NOTIF_MSG['uz'])
-    text = msgs.get(msg_key, '').format(**kwargs)
+    from html import escape
+    from groups.homework_formatting import homework_telegram, send_html_message
+    if msg_key == 'hw_notification':
+        text = _homework_template(msgs[msg_key]).format(
+            lesson=escape(str(kwargs.get('lesson', ''))), group=escape(str(kwargs.get('group', ''))),
+            homework=homework_telegram(kwargs.get('homework', ''), kwargs.get('homework_format', 'plain')),
+        )
+    elif msg_key == 'lesson_update' and 'message_html' in kwargs:
+        text = msgs[msg_key].format(message=kwargs['message_html'])
+    else:
+        text = msgs.get(msg_key, '').format(**kwargs)
     if not text:
         return
     bot = Bot(token=bot_token)
     try:
-        await bot.send_message(chat_id=telegram_id, text=text, parse_mode=None if msg_key == 'lesson_update' else 'Markdown')
+        if msg_key == 'hw_notification' or (msg_key == 'lesson_update' and 'message_html' in kwargs):
+            await send_html_message(bot, telegram_id, text)
+        else:
+            await bot.send_message(chat_id=telegram_id, text=text, parse_mode=None if msg_key == 'lesson_update' else 'Markdown')
     except Exception as e:
         logger.error('Telegram notification error: %s', e)
 

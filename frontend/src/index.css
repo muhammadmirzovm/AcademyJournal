@@ -111,6 +111,7 @@ a { transition: color 0.15s, opacity 0.15s; }
 /* ── Mobile ─────────────────────────────────── */
 @media (max-width: 640px) {
   .hide-mobile  { display: none !important; }
+  .mobile-only  { display: flex !important; }
   .stack-mobile { flex-direction: column !important; }
   .full-mobile  { width: 100% !important; }
 
@@ -122,6 +123,21 @@ a { transition: color 0.15s, opacity 0.15s; }
 
   /* Tab rows: smaller padding so they don't overflow */
   .tab-btn { padding: 8px 10px !important; font-size: 11px !important; }
+
+  /* Settings segmented tabs: icon-only — three equal-width segments don't
+     reliably fit longer locale strings (e.g. Russian "Приглашения") at
+     phone widths, so avoid truncation entirely rather than chase it */
+  .settings-tabs-btn span { display: none !important; }
+  .settings-tabs-btn { gap: 0 !important; }
+
+  /* Scrollable tab rows: right-edge fade hints there's more to swipe to */
+  .scroll-fade { position: relative !important; }
+  .scroll-fade::after {
+    content: '';
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: 24px; pointer-events: none;
+    background: linear-gradient(to right, transparent, var(--bg));
+  }
 
   /* Stats row wraps below save button */
   .stats-row { flex-wrap: wrap !important; row-gap: 8px !important; }
@@ -149,8 +165,19 @@ a { transition: color 0.15s, opacity 0.15s; }
   /* Card grids: single column on mobile */
   .mobile-single { grid-template-columns: 1fr !important; }
 
+  /* Streak/attendance stat row: 3 side-by-side cards don't leave enough
+     width per label in some locales — stack into one full-width panel
+     with a compact horizontal row per stat instead */
+  .stat-grid { grid-template-columns: 1fr !important; gap: 0 !important; border: 1px solid var(--border) !important; border-radius: 12px !important; overflow: hidden !important; }
+  .stat-card { display: flex !important; flex-direction: row-reverse !important; justify-content: space-between !important; align-items: center !important; text-align: left !important; border: none !important; border-radius: 0 !important; border-bottom: 1px solid var(--border) !important; padding: 12px 16px !important; }
+  .stat-card:last-child { border-bottom: none !important; }
+  .stat-card > div:last-child { margin-top: 0 !important; }
+
   /* Nudge banner: stack on mobile */
+  /* Icon+text stay on one line; the button drops to its own full-width row
+     instead of squeezing the text into a very narrow, many-line column */
   .nudge-banner { flex-wrap: wrap !important; gap: 10px !important; }
+  .nudge-banner-btn { flex-basis: 100% !important; width: 100% !important; }
 
   /* Member/score rows: shrink avatar */
   .member-avatar { width: 30px !important; height: 30px !important; font-size: 11px !important; }
@@ -176,12 +203,40 @@ a { transition: color 0.15s, opacity 0.15s; }
   .group-detail-hd-btns { width: 100% !important; flex-wrap: wrap !important; }
   .group-detail-hd-btns > button, .group-detail-hd-btns > a, .group-detail-hd-btns > div { flex: 1 !important; justify-content: center !important; }
 
+  /* Header action labels: icon-only on mobile — some locales (e.g. Russian)
+     run long enough to force these onto their own wrapped row otherwise */
+  .hd-btn-label { display: none !important; }
+  .group-detail-hd-btns > .hd-icon-btn {
+    flex: 0 0 auto !important; width: 36px !important; height: 36px !important;
+    padding: 0 !important; justify-content: center !important; border-radius: 10px !important;
+  }
+  /* The "…" dropdown was anchored right:0 for when this button sat at the
+     far right of a full-width row (desktop). On mobile these icon buttons
+     cluster on the left instead, so right:0 sent the (wider) dropdown
+     off the left edge of the screen — anchor from the left here instead. */
+  .hd-dropdown { left: 0 !important; right: auto !important; }
+
   /* Form 2-column grids collapse */
   .form-grid-2 { grid-template-columns: 1fr !important; }
   .form-grid-3 { grid-template-columns: 1fr 1fr !important; }
 
   /* Member row: allow wrapping on very small screens */
   .member-row-inner { flex-wrap: wrap !important; }
+
+  /* Settings members list: stack into a clean card instead of letting the
+     name/badge and the role-specific action button compete for the same
+     line (they could visually overlap when the row ran out of width) */
+  .member-row { flex-direction: column !important; align-items: stretch !important; }
+  .member-row > a { width: 100% !important; }
+  .member-date { display: none !important; }
+  .member-row-action { width: 100% !important; justify-content: center !important; }
+
+  /* Settings invite cards: same overlap risk as member rows — stack instead.
+     (align-items: flex-start, not stretch, so the 36px icon box doesn't
+     get stretched full-width too — only the content block and actions need it.) */
+  .invite-row { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+  .invite-row > div:nth-child(2) { width: 100% !important; }
+  .invite-row-actions { width: 100% !important; justify-content: flex-end !important; }
 
   /* Exam result student card: wrap */
   .exam-result-student { flex-wrap: wrap !important; gap: 8px !important; }
@@ -200,3 +255,49 @@ a { transition: color 0.15s, opacity 0.15s; }
   /* Form 3-column grids collapse fully on very small screens */
   .form-grid-3 { grid-template-columns: 1fr !important; }
 }
+
+/* Flexible content retains its own scrolling without widening the page. */
+#root { min-width: 0; }
+.page-main { min-width: 0; overflow-wrap: anywhere; }
+.page-main img { max-width: 100%; }
+.mobile-only { display: none; }
+.app-modal { overflow-wrap: anywhere; }
+.modal-header > button { flex-shrink: 0; }
+.scroll-fade { overscroll-behavior-x: contain; }
+
+@media (max-width: 640px) {
+  .mobile-only { display: flex; }
+  .modal-header { padding: 16px !important; }
+  .modal-body { padding: 16px !important; }
+  .lesson-confirm-actions { flex-direction: column-reverse; }
+  .lesson-confirm-actions > button { width: 100%; justify-content: center; }
+  .member-row-action { min-width: 0; flex-wrap: wrap; }
+}
+
+@media (max-width: 640px) {
+  .group-detail-hd-btns > .group-join-key { flex: 0 0 100% !important; flex-wrap: wrap; min-width: 0; }
+}
+
+.breadcrumbs { flex-wrap: wrap; }
+.breadcrumbs > a:first-child { flex-shrink: 0; }
+.breadcrumbs > a, .breadcrumbs > span { min-width: 0; max-width: 100%; }
+
+/* Homework formatting shares the editor and read-only presentation. */
+.homework-editor { min-width: 0; border: 1.5px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.homework-editor:focus-within { border-color: var(--accent); }
+.homework-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.homework-toolbar button { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text); cursor: pointer; }
+.homework-toolbar button:hover, .homework-toolbar button[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.homework-toolbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.homework-editor .tiptap { min-height: 160px; max-height: 55dvh; overflow-y: auto; padding: 12px 14px; outline: none; }
+.homework-editor-hint { padding: 8px 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+.homework-rich-text { font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; min-width: 0; }
+.homework-rich-text p { margin: 0 0 8px; }
+.homework-rich-text p:last-child { margin-bottom: 0; }
+.homework-rich-text ul, .homework-rich-text ol { padding-left: 24px; margin: 8px 0; }
+.homework-rich-text ul { list-style-type: disc; }
+.homework-rich-text ol { list-style-type: decimal; }
+.homework-rich-text li > p { margin-bottom: 0; }
+.homework-rich-text code { padding: 2px 4px; border-radius: 4px; background: var(--accent-bg); font-family: var(--font-mono); }
+.homework-plain-text { white-space: pre-wrap; }
+@media (max-width: 640px) { .homework-toolbar button { width: 40px; height: 40px; } }

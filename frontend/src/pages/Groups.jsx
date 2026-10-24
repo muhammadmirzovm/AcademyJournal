@@ -135,7 +135,7 @@ export default function Groups() {
       )}
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 18 }}>
           {[0,1,2,3].map(i => <CardSkeleton key={i} />)}
         </div>
       ) : visible.length === 0 ? (
@@ -143,7 +143,7 @@ export default function Groups() {
           ? <EmptyState isTeacher={isTeacher} onAction={() => isTeacher ? setShowCreate(true) : setShowJoin(true)} />
           : <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: '40px 0' }}>{t('groups.no_results')}</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 18 }}>
           {visible.map((g, i) => <GroupCard key={g.id} group={g} index={i} isTeacher={isTeacher} isAdmin={isAdmin} />)}
         </div>
       )}

@@ -29,7 +29,7 @@ export const saveJournal        = (gid, lid, body)     => api.post(`/groups/${gi
 
 export const getHomework        = (gid, lid)           => api.get(`/groups/${gid}/lessons/${lid}/homework/`)
 export const saveHomework       = (gid, lid, body)     => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { body })
-export const setHomeworkAssignment = (gid, lid, assignment) => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { assignment })
+export const setHomeworkAssignment = (gid, lid, assignment, assignment_format = 'plain') => api.post(`/groups/${gid}/lessons/${lid}/homework/`, { assignment, assignment_format })
 
 export const getLessonReportPreview = (gid, lid) => api.get(`/groups/${gid}/lessons/${lid}/end/`)
 export const endLesson = (gid, lid, preview_token) => api.post(`/groups/${gid}/lessons/${lid}/end/`, { preview_token })

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import HomeworkContent from './HomeworkContent'
 
 export default function LessonReportPreview({ preview }) {
   const { t } = useTranslation()
@@ -9,8 +10,12 @@ export default function LessonReportPreview({ preview }) {
   const fields = changes => Object.entries(changes).map(([field, change]) => (
     <div key={field} style={{ marginTop: 6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
       <strong>{t(`lesson.report_field_${field}`)}: </strong>
-      <span style={{ color: 'var(--text-muted)' }}>{value(field, change.old)}</span>
-      {' → '}<strong>{value(field, change.new)}</strong>
+      {field === 'homework' ? <>
+        <HomeworkContent value={change.old} format={change.old_format || 'plain'} />
+        <span aria-hidden="true"> ↓ </span>
+        <HomeworkContent value={change.new} format={change.new_format || 'plain'} />
+      </> : <><span style={{ color: 'var(--text-muted)' }}>{value(field, change.old)}</span>
+        {' → '}<strong>{value(field, change.new)}</strong></>}
     </div>
   ))
   return <div style={{ maxHeight: '50vh', overflowY: 'auto', fontSize: 13, lineHeight: 1.6 }}>

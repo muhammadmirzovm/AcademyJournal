@@ -1,4 +1,6 @@
 """Compare persisted lesson edits with the last explicitly confirmed report."""
+from html import escape
+
 import hashlib
 import json
 import logging
@@ -26,6 +28,7 @@ def snapshot(lesson):
     coins = dict(GameResult.objects.filter(game__lesson=lesson).values_list('student_id', 'coins'))
     state = {
         'title': lesson.title, 'date': str(lesson.date), 'homework': lesson.homework,
+        'homework_format': lesson.homework_format,
         'students': {str(m.student_id): {
             'attendance': attendance.get(m.student_id),
             'score': scores.get(m.student_id), 'coins': coins.get(m.student_id, 0),
@@ -38,6 +41,16 @@ def changes_since(lesson, state):
     previous = lesson.report_snapshot or state
     common = {key: {'old': previous.get(key), 'new': state[key]}
               for key in ('title', 'date', 'homework') if previous.get(key) != state[key]}
+    old_format = previous.get('homework_format', 'plain')
+    new_format = state.get('homework_format', 'plain')
+    if old_format != new_format:
+        common.setdefault('homework', {'old': previous.get('homework', ''), 'new': state['homework']})
+    if 'homework' in common:
+        from .homework_formatting import homework_telegram
+        if homework_telegram(previous.get('homework', ''), old_format) == homework_telegram(state['homework'], new_format):
+            common.pop('homework')
+        elif 'html' in (old_format, new_format):
+            common['homework'].update(old_format=old_format, new_format=new_format)
     students = {}
     for sid, values in state['students'].items():
         old = previous.get('students', {}).get(sid, {'attendance': None, 'score': None, 'coins': 0})
@@ -130,14 +143,25 @@ LABELS = {
 }
 
 
-def change_lines(fields, lang):
+def change_lines(fields, lang, rich=False):
     labels = LABELS.get(lang, LABELS['uz'])
     def display(key, value):
         if value is None or (key == 'attendance' and isinstance(value, bool)):
             return labels[value]
         return str(value) if value != '' else '—'
-    return [f"{labels[key]}: {display(key, item['old'])} → {display(key, item['new'])}"
-            for key, item in fields.items()]
+    from .homework_formatting import homework_plain, homework_telegram
+    lines = []
+    for key, item in fields.items():
+        if key == 'homework':
+            render = homework_telegram if rich else homework_plain
+            old = render(item['old'], item.get('old_format', 'plain')) or '—'
+            new = render(item['new'], item.get('new_format', 'plain')) or '—'
+        else:
+            old, new = display(key, item['old']), display(key, item['new'])
+            if rich:
+                old, new = escape(old), escape(new)
+        lines.append(f'{labels[key]}: {old} → {new}')
+    return lines
 
 
 def send_updates(lesson, state, changes):
@@ -148,16 +172,19 @@ def send_updates(lesson, state, changes):
     logger = logging.getLogger(__name__)
     def deliver(user, fields, student_name=None):
         lang = user.telegram_lang or group.language or 'uz'
-        lines = [lesson.title, group.name]
+        header = [lesson.title, group.name]
         if student_name:
-            lines.append(student_name)
-        lines.extend(change_lines(fields, lang))
+            header.append(student_name)
+        lines = [*header, *change_lines(fields, lang)]
         text = '\n'.join(lines)
         heading = 'Dars ma’lumotlari yangilandi' if lang != 'ru' else 'Данные урока обновлены'
         Notification.objects.create(user=user, type='lesson', title=heading, body=text[:500])
         if user.telegram_id:
             try:
-                async_to_sync(send_notification)(user.telegram_id, 'lesson_update', lang, message=text)
+                async_to_sync(send_notification)(
+                    user.telegram_id, 'lesson_update', lang, message=text,
+                    message_html='\n'.join([*(escape(line) for line in header), *change_lines(fields, lang, rich=True)]),
+                )
             except Exception:
                 logger.exception('Lesson update delivery failed for user %s', user.pk)
     # Recheck the current roster at delivery so a withdrawn account cannot be
@@ -179,6 +206,9 @@ def send_updates(lesson, state, changes):
         lang = group.language or 'uz'
         text = '\n'.join([lesson.title, group.name, *change_lines(common, lang)])
         try:
-            async_to_sync(send_notification)(group.telegram_chat_id, 'lesson_update', lang, message=text)
+            async_to_sync(send_notification)(
+                group.telegram_chat_id, 'lesson_update', lang, message=text,
+                message_html='\n'.join([escape(lesson.title), escape(group.name), *change_lines(common, lang, rich=True)]),
+            )
         except Exception:
             logger.exception('Lesson group update delivery failed')

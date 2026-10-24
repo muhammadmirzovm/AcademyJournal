@@ -1194,5 +1194,19 @@
     "toast_undone": "Undone — back to pending.",
     "toast_undo_fail": "Failed to undo.",
     "scan_another": "Scan another code"
+  },
+  "rich_text": {
+    "toolbar": "Text formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strike": "Strikethrough",
+    "code": "Code",
+    "bullet_list": "Bullet list",
+    "ordered_list": "Numbered list",
+    "clear": "Clear formatting",
+    "undo": "Undo",
+    "redo": "Redo",
+    "hint": "Select text and choose a format. Press Enter for a new list item."
   }
 }
