@@ -42,7 +42,18 @@ test('bold bullet homework saves, reloads and displays to the student', async ({
   await expect(editor.locator('strong')).toHaveText('Birinchi vazifa')
   await page.getByRole('button', { name: 'Punktli ro‘yxat', exact: true }).click()
   await expect(editor.locator('ul li')).toHaveCount(1)
-  await editor.press('ArrowRight'); await editor.press('Enter'); await editor.pressSequentially('Ikkinchi vazifa')
+  // Position the caret inside the paragraph instead of depending on
+  // platform-specific selection movement after a toolbar action.
+  await editor.locator('li p').evaluate(node => {
+    node.focus()
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    range.collapse(false)
+    const selection = window.getSelection()
+    selection.removeAllRanges()
+    selection.addRange(range)
+  })
+  await editor.press('Enter'); await editor.pressSequentially('Ikkinchi vazifa')
   await expect(editor.locator('li')).toHaveCount(2)
   await page.getByRole('button', { name: 'Topshiriqni saqlash', exact: true }).click()
   expect(state.writes).toHaveLength(1)
