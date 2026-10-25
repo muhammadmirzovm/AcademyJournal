@@ -38,6 +38,7 @@ async function mockApp(page, lang = 'ru') {
     else if (path === '/coins/report/') json = { outstanding_balance: 1500, issued_last_30_days: 500, spent_last_30_days: 100, spend_by_category: [] }
     else if (path.includes('/purchases/')) json = paginated([])
     else if (path === '/coins/settings/') json = {}
+    else if (path === '/coins/students/21/') json = { balance: 25, count: 1, results: [{ id: 1, amount: 25, type: 'game_place', reason: 'Mathematics game award', created_at: '2026-10-25T09:00:00Z', created_by_name: longName }] }
     else if (path === '/invites/') json = paginated([{ id: 1, token: 'test', role: 'student', created_at: '2026-10-24', used_count: 1, max_uses: 5, note: 'Invite for the international mathematics group' }])
     else if (path.includes('/notifications/')) json = { results: [], unread: 0 }
     else if (path.endsWith('/games/1/')) json = { id: 1, name: 'Mathematics Quiz', status: 'active', created_by: 10, team_count: 2, timer_seconds: 30, teams: [{ id: 1, name: 'First team', score: 100, members: [student], color: '#6366F1' }], board: { Algebra: [{ id: 1, value: 100, difficulty: 'easy', answered: false }], Geometry: [{ id: 2, value: 200, difficulty: 'medium', answered: false }] } }
