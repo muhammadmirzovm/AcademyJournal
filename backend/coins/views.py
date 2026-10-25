@@ -2,7 +2,9 @@ from datetime import timedelta
 from backend.validation import integer
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count, Sum
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import permissions, serializers
 from rest_framework.response import Response
@@ -11,7 +13,7 @@ from rest_framework.views import APIView
 from purchases.models import Purchase
 
 from .models import CoinSetting, CoinTransaction
-from .serializers import CoinSettingSerializer
+from .serializers import CoinSettingSerializer, StudentCoinActionSerializer
 
 User = get_user_model()
 
@@ -176,3 +178,59 @@ class CoinLeaderboardView(APIView):
                 'earned': r['earned'],
             })
         return Response(results)
+
+
+class StudentCoinsView(APIView):
+    """Academy admin wallet management with an immutable audit trail."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.user.role != 'admin' or not request.user.academy_id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Academy admin only.')
+
+    def student(self, request, pk, lock=False):
+        students = User.objects.filter(role='student', academy_id=request.user.academy_id)
+        if lock:
+            students = students.select_for_update()
+        return get_object_or_404(students, pk=pk)
+
+    def get(self, request, pk):
+        student = self.student(request, pk)
+        page = integer(request.query_params.get('page', 1), 'page', minimum=1)
+        entries = CoinTransaction.objects.filter(student=student, academy_id=request.user.academy_id).select_related('created_by').order_by('-created_at', '-pk')
+        count = entries.count()
+        return Response({
+            'balance': CoinTransaction.balance_for(student),
+            'count': count,
+            'results': [{
+                'id': entry.pk, 'amount': entry.amount, 'type': entry.type,
+                'reason': entry.reason, 'created_at': entry.created_at,
+                'created_by': entry.created_by_id,
+                'created_by_name': (entry.created_by.get_full_name() or entry.created_by.username) if entry.created_by else None,
+            } for entry in entries[(page - 1) * 20:page * 20]],
+        })
+
+    @transaction.atomic
+    def post(self, request, pk):
+        student = self.student(request, pk, lock=True)
+        data = StudentCoinActionSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        values = data.validated_data
+        balance = CoinTransaction.balance_for(student)
+        if balance != values['expected_balance']:
+            return Response({'detail': 'Balance changed. Review the latest balance.', 'balance': balance}, status=409)
+        action = values['action']
+        amount = -balance if action == 'reset' else values['amount'] * (1 if action == 'add' else -1)
+        if action == 'subtract' and amount + balance < 0:
+            return Response({'detail': 'Insufficient balance.'}, status=400)
+        if not -2147483647 <= amount <= 2147483647:
+            return Response({'detail': 'Amount is outside the supported range.'}, status=400)
+        if amount:
+            CoinTransaction.objects.create(
+                student=student, academy_id=request.user.academy_id,
+                amount=amount, type=CoinTransaction.Type.ADJUSTMENT,
+                reason=values['reason'], created_by=request.user,
+            )
+        return Response({'balance': balance + amount, 'amount': amount})

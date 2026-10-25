@@ -1215,5 +1215,40 @@
     "saved": "Barcha o‘zgarishlar saqlandi.",
     "error": "Saqlanmadi. O‘zgarishlar shu oynada saqlanib turibdi. Ulanishni tekshiring va qayta urinib ko‘ring.",
     "retry": "Qayta urinish"
+  },
+  "student_coins": {
+    "title": "Tangachalar",
+    "balance": "Joriy balans",
+    "hint": "Har bir o‘zgarish tarixda saqlanadi. Faqat akademiya admini boshqaradi.",
+    "action": "Amal",
+    "add": "Qo‘shish",
+    "subtract": "Ayirish",
+    "reset": "Nolga tushirish",
+    "amount": "Miqdor",
+    "reason": "Sabab",
+    "review": "Tekshirish",
+    "confirm_title": "O‘zgarishni tasdiqlash",
+    "confirm": "Tasdiqlash",
+    "cancel": "Bekor qilish",
+    "saving": "Saqlanmoqda…",
+    "history": "Amallar tarixi",
+    "empty": "Hozircha amallar yo‘q.",
+    "system": "Tizim",
+    "previous": "Oldingi",
+    "next": "Keyingi",
+    "loading": "Yuklanmoqda…",
+    "load_error": "Yuklab bo‘lmadi.",
+    "retry": "Qayta urinish",
+    "success": "Balans yangilandi.",
+    "error": "Saqlanmadi. Balansni tekshirib, qayta urinib ko‘ring.",
+    "changed": "Balans o‘zgardi. Yangi balansni tekshirib, qayta tasdiqlang.",
+    "insufficient": "Balans yetarli emas.",
+    "types": {
+      "game_place": "O‘yin — o‘rin",
+      "game_effort": "O‘yin — harakat",
+      "purchase": "Xarid",
+      "refund": "Qaytarish",
+      "adjustment": "Tuzatish"
+    }
   }
 }

@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import CoinReportView, MyBalanceView, CoinAdjustView, CoinSettingView, CoinLeaderboardView
+from .views import CoinReportView, MyBalanceView, CoinAdjustView, CoinSettingView, CoinLeaderboardView, StudentCoinsView
 
 urlpatterns = [
+    path('coins/students/<int:pk>/', StudentCoinsView.as_view(), name='student_coins'),
     path('coins/balance/', MyBalanceView.as_view(), name='my_balance'),
     path('coins/report/', CoinReportView.as_view(), name='coin_report'),
     path('coins/adjust/', CoinAdjustView.as_view(), name='coin_adjust'),

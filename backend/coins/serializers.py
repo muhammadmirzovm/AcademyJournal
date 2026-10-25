@@ -37,3 +37,15 @@ class CoinSettingSerializer(serializers.ModelSerializer):
                     f'effort_min_{suffix}': "Minimal qiymat maksimaldan katta bo'lmasligi kerak.",
                 })
         return data
+
+
+class StudentCoinActionSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=['add', 'subtract', 'reset'])
+    amount = serializers.IntegerField(min_value=1, max_value=2147483647, required=False)
+    expected_balance = serializers.IntegerField()
+    reason = serializers.CharField(max_length=200, allow_blank=False, trim_whitespace=True)
+
+    def validate(self, data):
+        if data['action'] != 'reset' and 'amount' not in data:
+            raise serializers.ValidationError({'amount': 'Required.'})
+        return data

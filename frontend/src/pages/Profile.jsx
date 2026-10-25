@@ -14,6 +14,7 @@ import AttendanceDoughnut from '../components/charts/AttendanceDoughnut'
 import TeacherStats from '../components/charts/TeacherStats'
 import CoinLineChart from '../components/charts/CoinLineChart'
 import TodayLessons from '../components/TodayLessons'
+import StudentCoinManager from '../components/StudentCoinManager'
 import AttendanceCalendar from '../components/AttendanceCalendar'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { timeAgo, formatDate } from '../utils/date'
@@ -321,6 +322,9 @@ export default function Profile() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+            {me?.role === 'admin' && profile.role === 'student' && (
+              <StudentCoinManager key={id} studentId={id} onChanged={() => getUserStats(id).then(r => setStats(r.data)).catch(() => {})} />
+            )}
             <div style={chartCard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
                 <div style={chartIconWrap}><TrendingUp size={16} color="var(--accent)" /></div>

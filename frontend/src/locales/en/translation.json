@@ -1215,5 +1215,40 @@
     "saved": "All changes saved.",
     "error": "Not saved. Your edits are kept in this tab. Check your connection and retry.",
     "retry": "Retry"
+  },
+  "student_coins": {
+    "title": "Coins",
+    "balance": "Current balance",
+    "hint": "Every change is recorded. Only the academy admin can manage coins.",
+    "action": "Action",
+    "add": "Add",
+    "subtract": "Subtract",
+    "reset": "Reset to zero",
+    "amount": "Amount",
+    "reason": "Reason",
+    "review": "Review",
+    "confirm_title": "Review balance change",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "history": "Transaction history",
+    "empty": "No transactions yet.",
+    "system": "System",
+    "previous": "Previous",
+    "next": "Next",
+    "loading": "Loading…",
+    "load_error": "Could not load.",
+    "retry": "Retry",
+    "success": "Balance updated.",
+    "error": "Could not save. Check the balance before retrying.",
+    "changed": "Balance changed. Review the latest balance and confirm again.",
+    "insufficient": "Insufficient balance.",
+    "types": {
+      "game_place": "Game place",
+      "game_effort": "Game effort",
+      "purchase": "Purchase",
+      "refund": "Refund",
+      "adjustment": "Adjustment"
+    }
   }
 }
